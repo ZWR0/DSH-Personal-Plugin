@@ -1,25 +1,39 @@
 # 暗金工坊 · DSH Web UI 本地插件套件
 
-本仓库包含 **6 个可单独安装、启停的本地插件**，包名均为 `@local/*`。插件安装在 DSH profile 中，不直接修改官方包。下表版本以各目录的 `package.json` 为准。
+本地开发版包含 **7 个插件**；[GitHub 仓库](https://github.com/ZWR0/DSH-Personal-Plugin)目前发布其中 **6 个插件**。本 README 同时说明本地开发状态与已发布状态，安装时以实际下载目录中的 `package.json` 为准。
+
+当前差异：清道夫本地为 0.4.0（支持撤回），仓库代码仍为 0.3.0（立即永久删除）；远行之钥仅在本地开发环境提供，尚未上传代码。本次同步更新的是文档，不代表这些代码已发布。
+
+插件使用 `@local/*` 包名，安装在 DSH profile 中。六个已发布插件不直接修改官方包；本地远行之钥依赖匹配的 DSH 认证层扩展，不能只复制界面插件就获得固定 Token 能力。
 
 ## 插件一览
 
-| 插件 | 版本 | 包名 / 目录 | 用途 |
+| 插件 | 本地 / GitHub 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
 | 行囊 | 0.3.1 | `@local/dsh-local-vault` · [local-vault](local-vault/) | 扫描本机插件目录，批量安装选中项 |
-| 清道夫 | 0.3.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/) | 从会话菜单永久删除已停止的会话 |
+| 清道夫 | 0.4.0 / 0.3.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/) | 删除已停止的会话，支持短时撤回 |
 | 暗金主题 | 0.3.0 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
 | 引文速递 | 0.2.0 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/) | 将回复中的选中文本插入输入框引用卡片 |
 | 选项领航 | 0.2.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
 | 知忆书阁 | 0.3.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
+| 远行之钥 | 0.2.1 / 未发布 | `@local/dsh-remote-access` · [本地扩展说明](#远行之钥本地扩展) | 固定 DSH Web 启动 Token，重启后收藏的认证链接仍可用 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
 
+## 获取源码
+
+```powershell
+git clone https://github.com/ZWR0/DSH-Personal-Plugin.git
+cd DSH-Personal-Plugin
+```
+
+也可以在 GitHub 点击「Code → Download ZIP」后解压。首次安装选择克隆或解压后的插件文件夹，不要选择 ZIP 文件。更新已克隆的仓库前，先保存自己的修改，再按 Git 提示拉取更新；不要覆盖仍在使用的个人书库或凭据。
+
 ## 安装与更新
 
-1. 首次使用时，在 DSH 原生插件页安装本仓库的 `local-vault` 文件夹。
+1. 首次使用时，在 DSH 原生插件页安装源码目录下的 `local-vault` 文件夹。
 2. 重启 DSH 并刷新网页，进入「插件 → 行囊 → 目录安装」。
-3. 选择克隆后的仓库根目录，检查扫描结果，点击「一键安装选中项」。
+3. 选择源码根目录（本地工作区为 `dsh-ui-suite`，克隆后通常为 `DSH-Personal-Plugin`），检查扫描结果，点击「一键安装选中项」。
 4. 按安装结果提示完成重启或刷新。也可以通过原生插件页分别安装需要的插件目录。
 
 通过本地目录链接安装时，profile 会引用源码，无需把源码再次复制到 profile。链接安装并不代表运行进程会自动重载所有修改：
@@ -30,7 +44,7 @@
 | Host 脚本、工具、提示词或 API | 在原终端停止 DSH，再启动，最后刷新网页 |
 | 安装、依赖或插件配置 | 遵循原生管理器返回的重启提示 |
 
-本机源码启动示例：在你的 DeepSeek Harness 源码目录下运行以下命令，并沿用原启动环境中的 `DSH_HOME` 等设置。
+源码启动示例：在你的 DeepSeek Harness 源码目录下运行以下命令，并沿用原启动环境中的 `DSH_HOME` 等设置。
 
 ```powershell
 node --import tsx/esm apps/cli/src/bin.ts web
@@ -55,7 +69,7 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 自定义模式**仅替换 `harness:identity`**，保留部署人设前后缀、其他系统约束、工具、运行环境、项目指令、技能和历史。身份文档不会自动赋予 Axiom runtime 的任务控制或检索能力。
 
-详见 [知忆书阁使用说明](context-library/README.md)。仓库只提供 [通用书库模板](examples/context-library/README.md)，不包含个人 Owner 档案或真实记忆。
+详见 [知忆书阁使用说明](context-library/README.md)。公开仓库提供[通用书库模板](https://github.com/ZWR0/DSH-Personal-Plugin/tree/main/examples/context-library)；本地 `axiom-context/` 含个人资料，不属于发布内容。
 
 ## 其他插件
 
@@ -67,7 +81,9 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 ### 清道夫
 
-会话「… → 删除会话」会**立即永久删除，无确认弹窗或回收站**。运行中的会话禁止删除；已停止的当前会话可以直接删除。成功后刷新列表并切换会话，失败显示原因，不自动重试。
+**本地 0.4.0：**会话「… → 删除会话」会立即从列表移除会话，无需确认。删除后的提示浮窗提供 **8 秒「撤回」**入口，点击后恢复并打开原会话。运行中的会话禁止删除；已停止的当前会话可以直接删除。服务器短暂保留恢复副本以容纳网络延迟，30 秒后清理；关闭提示不会撤回删除。失败时显示原因。
+
+**GitHub 已发布的 0.3.0：删除立即永久生效，没有撤回入口或回收站。** 安装前请核对版本，不能按本地 0.4.0 的行为预期使用旧版。
 
 当前实现适配 DSH 的 Agent 生命周期和 JSONL 会话目录，仅支持匹配 `DSH_HOME/sessions` 的存储布局。上游内部结构变化或路径校验失败时拒绝删除。验证脚本只操作临时会话。
 
@@ -83,17 +99,27 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 这是 Host 提示词插件，复用部署实际提供的 `ask_user_question` 和输入区问题卡片，不增加重复的工具或弹窗。引导模型先查证已有信息，只对关键缺失和必要取舍提问；必要答案到达前不执行依赖部分。它依赖模型遵循指引，无法保证所有需求歧义都被发现。
 
+### 远行之钥（本地扩展）
+
+**尚未发布到此仓库。** 下述能力依赖本地 `remote-access/` 插件、匹配的 DSH 认证层修改及启动环境。完整本地操作说明位于 `remote-access/README.md`；克隆公开仓库不会获得该目录或认证层扩展。
+
+在「插件 → 远行之钥」页启停。默认保持 DSH 原有的随机 Token；开启固定 Token 后，启动 Token 写入本机凭据库，`dsh web` 重启后仍使用同一个 Token，已收藏的认证链接继续有效。可自动生成（32 字节密码学随机数，256 位熵）或自定义 32–256 位 URL 安全 Token，支持显示、复制、更新与撤销。
+
+插件只是认证层之上的**管理界面**：Token 的生成、校验、Cookie 颁发与轮换失效都在 `packages/client/connection` 的 `BrowserAuth` 中完成，请求走 Connection 已认证、仅限 Owner 的 `/api/remote-access/*` 独立端点。切换或撤销 Token 会递增凭据记录里的轮换世代并派生新的 Cookie 签名键，因此旧链接与旧会话同时失效。远程访问地址只做记录与复制，不修改任何 Tailscale 或反向代理配置；`DSH_WEB_TOKEN` 环境变量优先级高于界面设置，一旦设置即由环境变量接管。
+
 ## 工作区与迁移
 
 ```text
-DSH-Personal-Plugin/
+dsh-ui-suite/
 ├─ local-vault/
 ├─ session-reaper/
 ├─ aurum-theme/
 ├─ quote-relay/
 ├─ choice-pilot/
 ├─ context-library/
-├─ examples/            # 通用模板，不是插件 bundle
+├─ remote-access/       # 仅本地：未发布的远行之钥
+├─ axiom-context/       # 仅本地：个人书库，不上传
+├─ examples/            # 公开仓库：通用书库模板
 └─ tools/               # 测试、截图及本机诊断脚本，不是插件
 ```
 
@@ -101,7 +127,9 @@ DSH-Personal-Plugin/
 
 ## 验证
 
-以下命令均从仓库根目录执行。部分脚本使用本机 `D:/deepseek-harness` 的依赖；浏览器测试还依赖 Edge。换设备后应先检查脚本中的绝对路径。文档更新本身不需要启动服务或重跑所有测试。
+远程访问设置插件使用独立的加载 ID `local-remote-access-settings`，保留 DSH 内置 `remote-access` 权限服务。两者不能使用相同 ID，否则内置服务会被覆盖，工作区、会话等 UI 插件将无法激活。
+
+以下命令均从源码根目录执行（本地为 `dsh-ui-suite`，克隆后为 `DSH-Personal-Plugin`）。部分脚本使用本机 `D:/deepseek-harness` 的依赖；浏览器测试还依赖 Edge。换设备后应先检查脚本中的绝对路径。文档更新本身不需要启动服务或重跑所有测试。
 
 | 插件 | 测试脚本（位于 `tools/`） |
 | --- | --- |
@@ -110,6 +138,7 @@ DSH-Personal-Plugin/
 | 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
+| 远行之钥（仅本地） | `remote-access-host-test.mjs`（真实认证层与进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局与保存流程）；尚未随公开仓库发布 |
 
 例如：
 
@@ -119,10 +148,12 @@ node tools/context-library-integration-test.mjs
 node tools/context-library-client-test.mjs
 ```
 
-仓库未收录本机凭据签发、运行中设置修复脚本、日志、截图和真实书库。测试仅使用临时目录或模拟数据；插件涉及的真实服务兼容性仍需在你的 DSH 环境验证。
+本地工作区的 `tools/` 还包含一次性修复和旧版 live 诊断脚本，公开仓库不收录这些脚本。它们可能访问本机认证、修改运行中 profile 的书库设置，或依赖旧界面和会话；不应把整个目录作为通用测试批量执行。知忆书阁的验证范围与限制见其 README。
 
-## 公开范围与许可证
+## 发布范围与同步
 
-本仓库发布六个插件、使用文档、通用模板和上表中的回归测试。测试中 `D:/deepseek-harness` 为开发环境路径示例，部分依赖固定 pnpm 布局与版本；不是安装插件时的固定路径要求，也不代表已支持所有 DSH 版本。
+GitHub 只包含已发布插件源码、文档、回归测试、通用模板及仓库内已有启动文件。个人 Owner 档案、真实 Memory、会话、凭据、运行日志、截图和本机认证修复脚本不随插件上传。
 
-使用、修改与分发遵循仓库现有的 [MIT License](LICENSE)。
+README 的更新与插件代码发布分别进行。新增插件或新版功能只有在对应源码、依赖和测试同步后，才会列为仓库可安装版本。上述本地 / GitHub 差异为本次文档核对结果，后续发布以仓库文件为准。
+
+使用、修改与分发遵循仓库的 [MIT License](https://github.com/ZWR0/DSH-Personal-Plugin/blob/main/LICENSE)。
