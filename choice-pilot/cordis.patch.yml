@@ -1,0 +1,3 @@
+- insert:
+    - id: choice-pilot
+      name: '@local/dsh-choice-pilot'

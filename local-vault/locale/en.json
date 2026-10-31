@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Vault · Local Plugins",
+    "description": "Save a local plugin directory, scan and install selected DSH bundles in bulk. Skips installed bundles, flags duplicate names, reports per-item results and retries, and retains toggle, removal, and migration manifests."
+  }
+}

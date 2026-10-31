@@ -1,0 +1,80 @@
+# 暗金主题 · Aurum Theme
+
+`@local/dsh-aurum-theme` · **0.3.0** · Web 客户端插件
+
+提供可开关的暗金主题、会话仪表条、回答概览和标题目录。
+原「暗金仪表」（`@local/dsh-aurum-telemetry`）已并入本包，独立 bundle 不再安装。
+
+## 使用
+
+安装后刷新 DSH 网页，在「设置 → 通用 → 暗金主题」启停。浅色 / 深色仍由 DSH 原生外观设置控制；本插件在其上叠加主题。客户端改动刷新后生效，安装结果要求重启时遵循原生提示。
+
+| 入口 | 操作 |
+| --- | --- |
+| 暗金主题设置行 | 开启或关闭主题及附加界面 |
+| 输入框上方仪表条 | 查看会话用量、速度和上下文，按需展开详情 |
+| 原生右侧轮次标记 | 悬停或键盘聚焦，查看回答摘录和 H1–H3 目录 |
+
+## 回答概览与标题目录
+
+复用 DSH 原生导航数据及 `turnOutline` 投影，不调用模型生成摘要，不另存对话内容。
+
+- 点击目录标题定位正文，滚动时高亮当前章节，三级标题按层级缩进；思考内容不进入回答目录。
+- 点击后概览保持显示，方便连续跳转；移出导航和概览区域后收起，在导航内按 Escape 也可收起。
+- 未加载的历史轮次可先查看已有摘录，点击原生轮次标记加载正文后再使用目录。没有标题时显示相应说明。
+- 跟随主题总开关与原生导航出现条件，通常至少两个轮次才显示右侧导航；停用后恢复原生预览。
+
+## 组成部分
+
+1. **配色层**：一次 `ctx.theme.overrideTokens()` 调用写入约 130 个 `--dsw-alias-*` / `--shiki-*` 令牌，
+   浅色（浅金，暖象牙纸）与深色（玄金，烟熏金）成对提供。它叠在内置 light / dark 主题之上，
+   所以「设置 → 外观」仍然是浅色 / 深色 / 跟随系统的唯一开关，主题自动跟随，不需要第二套偏好。
+2. **仪表条**：`conversation.input.dock`（order 20）。宽度 `100%` 加上与输入卡片相同的
+   `--dsh-composer-card-max-width` 上限：dock 外层已经带了 side clearance，使仪表条与输入卡片共用宽度和左右边缘；具体像素值取决于窗口和列宽。
+   数据全部来自持久投影 `sessionStats` / `tokenUsage` / `contextPressure`，
+   实时速度由流式增量按会话自身的「字 → token」比例估算并标 `≈`；
+   「详情」里补上 `contextBreakdown` 的系统 / 工具 / 对话构成条，接替被隐藏的上下文环弹层。
+   没有读数、也没有回合在跑时（落地草稿页）仪表条不渲染。
+3. **设置行**：`settings.general.item`（order 10.5，紧跟「外观」），
+   AURUM 标记 + 开启状态 + 五色环马赛克小样的一枚开关。
+4. **去重**：主题开启时隐藏三处内置读数（见下）。
+
+## 关键实现
+
+- **宽度**：`width: 100%; max-width: var(--dsh-composer-card-max-width)`，
+  与输入卡片共用同一套 `--dsh-composer-*` 变量，拖动对话列宽时一起跟随。
+- **状态**：开关存在浏览器 `localStorage`（`dsh.aurum.theme.v1`），不写 profile 的持久主题偏好——
+  那套偏好只接受 light/dark/system，写入自定义 id 会被设置作用域在下次同步时回滚。
+- **去重选择器**：`[data-composer-stat]`（两枚统计 pill）、
+  `[data-composer-dock] > span:has(> button[aria-haspopup="dialog"] > svg > circle)`（上下文环）、
+  `[data-turn-tail] span:has(> button[aria-haspopup="dialog"])`（每轮用量）。
+  三处都以官方 DOM 标记或结构作为锚点；若上游改版，最坏结果是重复读数重新出现，主题其余部分不受影响。
+- **质感**：暖色 elevation 令牌（面板 / 突出 / 柔和三档）、菜单与对话框的暖金描边与外投影、
+  输入卡片的金色发丝线与 `:focus-within` 光环、按钮按下的亮度下沉、开关 / 详情按钮的位移反馈、
+  运行中指示点的呼吸；运行态不再做整条背景扫光（`prefers-reduced-motion` 下全部静止）。
+
+## 关闭与回退
+
+设置 → 通用 → 暗金主题 关掉即可：`body[data-ds-aurum-theme]` 被移除、令牌层被卸载、
+仪表条不再渲染，内置统计 pill / 上下文环 / 每轮用量原样回来。
+
+## 兼容与迁移
+
+主题偏好存于当前浏览器，不会随 profile 自动同步到另一浏览器或设备。配色与隐藏重复读数的选择器依赖当前 DSH 的令牌和 DOM；上游改版后需要重新检查。主题不改变模型、工具权限或聊天记录。
+
+## 验证
+
+以下命令从仓库根目录执行。部分脚本依赖本机 `D:/deepseek-harness` 中的 React、jsdom、Playwright 和 Edge，迁移时需先调整路径。
+
+```powershell
+node tools/aurum-theme-smoke.mjs
+node tools/aurum-navigation-test.mjs
+node tools/aurum-navigation-browser.mjs
+```
+
+
+- `node tools/aurum-theme-smoke.mjs`：离线加载客户端半、渲染仪表条与设置行、检查令牌成对、宽度公式与卸载。
+- 实机（1440×900，Chromium）：浅色 / 深色截图、仪表条与输入框同宽（774px）、
+  开关开 → 关 → 开切换、内置读数隐藏与恢复、详情展开后的上下文构成条。
+
+套件安装、Host 与客户端更新的区别、端口冲突排查见 [套件 README](../README.md)。

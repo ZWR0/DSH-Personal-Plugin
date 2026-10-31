@@ -1,6 +1,6 @@
 # 暗金工坊 · DSH Web UI 本地插件套件
 
-本工作区包含 **6 个可单独安装、启停的本地插件**，包名均为 `@local/*`。插件安装在 DSH profile 中，不直接修改官方包。下表版本以各目录的 `package.json` 为准。
+本仓库包含 **6 个可单独安装、启停的本地插件**，包名均为 `@local/*`。插件安装在 DSH profile 中，不直接修改官方包。下表版本以各目录的 `package.json` 为准。
 
 ## 插件一览
 
@@ -17,12 +17,12 @@
 
 ## 安装与更新
 
-1. 首次使用时，在 DSH 原生插件页安装本工作区的 `local-vault` 文件夹。
+1. 首次使用时，在 DSH 原生插件页安装本仓库的 `local-vault` 文件夹。
 2. 重启 DSH 并刷新网页，进入「插件 → 行囊 → 目录安装」。
-3. 选择本工作区的 `dsh-ui-suite` 目录，检查扫描结果，点击「一键安装选中项」。
+3. 选择克隆后的仓库根目录，检查扫描结果，点击「一键安装选中项」。
 4. 按安装结果提示完成重启或刷新。也可以通过原生插件页分别安装需要的插件目录。
 
-当前本机 profile 通过目录链接引用工作区源码，无需把源码再次复制到 profile。链接安装并不代表运行进程会自动重载所有修改：
+通过本地目录链接安装时，profile 会引用源码，无需把源码再次复制到 profile。链接安装并不代表运行进程会自动重载所有修改：
 
 | 修改内容 | 如何生效 |
 | --- | --- |
@@ -30,7 +30,7 @@
 | Host 脚本、工具、提示词或 API | 在原终端停止 DSH，再启动，最后刷新网页 |
 | 安装、依赖或插件配置 | 遵循原生管理器返回的重启提示 |
 
-本机源码启动示例：在 `D:/deepseek-harness` 下运行以下命令，并沿用原启动环境中的 `DSH_HOME` 等设置。
+本机源码启动示例：在你的 DeepSeek Harness 源码目录下运行以下命令，并沿用原启动环境中的 `DSH_HOME` 等设置。
 
 ```powershell
 node --import tsx/esm apps/cli/src/bin.ts web
@@ -55,7 +55,7 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 自定义模式**仅替换 `harness:identity`**，保留部署人设前后缀、其他系统约束、工具、运行环境、项目指令、技能和历史。身份文档不会自动赋予 Axiom runtime 的任务控制或检索能力。
 
-详见 [知忆书阁使用说明](context-library/README.md)。[axiom-context](axiom-context/) 是已转换的个人书库示例，**包含个人资料，分享套件时应单独检查或排除**。
+详见 [知忆书阁使用说明](context-library/README.md)。仓库只提供 [通用书库模板](examples/context-library/README.md)，不包含个人 Owner 档案或真实记忆。
 
 ## 其他插件
 
@@ -86,14 +86,14 @@ node --import tsx/esm apps/cli/src/bin.ts web
 ## 工作区与迁移
 
 ```text
-dsh-ui-suite/
+DSH-Personal-Plugin/
 ├─ local-vault/
 ├─ session-reaper/
 ├─ aurum-theme/
 ├─ quote-relay/
 ├─ choice-pilot/
 ├─ context-library/
-├─ axiom-context/       # 个人书库示例，不是插件 bundle
+├─ examples/            # 通用模板，不是插件 bundle
 └─ tools/               # 测试、截图及本机诊断脚本，不是插件
 ```
 
@@ -101,7 +101,7 @@ dsh-ui-suite/
 
 ## 验证
 
-以下命令均从 `dsh-ui-suite` 目录执行。部分脚本使用本机 `D:/deepseek-harness` 的依赖；浏览器测试还依赖 Edge。换设备后应先检查脚本中的绝对路径。文档更新本身不需要启动服务或重跑所有测试。
+以下命令均从仓库根目录执行。部分脚本使用本机 `D:/deepseek-harness` 的依赖；浏览器测试还依赖 Edge。换设备后应先检查脚本中的绝对路径。文档更新本身不需要启动服务或重跑所有测试。
 
 | 插件 | 测试脚本（位于 `tools/`） |
 | --- | --- |
@@ -119,4 +119,10 @@ node tools/context-library-integration-test.mjs
 node tools/context-library-client-test.mjs
 ```
 
-`tools/` 也包含一次性修复和旧版 live 诊断脚本。它们可能访问本机认证、修改运行中 profile 的书库设置，或依赖旧界面和会话；不应把整个目录作为通用测试批量执行。知忆书阁的验证范围与限制见其 README。
+仓库未收录本机凭据签发、运行中设置修复脚本、日志、截图和真实书库。测试仅使用临时目录或模拟数据；插件涉及的真实服务兼容性仍需在你的 DSH 环境验证。
+
+## 公开范围与许可证
+
+本仓库发布六个插件、使用文档、通用模板和上表中的回归测试。测试中 `D:/deepseek-harness` 为开发环境路径示例，部分依赖固定 pnpm 布局与版本；不是安装插件时的固定路径要求，也不代表已支持所有 DSH 版本。
+
+使用、修改与分发遵循仓库现有的 [MIT License](LICENSE)。

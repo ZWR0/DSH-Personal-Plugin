@@ -1,0 +1,3 @@
+- insert:
+    - id: context-library
+      name: '@local/dsh-context-library'

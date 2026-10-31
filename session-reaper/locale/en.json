@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Reaper · Session Delete",
+    "description": "Permanently delete directly from the session menu, without trash or confirmation. Supports the idle current session; protects running sessions and refreshes navigation after deletion."
+  }
+}

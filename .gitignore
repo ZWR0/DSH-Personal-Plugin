@@ -1,0 +1,24 @@
+# Dependencies and local state
+node_modules/
+.dsh/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Personal libraries, local auth and session files
+axiom-context/
+.context-library/
+.credentials*
+*cookie*
+*.pem
+*.key
+
+# Local diagnostics and generated artifacts
+tools/.test-tmp/
+tools/.vault-test-*/
+tools/shot-*.png
+_publish/

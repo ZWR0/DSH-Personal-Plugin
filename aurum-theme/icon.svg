@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Aurum Theme">
+  <defs>
+    <linearGradient id="aq-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2a2110"/>
+      <stop offset="1" stop-color="#0c0a06"/>
+    </linearGradient>
+    <linearGradient id="aq-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4dd96"/>
+      <stop offset="0.52" stop-color="#d8b24a"/>
+      <stop offset="1" stop-color="#8a6a08"/>
+    </linearGradient>
+    <linearGradient id="aq-pale" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff9e8"/>
+      <stop offset="1" stop-color="#e6cf8f"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="url(#aq-bg)" stroke="#c9a227" stroke-opacity="0.55"/>
+  <path d="M32 8 L47 32 L32 56 L17 32 Z" fill="url(#aq-gold)" opacity="0.94"/>
+  <path d="M32 8 L32 56 M17 32 L47 32" stroke="#0c0a06" stroke-opacity="0.38" stroke-width="1.4"/>
+  <path d="M32 8 L38 32 L32 56 L26 32 Z" fill="url(#aq-pale)" opacity="0.42"/>
+  <circle cx="32" cy="32" r="27" fill="none" stroke="#f4dd96" stroke-opacity="0.22" stroke-width="1"/>
+  <path d="M12 49h10M42 49h10" stroke="#e8c766" stroke-opacity="0.6" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

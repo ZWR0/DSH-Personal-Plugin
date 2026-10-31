@@ -1,0 +1,3 @@
+- insert:
+    - id: local-vault
+      name: '@local/dsh-local-vault'

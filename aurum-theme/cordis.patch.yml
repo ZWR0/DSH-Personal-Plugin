@@ -1,0 +1,8 @@
+# 暗金主题：界面配色（浅金 / 玄金）+ 质感特效 + 会话仪表条 + 设置开关，全部由本 bundle 提供。
+# 旧的独立「暗金仪表」行与本主题的仪表条重复，因此在这里停用旧行；如需恢复，
+# 在 profile 的 cordis.patch.yml 里覆盖该行即可（profile patch 最后应用）。
+- insert:
+    - id: aurum-theme
+      name: '@local/dsh-aurum-theme'
+- id: aurum-telemetry
+  disabled: true
