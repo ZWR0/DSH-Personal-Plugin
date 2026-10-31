@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "远行之钥",
+    "description": "管理 DSH Web 的固定启动 Token 与远程访问地址，重启后收藏的认证链接仍然有效。"
+  }
+}

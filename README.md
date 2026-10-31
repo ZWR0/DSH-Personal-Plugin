@@ -1,10 +1,10 @@
 # 暗金工坊 · DSH Web UI 本地插件套件
 
-本地开发版包含 **7 个插件**；[GitHub 仓库](https://github.com/ZWR0/DSH-Personal-Plugin)目前发布其中 **6 个插件**。本 README 同时说明本地开发状态与已发布状态，安装时以实际下载目录中的 `package.json` 为准。
+本地开发版包含 **7 个插件**；[GitHub 仓库](https://github.com/ZWR0/DSH-Personal-Plugin)现已发布 **7 个插件**。本 README 同时说明本地开发状态与已发布状态，安装时以实际下载目录中的 `package.json` 为准。
 
-当前差异：清道夫本地为 0.4.0（支持撤回），仓库代码仍为 0.3.0（立即永久删除）；远行之钥仅在本地开发环境提供，尚未上传代码。本次同步更新的是文档，不代表这些代码已发布。
+当前差异：清道夫本地为 0.4.0（支持撤回），仓库代码仍为 0.3.0（立即永久删除）。远行之钥 0.2.1 已发布，另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
 
-插件使用 `@local/*` 包名，安装在 DSH profile 中。六个已发布插件不直接修改官方包；本地远行之钥依赖匹配的 DSH 认证层扩展，不能只复制界面插件就获得固定 Token 能力。
+插件使用 `@local/*` 包名，安装在 DSH profile 中。其余六个插件不直接修改官方包；远行之钥依赖匹配的 DSH 认证层扩展，仓库提供独立兼容补丁，不能只复制界面插件就获得固定 Token 能力。
 
 ## 插件一览
 
@@ -16,7 +16,7 @@
 | 引文速递 | 0.2.0 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/) | 将回复中的选中文本插入输入框引用卡片 |
 | 选项领航 | 0.2.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
 | 知忆书阁 | 0.3.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 远行之钥 | 0.2.1 / 未发布 | `@local/dsh-remote-access` · [本地扩展说明](#远行之钥本地扩展) | 固定 DSH Web 启动 Token，重启后收藏的认证链接仍可用 |
+| 远行之钥 | 0.2.1 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 启动 Token，重启后收藏的认证链接仍可用 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
 
@@ -99,13 +99,13 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 这是 Host 提示词插件，复用部署实际提供的 `ask_user_question` 和输入区问题卡片，不增加重复的工具或弹窗。引导模型先查证已有信息，只对关键缺失和必要取舍提问；必要答案到达前不执行依赖部分。它依赖模型遵循指引，无法保证所有需求歧义都被发现。
 
-### 远行之钥（本地扩展）
+### 远行之钥
 
-**尚未发布到此仓库。** 下述能力依赖本地 `remote-access/` 插件、匹配的 DSH 认证层修改及启动环境。完整本地操作说明位于 `remote-access/README.md`；克隆公开仓库不会获得该目录或认证层扩展。
+在「插件 → 远行之钥」管理固定 DSH 登录 Token，保存远程基础地址并复制登录链接。固定 Token 由 DSH_HOME 的凭据库保存；轮换或撤销会使旧链接和认证 Cookie 失效，`DSH_WEB_TOKEN` 环境变量优先于界面设置。插件保存地址，不自动修改 Tailscale、代理或防火墙。
 
-在「插件 → 远行之钥」页启停。默认保持 DSH 原有的随机 Token；开启固定 Token 后，启动 Token 写入本机凭据库，`dsh web` 重启后仍使用同一个 Token，已收藏的认证链接继续有效。可自动生成（32 字节密码学随机数，256 位熵）或自定义 32–256 位 URL 安全 Token，支持显示、复制、更新与撤销。
+**安装前先阅读 [认证兼容补丁](patches/README.md)。** 已验证基线为 DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；原版缺少相关 Connection 接口时，仅安装插件无法工作。Windows 可选 [Tailscale HTTPS 启动器](vpn-launcher/README.md) 通过参数指定源码目录，不包含本机凭据。
 
-插件只是认证层之上的**管理界面**：Token 的生成、校验、Cookie 颁发与轮换失效都在 `packages/client/connection` 的 `BrowserAuth` 中完成，请求走 Connection 已认证、仅限 Owner 的 `/api/remote-access/*` 独立端点。切换或撤销 Token 会递增凭据记录里的轮换世代并派生新的 Cookie 签名键，因此旧链接与旧会话同时失效。远程访问地址只做记录与复制，不修改任何 Tailscale 或反向代理配置；`DSH_WEB_TOKEN` 环境变量优先级高于界面设置，一旦设置即由环境变量接管。
+完整安装、固定 Token 设置及故障排查见 [远行之钥 README](remote-access/README.md)。
 
 ## 工作区与迁移
 
@@ -117,9 +117,11 @@ dsh-ui-suite/
 ├─ quote-relay/
 ├─ choice-pilot/
 ├─ context-library/
-├─ remote-access/       # 仅本地：未发布的远行之钥
+├─ remote-access/       # 远行之钥，需认证兼容扩展
 ├─ axiom-context/       # 仅本地：个人书库，不上传
 ├─ examples/            # 公开仓库：通用书库模板
+├─ patches/             # DSH 认证层兼容补丁与上游许可证
+├─ vpn-launcher/        # 可选 Windows Tailscale HTTPS 启动器
 └─ tools/               # 测试、截图及本机诊断脚本，不是插件
 ```
 
@@ -138,7 +140,7 @@ dsh-ui-suite/
 | 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
-| 远行之钥（仅本地） | `remote-access-host-test.mjs`（真实认证层与进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局与保存流程）；尚未随公开仓库发布 |
+| 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局与保存流程）；先按插件 README 设置 `DSH_SOURCE` |
 
 例如：
 
@@ -154,6 +156,6 @@ node tools/context-library-client-test.mjs
 
 GitHub 只包含已发布插件源码、文档、回归测试、通用模板及仓库内已有启动文件。个人 Owner 档案、真实 Memory、会话、凭据、运行日志、截图和本机认证修复脚本不随插件上传。
 
-README 的更新与插件代码发布分别进行。新增插件或新版功能只有在对应源码、依赖和测试同步后，才会列为仓库可安装版本。上述本地 / GitHub 差异为本次文档核对结果，后续发布以仓库文件为准。
+README 的更新与插件代码发布分别进行。新增插件或新版功能只有在对应源码、依赖和测试同步后，才会列为仓库可安装版本。上述本地 / GitHub 差异为本次发布核对结果，后续发布以仓库文件为准。
 
 使用、修改与分发遵循仓库的 [MIT License](https://github.com/ZWR0/DSH-Personal-Plugin/blob/main/LICENSE)。

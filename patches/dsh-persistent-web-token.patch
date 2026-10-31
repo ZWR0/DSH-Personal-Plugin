@@ -1,0 +1,718 @@
+diff --git a/packages/client/connection/src/browser-auth.ts b/packages/client/connection/src/browser-auth.ts
+index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420884ac918 100644
+--- a/packages/client/connection/src/browser-auth.ts
++++ b/packages/client/connection/src/browser-auth.ts
+@@ -6,24 +6,40 @@ import { CONNECT_PATH, type ConnectionInteractions } from './connect-protocol.ts
+ import { credentialKey } from '@deepseek-ai/dsh-credentials'
+ import type { CredentialProvider, CredentialRecord } from '@deepseek-ai/dsh-credentials'
+ import type {
++  BrowserAuthStatus,
+   ConnectionIndexRequest,
+   ConnectionIndexResponse,
+   ConnectionTrustRequest,
++  LaunchTokenMode,
+ } from './rpc.ts'
+ 
+ const AUTH_RECORD_KEY = credentialKey('client-connection', 'browser-session')
+ const DAY_MILLISECONDS = 24 * 60 * 60 * 1000
+ const SECRET_BYTES = 32
+ const TOKEN_QUERY = 'token'
++/** Optional operator-supplied launch token; it outranks the stored one. */
++const TOKEN_ENV = 'DSH_WEB_TOKEN'
+ const COOKIE_PREFIX = 'dsh-auth-'
+ const COOKIE_PAYLOAD_VERSION = 1
+-const STORED_SECRET_VERSION = 1
++const STORED_SECRET_VERSION = 2
++/** Version 1 carried no rotation epoch and no persisted token; it stays readable. */
++const READABLE_SECRET_VERSIONS = new Set([1, STORED_SECRET_VERSION])
++const TOKEN_MIN_LENGTH = 32
++const TOKEN_MAX_LENGTH = 256
++const TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/
+ const BASE64URL_PATTERN = /^[A-Za-z0-9_-]*$/
+ const PROCESS_LAUNCH_TOKENS = new WeakMap<object, string>()
+ 
+-interface StoredSecretPayload {
+-  readonly version: typeof STORED_SECRET_VERSION
+-  readonly secret: string
++/** Token facts a configuration surface may show without revealing the value. */
++export type { BrowserAuthStatus, LaunchTokenMode } from './rpc.ts'
++
++/** Durable browser-session state: the cookie key, its rotation epoch, and any fixed token. */
++interface StoredSessionState {
++  readonly secret: Buffer
++  /** Rotating it derives a different cookie key, retiring every issued cookie. */
++  readonly epoch: number
++  readonly launchToken?: string
++  readonly rotatedAt: number
+ }
+ 
+ interface BrowserCookiePayload {
+@@ -58,14 +74,54 @@ function decodeBase64Url(value: string): Buffer | undefined {
+   return encodeBase64Url(decoded) === value ? decoded : undefined
+ }
+ 
++function issueLaunchToken(): string {
++  return encodeBase64Url(randomBytes(SECRET_BYTES))
++}
++
++/** One token per root Context, so a Connection reload keeps the printed URL valid. */
+ function processLaunchToken(owner: object): string {
+   const existing = PROCESS_LAUNCH_TOKENS.get(owner)
+   if (existing !== undefined) return existing
+-  const created = encodeBase64Url(randomBytes(SECRET_BYTES))
++  const created = issueLaunchToken()
++  PROCESS_LAUNCH_TOKENS.set(owner, created)
++  return created
++}
++
++/** Replace the process token so a revoked one cannot be replayed from a stale URL. */
++function regenerateProcessToken(owner: object): string {
++  const created = issueLaunchToken()
+   PROCESS_LAUNCH_TOKENS.set(owner, created)
+   return created
+ }
+ 
++/** Validate an operator-supplied or stored token; the message names the rule that failed. */
++function assertLaunchToken(value: unknown, label = 'web launch token'): string {
++  if (typeof value !== 'string') throw new Error(`client-connection: ${label} must be a string`)
++  const token = value.trim()
++  if (token.length < TOKEN_MIN_LENGTH || token.length > TOKEN_MAX_LENGTH) {
++    throw new Error(
++      `client-connection: ${label} must be ${String(TOKEN_MIN_LENGTH)}-${String(TOKEN_MAX_LENGTH)} characters long`,
++    )
++  }
++  if (!TOKEN_PATTERN.test(token)) {
++    throw new Error(`client-connection: ${label} may only contain A-Z, a-z, 0-9, "-" and "_"`)
++  }
++  return token
++}
++
++/** Keep a token recognisable to its owner without sending the full value to a surface. */
++function maskToken(token: string): string {
++  if (token.length <= 12) return "*".repeat(token.length)
++  return `${token.slice(0, 4)}****${token.slice(-4)}`
++}
++
++/** Derive the cookie signing key; a new epoch retires every cookie issued before it. */
++function sessionKey(secret: Buffer, epoch: number): Buffer {
++  if (epoch === 0) return secret
++  return createHmac('sha256', secret).update(`epoch:${String(epoch)}`).digest()
++}
++
++
+ function header(
+   headers: ConnectionTrustRequest['headers'],
+   name: string,
+@@ -94,17 +150,32 @@ function canonicalSecret(value: unknown): Buffer | undefined {
+   return decoded
+ }
+ 
+-function storedSecret(record: CredentialRecord | undefined): Buffer | undefined {
++/** Parse the durable record; an unsupported shape fails loud instead of silently replacing it. */
++function storedState(record: CredentialRecord | undefined): StoredSessionState | undefined {
+   if (record === undefined) return undefined
+   if (record.kind !== 'grant' || !isRecord(record.payload)
+-    || record.payload.version !== STORED_SECRET_VERSION) {
++    || !READABLE_SECRET_VERSIONS.has(record.payload.version as number)) {
+     throw new Error('client-connection: browser-session credential record has an unsupported format')
+   }
+   const secret = canonicalSecret(record.payload.secret)
+   if (secret === undefined) {
+     throw new Error('client-connection: browser-session credential record has an invalid secret')
+   }
+-  return secret
++  const epoch = record.payload.version === 1 ? 0 : record.payload.epoch
++  if (typeof epoch !== 'number' || !Number.isSafeInteger(epoch) || epoch < 0) {
++    throw new Error('client-connection: browser-session credential record has an invalid rotation epoch')
++  }
++  const storedToken = record.payload.launchToken
++  if (storedToken !== undefined && typeof storedToken !== 'string') {
++    throw new Error('client-connection: browser-session credential record carries an invalid launch token')
++  }
++  const rotatedAt = record.payload.rotatedAt
++  return {
++    secret,
++    epoch,
++    ...storedToken === undefined ? {} : { launchToken: assertLaunchToken(storedToken) },
++    rotatedAt: typeof rotatedAt === 'number' && Number.isSafeInteger(rotatedAt) ? rotatedAt : 0,
++  }
+ }
+ 
+ function tokenMatches(actual: string, expected: string): boolean {
+@@ -179,47 +250,71 @@ function decodeCookie(value: string, secret: Buffer): CookiePayload | undefined
+   return { version: 2, ...payload, id: decoded.id as PeerId }
+ }
+ 
+-async function initializeSecret(credentials: CredentialProvider): Promise<Buffer> {
+-  const generated: StoredSecretPayload = {
++async function initializeSession(credentials: CredentialProvider): Promise<StoredSessionState> {
++  const generated = {
+     version: STORED_SECRET_VERSION,
+     secret: encodeBase64Url(randomBytes(SECRET_BYTES)),
++    epoch: 0,
++    rotatedAt: 0,
+   }
+   const record = await credentials.modifyRecord(AUTH_RECORD_KEY, (current) => {
+     if (current !== undefined) {
+-      storedSecret(current)
++      storedState(current)
+       return Promise.resolve(undefined)
+     }
+     return Promise.resolve({ kind: 'grant', payload: generated })
+   })
+-  const secret = storedSecret(record)
+-  if (secret === undefined) {
++  const state = storedState(record)
++  if (state === undefined) {
+     throw new Error('client-connection: browser-session credential record was not created')
+   }
+-  return secret
++  return state
+ }
+ 
+ /**
+  * Process launch-token exchange and persistent signed-cookie verification.
+  * Connection loads the credential provider's signing secret during activation
+  * and retains it for synchronous request authentication.
++ *
++ * The launch token comes from `DSH_WEB_TOKEN` when set, else from the durable
++ * record, else from this process. Only the first two survive a restart, which
++ * is what keeps a bookmarked sign-in URL working.
+  */
+ export class BrowserAuth {
+-  private readonly launchToken: string
+-  private readonly maxAgeMilliseconds: number
++  private tokenValue: string
++  private mode: LaunchTokenMode
++  private rotatedAt: number
++  /** Cookie signing key for the current rotation epoch. */
++  private cookieKey: Buffer
+ 
+   private constructor(
+-    processOwner: object,
+-    private readonly secret: Buffer,
++    private readonly processOwner: object,
++    private readonly credentials: CredentialProvider,
++    state: StoredSessionState,
+     maxAgeDays: number,
+   ) {
+-    this.launchToken = processLaunchToken(processOwner)
+     this.maxAgeMilliseconds = maxAgeDays * DAY_MILLISECONDS
+     if (!Number.isSafeInteger(this.maxAgeMilliseconds)
+       || !Number.isSafeInteger(Date.now() + this.maxAgeMilliseconds)) {
+       throw new Error('client-connection: cookieMaxAgeDays exceeds the safe timestamp range')
+     }
++    this.cookieKey = sessionKey(state.secret, state.epoch)
++    this.rotatedAt = state.rotatedAt
++    const envToken = (process.env[TOKEN_ENV] ?? '').trim()
++    if (envToken !== '') {
++      this.tokenValue = assertLaunchToken(envToken, `${TOKEN_ENV} launch token`)
++      this.mode = 'environment'
++    } else if (state.launchToken !== undefined) {
++      this.tokenValue = state.launchToken
++      this.mode = 'persistent'
++    } else {
++      this.tokenValue = processLaunchToken(processOwner)
++      this.mode = 'ephemeral'
++    }
+   }
+ 
++  private readonly maxAgeMilliseconds: number
++
+   /**
+    * Initialize browser authentication and create its durable signing secret
+    * when this Harness home has none.
+@@ -233,7 +328,87 @@ export class BrowserAuth {
+     credentials: CredentialProvider,
+     maxAgeDays: number,
+   ): Promise<BrowserAuth> {
+-    return new BrowserAuth(processOwner, await initializeSecret(credentials), maxAgeDays)
++    return new BrowserAuth(processOwner, credentials, await initializeSession(credentials), maxAgeDays)
++  }
++
++  /** Source, stability, and a masked view of the running token. */
++  status(): BrowserAuthStatus {
++    return {
++      mode: this.mode,
++      stable: this.mode !== 'ephemeral',
++      source: this.mode === 'environment' ? 'environment' : this.mode === 'persistent' ? 'store' : 'none',
++      tokenMasked: maskToken(this.tokenValue),
++      rotatedAt: this.rotatedAt,
++    }
++  }
++
++  /** The running launch token; only an authenticated management surface may ask for it. */
++  token(): string {
++    return this.tokenValue
++  }
++
++  /**
++   * Store one fixed token and retire every cookie issued under the previous one.
++   * @param value - operator-supplied token, validated before it is stored.
++   * @returns status after the change.
++   */
++  async setPersistentToken(value: string): Promise<BrowserAuthStatus> {
++    this.assertTokenIsWritable()
++    const token = assertLaunchToken(value)
++    if (this.mode === 'persistent' && this.tokenValue === token) return this.status()
++    await this.rotateSession({ launchToken: token, rotatedAt: Date.now() })
++    this.tokenValue = token
++    this.mode = 'persistent'
++    return this.status()
++  }
++
++  /**
++   * Drop the stored token and mint a fresh process token, so the revoked value
++   * cannot be replayed from a stale URL.
++   * @returns status after the change.
++   */
++  async clearPersistentToken(): Promise<BrowserAuthStatus> {
++    this.assertTokenIsWritable()
++    if (this.mode !== 'persistent') return this.status()
++    await this.rotateSession({ launchToken: undefined, rotatedAt: 0 })
++    this.tokenValue = regenerateProcessToken(this.processOwner)
++    this.mode = 'ephemeral'
++    return this.status()
++  }
++
++  private assertTokenIsWritable(): void {
++    if (this.mode === 'environment') {
++      throw new Error(`client-connection: ${TOKEN_ENV} supplies the launch token; unset it to manage the token here`)
++    }
++  }
++
++  /** Rewrite the durable record, bump its epoch, and adopt the derived cookie key. */
++  private async rotateSession(patch: {
++    readonly launchToken: string | undefined
++    readonly rotatedAt: number
++  }): Promise<void> {
++    const record = await this.credentials.modifyRecord(AUTH_RECORD_KEY, (current) => {
++      const state = storedState(current)
++      if (state === undefined) {
++        throw new Error('client-connection: browser-session credential record disappeared')
++      }
++      return Promise.resolve({
++        kind: 'grant',
++        payload: {
++          version: STORED_SECRET_VERSION,
++          secret: encodeBase64Url(state.secret),
++          epoch: state.epoch + 1,
++          rotatedAt: patch.rotatedAt,
++          ...patch.launchToken === undefined ? {} : { launchToken: patch.launchToken },
++        },
++      })
++    })
++    const state = storedState(record)
++    if (state === undefined) {
++      throw new Error('client-connection: browser-session credential record was not rewritten')
++    }
++    this.cookieKey = sessionKey(state.secret, state.epoch)
++    this.rotatedAt = state.rotatedAt
+   }
+ 
+   /**
+@@ -243,7 +418,7 @@ export class BrowserAuth {
+    */
+   authenticatedUrl(baseUrl: string): string {
+     const url = new URL(baseUrl)
+-    url.searchParams.set(TOKEN_QUERY, this.launchToken)
++    url.searchParams.set(TOKEN_QUERY, this.tokenValue)
+     return url.href
+   }
+ 
+@@ -267,7 +442,7 @@ export class BrowserAuth {
+     if (tokens.length > 0) {
+       const authority = requestAudience(req.headers, secure)
+       if (req.method === 'GET' && url.pathname === '/' && tokens.length === 1
+-        && authority !== undefined && tokenMatches(tokens.join(''), this.launchToken)) {
++        && authority !== undefined && tokenMatches(tokens.join(''), this.tokenValue)) {
+         const issuedAt = Date.now()
+         const expiresAt = issuedAt + this.maxAgeMilliseconds
+         const value = encodeCookie({
+@@ -275,7 +450,7 @@ export class BrowserAuth {
+           authority,
+           issuedAt,
+           expiresAt,
+-        }, this.secret)
++        }, this.cookieKey)
+         res.writeHead(303, {
+           'cache-control': 'no-store',
+           'location': './',
+@@ -328,14 +503,14 @@ export class BrowserAuth {
+     const tokens = url.searchParams.getAll(TOKEN_QUERY)
+     const authority = requestAudience(req.headers, secure)
+     if (req.method !== 'GET' || url.pathname !== CONNECT_PATH || tokens.length !== 1
+-      || authority === undefined || !tokenMatches(tokens.join(''), this.launchToken)) {
++      || authority === undefined || !tokenMatches(tokens.join(''), this.tokenValue)) {
+       this.writeUnauthorized(req, res)
+       return
+     }
+     const issuedAt = Date.now()
+     const expiresAt = issuedAt + this.maxAgeMilliseconds
+     const id = publish(interactions)
+-    const value = encodeCookie({ version: 2, authority, id, issuedAt, expiresAt }, this.secret)
++    const value = encodeCookie({ version: 2, authority, id, issuedAt, expiresAt }, this.cookieKey)
+     res.writeHead(302, {
+       'cache-control': 'no-store',
+       'location': './api/remote.mux',
+@@ -374,7 +549,7 @@ export class BrowserAuth {
+     if (authority === undefined || rawCookie === undefined) return undefined
+     const value = cookieValue(rawCookie, cookieName(authority))
+     if (value === undefined) return undefined
+-    const payload = decodeCookie(value, this.secret)
++    const payload = decodeCookie(value, this.cookieKey)
+     if (payload === undefined || payload.authority !== authority) return undefined
+     const now = Date.now()
+     if (payload.issuedAt > now || payload.expiresAt <= now || payload.expiresAt <= payload.issuedAt
+diff --git a/packages/client/connection/src/index.ts b/packages/client/connection/src/index.ts
+index d563cd40e83f6048dd993f297650f821f6921d62..7a1709f20fb2d599018839f7a9bb7106dd425ec2 100644
+--- a/packages/client/connection/src/index.ts
++++ b/packages/client/connection/src/index.ts
+@@ -39,6 +39,7 @@ export type {
+   ServerResponse,
+ } from './rpc.ts'
+ export type { PeerId, PeerScope, Principal, RemoteInvocation } from '@deepseek-ai/dsh-typert-protocol'
++export type { BrowserAuthStatus, LaunchTokenMode } from './rpc.ts'
+ export { RpcId, transportError } from './rpc.ts'
+ export { Peer } from './peer.ts'
+ export type { PeerOptions } from './peer.ts'
+diff --git a/packages/client/connection/src/rpc-host.ts b/packages/client/connection/src/rpc-host.ts
+index 88e7b48baa54df58392b0f1bcec6d4416cb30c7a..db94937f050cf5e184aaea53b4c8b6f19e5783f4 100644
+--- a/packages/client/connection/src/rpc-host.ts
++++ b/packages/client/connection/src/rpc-host.ts
+@@ -13,7 +13,7 @@ import { clientRequestSchema } from './rpc-schema.ts'
+ import { bridge } from './http-bridge.ts'
+ import { isRemoteAuthority, isTrustedApiRequest } from './api-request-trust.ts'
+ import { API_PATH } from './api-path.ts'
+-import type { BrowserAuth } from './browser-auth.ts'
++import type { BrowserAuth, BrowserAuthStatus } from './browser-auth.ts'
+ import { Peer } from './peer.ts'
+ import type {
+   PeerAdmission,
+@@ -199,6 +199,26 @@ export class HostConnectionService extends Service implements HostConnectionHand
+     return this.browserAuth.authenticatedUrl(baseUrl)
+   }
+ 
++  /** Describe the effective launch token without revealing it. */
++  webAuthStatus(): BrowserAuthStatus {
++    return this.browserAuth.status()
++  }
++
++  /** Read the running launch token for an operator-facing copy. */
++  webAuthToken(): string {
++    return this.browserAuth.token()
++  }
++
++  /** Persist one fixed token and retire credentials issued under the previous one. */
++  setWebAuthToken(token: string): Promise<BrowserAuthStatus> {
++    return this.browserAuth.setPersistentToken(token)
++  }
++
++  /** Return to ephemeral mode with a fresh token and no persisted value. */
++  clearWebAuthToken(): Promise<BrowserAuthStatus> {
++    return this.browserAuth.clearPersistentToken()
++  }
++
+   /**
+    * Compose one shared-channel Fetch handler from exact routes and its interceptor.
+    * @param channel - shared channel mounted by Connection.
+diff --git a/packages/client/connection/src/rpc.ts b/packages/client/connection/src/rpc.ts
+index aec79d07285e43d9bc0659499dbec18cf0940d98..2cccc91df712137f76698559aec8c3e2b096de37 100644
+--- a/packages/client/connection/src/rpc.ts
++++ b/packages/client/connection/src/rpc.ts
+@@ -3,6 +3,23 @@
+ import type { Branded } from '@deepseek-ai/dsh-brand'
+ import type { PeerScope, Principal } from '@deepseek-ai/dsh-typert-protocol'
+ 
++/** Which layer currently supplies the Web launch token. */
++export type LaunchTokenMode = 'ephemeral' | 'persistent' | 'environment'
++
++/** Token facts a configuration surface may show without revealing the value. */
++export interface BrowserAuthStatus {
++  /** Layer supplying the running token. */
++  readonly mode: LaunchTokenMode
++  /** Whether the running token survives a restart. */
++  readonly stable: boolean
++  /** Configuration layer a restart would read, or `none` for a process token. */
++  readonly source: 'environment' | 'store' | 'none'
++  /** First and last characters with the body elided; never the token itself. */
++  readonly tokenMasked: string
++  /** When the persisted token was last written; `0` while none is stored. */
++  readonly rotatedAt: number
++}
++
+ /** Correlation id minted by a caller and echoed by the Connection response. */
+ export type RpcId = Branded<'rpc-id'>
+ 
+@@ -271,6 +288,32 @@ export interface HostConnectionHandle {
+    * @returns tokenized URL for initial login; a mount proxy strips its prefix before {@link authorizeIndex}.
+    */
+   authenticatedUrl(baseUrl: string): string
++
++  /**
++   * Describe the launch token's source and stability without revealing it.
++   * @returns mode, effective source, masked token, and last rotation time.
++   */
++  webAuthStatus(): BrowserAuthStatus
++
++  /**
++   * Read the running launch token for an operator-facing copy.
++   * Only an authenticated management surface may call this.
++   * @returns the exact token the running process accepts.
++   */
++  webAuthToken(): string
++
++  /**
++   * Persist one fixed token and retire every cookie issued under the previous one.
++   * @param token - operator-supplied token; rejected when it fails the format rules.
++   * @returns status after the change.
++   */
++  setWebAuthToken(token: string): Promise<BrowserAuthStatus>
++
++  /**
++   * Drop the persisted token, mint a fresh process token, and retire issued cookies.
++   * @returns status after the change.
++   */
++  clearWebAuthToken(): Promise<BrowserAuthStatus>
+ }
+ 
+ /** Transport-independent Fetch handler used by HTTP and worker carriers. */
+--- /dev/null
++++ b/packages/client/connection/tests/browser-auth-persistent.host.spec.ts
+@@ -0,0 +1,236 @@
++/** Persistent launch-token behavior: storage, restart, rotation, and environment precedence. */
++
++import { afterEach, describe, expect, it } from 'vitest'
++import type { CredentialKey, CredentialProvider, CredentialRecord } from '@deepseek-ai/dsh-credentials'
++import { BrowserAuth } from '../src/browser-auth.ts'
++import type { ConnectionIndexRequest, ConnectionIndexResponse } from '../src/rpc.ts'
++
++const ENV_TOKEN = 'DSH_WEB_TOKEN'
++const RESTART_TOKEN = 'b'.repeat(43)
++const CUSTOM_TOKEN = 'c'.repeat(43)
++
++interface ResponseState {
++  status?: number
++  headers?: Readonly<Record<string, string>>
++}
++
++function response(): { value: ConnectionIndexResponse; state: ResponseState } {
++  const state: ResponseState = {}
++  return {
++    value: {
++      writeHead(status, headers) {
++        state.status = status
++        if (headers !== undefined) state.headers = headers
++      },
++      end() {},
++    },
++    state,
++  }
++}
++
++/** Key-aware credential double: one record per address, as the durable provider stores them. */
++class KeyedCredentials {
++  readonly records = new Map<string, CredentialRecord>()
++
++  readRecord(key: CredentialKey): Promise<CredentialRecord | undefined> {
++    return Promise.resolve(this.records.get(String(key)))
++  }
++
++  modifyRecord(
++    key: CredentialKey,
++    mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
++  ): Promise<CredentialRecord | undefined> {
++    return mutate(this.records.get(String(key))).then((next) => {
++      if (next !== undefined) this.records.set(String(key), next)
++      return this.records.get(String(key))
++    })
++  }
++
++  deleteRecord(key: CredentialKey): Promise<void> {
++    this.records.delete(String(key))
++    return Promise.resolve()
++  }
++}
++
++function credentials(store: KeyedCredentials): CredentialProvider {
++  return store as unknown as CredentialProvider
++}
++
++function request(url: string, cookie?: string): ConnectionIndexRequest {
++  return {
++    method: 'GET',
++    url,
++    headers: cookie === undefined ? { host: '127.0.0.1:3080' } : { host: '127.0.0.1:3080', cookie },
++  }
++}
++
++/** Exchange a launch URL for its cookie the way the browser does. */
++function exchange(auth: BrowserAuth, base = 'http://127.0.0.1:3080'): { cookie: string; url: string } {
++  const url = auth.authenticatedUrl(base)
++  const target = new URL(url)
++  const res = response()
++  expect(auth.authorizeIndex(request(`${target.pathname}${target.search}`), res.value)).toBe(false)
++  const setCookie = res.state.headers?.['set-cookie']
++  if (setCookie === undefined) throw new Error('token exchange did not set a cookie')
++  return { cookie: setCookie.split(';', 1)[0]!, url }
++}
++
++function tokenOf(url: string): string {
++  return new URL(url).searchParams.get('token') ?? ''
++}
++
++function statusOf(auth: BrowserAuth): { mode: string; stable: boolean; masked: string } {
++  const status = auth.status()
++  return { mode: status.mode, stable: status.stable, masked: status.tokenMasked }
++}
++
++afterEach(() => {
++  delete process.env[ENV_TOKEN]
++})
++
++describe('ephemeral launch tokens', () => {
++  it('keeps the process token and reports an unstable source by default', async () => {
++    const auth = await BrowserAuth.create({}, credentials(new KeyedCredentials()), 30)
++    expect(statusOf(auth)).toMatchObject({ mode: 'ephemeral', stable: false })
++    expect(auth.status().source).toBe('none')
++    expect(auth.status().tokenMasked).not.toBe(auth.token())
++    expect(auth.status().tokenMasked.startsWith(auth.token().slice(0, 4))).toBe(true)
++  })
++})
++
++describe('persistent launch tokens', () => {
++  it('survives a restart and keeps the same sign-in URL', async () => {
++    const store = new KeyedCredentials()
++    const first = await BrowserAuth.create({}, credentials(store), 30)
++    const saved = await first.setPersistentToken(RESTART_TOKEN)
++    expect(saved).toMatchObject({ mode: 'persistent', stable: true, source: 'store' })
++    expect(tokenOf(first.authenticatedUrl('http://127.0.0.1:3080'))).toBe(RESTART_TOKEN)
++
++    // A new process owner models the next `dsh web` boot in a fresh process.
++    const restarted = await BrowserAuth.create({}, credentials(store), 30)
++    expect(statusOf(restarted)).toMatchObject({ mode: 'persistent', stable: true })
++    expect(tokenOf(restarted.authenticatedUrl('http://127.0.0.1:3080'))).toBe(RESTART_TOKEN)
++    expect(restarted.authenticatedUrl('http://127.0.0.1:3080'))
++      .toBe(first.authenticatedUrl('http://127.0.0.1:3080'))
++    expect(restarted.status().rotatedAt).toBeGreaterThan(0)
++  })
++
++  it('rejects the old link and every earlier cookie after a rotation', async () => {
++    const store = new KeyedCredentials()
++    const auth = await BrowserAuth.create({}, credentials(store), 30)
++    await auth.setPersistentToken(RESTART_TOKEN)
++    const before = exchange(auth)
++
++    const rotated = await auth.setPersistentToken(CUSTOM_TOKEN)
++    expect(rotated.mode).toBe('persistent')
++    const staleUrl = response()
++    expect(auth.authorizeIndex(request(`/?token=${RESTART_TOKEN}`), staleUrl.value)).toBe(false)
++    expect(staleUrl.state.status).toBe(401)
++    expect(auth.isAuthenticated(request('/', before.cookie))).toBe(false)
++
++    const after = exchange(auth)
++    expect(tokenOf(after.url)).toBe(CUSTOM_TOKEN)
++    expect(auth.isAuthenticated(request('/', after.cookie))).toBe(true)
++  })
++
++  it('returns to a fresh ephemeral token when the fixed token is revoked', async () => {
++    const store = new KeyedCredentials()
++    const auth = await BrowserAuth.create({}, credentials(store), 30)
++    await auth.setPersistentToken(RESTART_TOKEN)
++    const before = exchange(auth)
++
++    const cleared = await auth.clearPersistentToken()
++    expect(cleared).toMatchObject({ mode: 'ephemeral', stable: false, source: 'none' })
++    expect(auth.token()).not.toBe(RESTART_TOKEN)
++    expect(auth.isAuthenticated(request('/', before.cookie))).toBe(false)
++
++    const revoked = response()
++    expect(auth.authorizeIndex(request(`/?token=${RESTART_TOKEN}`), revoked.value)).toBe(false)
++    expect(revoked.state.status).toBe(401)
++
++    const restarted = await BrowserAuth.create({}, credentials(store), 30)
++    expect(statusOf(restarted).mode).toBe('ephemeral')
++    expect(tokenOf(restarted.authenticatedUrl('http://127.0.0.1:3080'))).not.toBe(RESTART_TOKEN)
++  })
++
++  it('validates an operator token before storing it and leaves the old one active', async () => {
++    const store = new KeyedCredentials()
++    const auth = await BrowserAuth.create({}, credentials(new KeyedCredentials()), 30)
++    await auth.setPersistentToken(RESTART_TOKEN)
++    const current = auth.authenticatedUrl('http://127.0.0.1:3080')
++
++    for (const rejected of ['short', 'x'.repeat(257), 'not url safe!', `  ${'y'.repeat(10)}  `]) {
++      await expect(auth.setPersistentToken(rejected)).rejects.toThrow(/client-connection: web launch token/u)
++      expect(auth.authenticatedUrl('http://127.0.0.1:3080')).toBe(current)
++    }
++    expect(store.records.size).toBe(0)
++  })
++})
++
++describe('DSH_WEB_TOKEN precedence', () => {
++  it('outranks the stored token and refuses token management', async () => {
++    const store = new KeyedCredentials()
++    const configured = await BrowserAuth.create({}, credentials(store), 30)
++    await configured.setPersistentToken(RESTART_TOKEN)
++
++    process.env[ENV_TOKEN] = CUSTOM_TOKEN
++    const auth = await BrowserAuth.create({}, credentials(store), 30)
++    expect(statusOf(auth)).toMatchObject({ mode: 'environment', stable: true })
++    expect(auth.status().source).toBe('environment')
++    expect(tokenOf(auth.authenticatedUrl('http://127.0.0.1:3080'))).toBe(CUSTOM_TOKEN)
++    await expect(auth.setPersistentToken(RESTART_TOKEN)).rejects.toThrow(/DSH_WEB_TOKEN/u)
++    await expect(auth.clearPersistentToken()).rejects.toThrow(/DSH_WEB_TOKEN/u)
++
++    // The stored value stays intact for when the variable is unset.
++    delete process.env[ENV_TOKEN]
++    const restored = await BrowserAuth.create({}, credentials(store), 30)
++    expect(tokenOf(restored.authenticatedUrl('http://127.0.0.1:3080'))).toBe(RESTART_TOKEN)
++  })
++
++  it('fails load on an unusable value instead of silently ignoring it', async () => {
++    process.env[ENV_TOKEN] = 'too-short'
++    await expect(BrowserAuth.create({}, credentials(new KeyedCredentials()), 30))
++      .rejects.toThrow(/DSH_WEB_TOKEN launch token/u)
++  })
++})
++
++describe('stored session records', () => {
++  it('reads a version 1 record without a rotation epoch and upgrades it on the next write', async () => {
++    const store = new KeyedCredentials()
++    await BrowserAuth.create({}, credentials(store), 30)
++    const key = [...store.records.keys()][0]!
++    const legacy = store.records.get(key)!
++    if (legacy.kind !== 'grant' || typeof legacy.payload !== 'object' || legacy.payload === null) {
++      throw new Error('unexpected record shape')
++    }
++    store.records.set(key, {
++      kind: 'grant',
++      payload: { version: 1, secret: Reflect.get(legacy.payload, 'secret') },
++    })
++
++    const reloaded = await BrowserAuth.create({}, credentials(store), 30)
++    expect(statusOf(reloaded).mode).toBe('ephemeral')
++    const migrated = await reloaded.setPersistentToken(RESTART_TOKEN)
++    expect(migrated.mode).toBe('persistent')
++    expect(store.records.get(key)).toMatchObject({
++      kind: 'grant',
++      payload: { version: 2, epoch: 1, launchToken: RESTART_TOKEN },
++    })
++  })
++
++  it('rejects a corrupted stored token instead of serving it', async () => {
++    const store = new KeyedCredentials()
++    const auth = await BrowserAuth.create({}, credentials(store), 30)
++    const key = [...store.records.keys()][0]!
++    const record = store.records.get(key)!
++    if (record.kind !== 'grant' || typeof record.payload !== 'object' || record.payload === null) {
++      throw new Error('unexpected record shape')
++    }
++    store.records.set(key, {
++      kind: 'grant',
++      payload: { ...record.payload, launchToken: 'not-valid!' },
++    })
++    await expect(BrowserAuth.create({}, credentials(store), 30)).rejects.toThrow(/invalid launch token|web launch token/u)
++    expect(auth.status().mode).toBe('ephemeral')
++  })
++})

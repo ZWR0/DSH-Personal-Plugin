@@ -22,3 +22,6 @@ tools/.test-tmp/
 tools/.vault-test-*/
 tools/shot-*.png
 _publish/
+
+# Remote access runtime settings
+remote-access.json

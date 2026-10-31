@@ -1,2 +1,5 @@
 * text=auto eol=lf
 *.svg text
+
+# Unified patches require whitespace-only context lines.
+*.patch -whitespace
