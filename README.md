@@ -2,7 +2,7 @@
 
 本地开发版包含 **7 个插件**；[GitHub 仓库](https://github.com/ZWR0/DSH-Personal-Plugin)现已发布 **7 个插件**。本 README 同时说明本地开发状态与已发布状态，安装时以实际下载目录中的 `package.json` 为准。
 
-当前差异：清道夫本地为 0.4.0（支持撤回），仓库代码仍为 0.3.0（立即永久删除）。远行之钥 0.2.1 已发布，另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
+版本核对日期：**2026-11-01**。清道夫本地为 0.4.0（支持撤回），GitHub 为 0.3.0（立即永久删除）；远行之钥本地为 0.3.0（支持扫码登录），GitHub 为 0.2.1（复制登录链接）。其余五个插件版本一致。仓库另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
 
 插件使用 `@local/*` 包名，安装在 DSH profile 中。其余六个插件不直接修改官方包；远行之钥依赖匹配的 DSH 认证层扩展，仓库提供独立兼容补丁，不能只复制界面插件就获得固定 Token 能力。
 
@@ -11,14 +11,16 @@
 | 插件 | 本地 / GitHub 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
 | 行囊 | 0.3.1 | `@local/dsh-local-vault` · [local-vault](local-vault/) | 扫描本机插件目录，批量安装选中项 |
-| 清道夫 | 0.4.0 / 0.3.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/) | 删除已停止的会话，支持短时撤回 |
+| 清道夫 | 0.4.0 / 0.3.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/) | 删除已停止的会话；短时撤回仅本地 0.4.0 支持 |
 | 暗金主题 | 0.3.0 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
 | 引文速递 | 0.2.0 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/) | 将回复中的选中文本插入输入框引用卡片 |
 | 选项领航 | 0.2.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
 | 知忆书阁 | 0.3.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 远行之钥 | 0.2.1 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 启动 Token，重启后收藏的认证链接仍可用 |
+| 远行之钥 | 0.3.0 / 0.2.1 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 启动 Token、复制登录链接；扫码登录仅本地 0.3.0 支持 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
+
+版本栏仅有一个版本号时，表示本地与 GitHub 的 `package.json` 版本一致，不代表逐文件内容完全相同。通过克隆或 ZIP 安装的用户获得 GitHub 版本，不能直接使用仅本地版本具备的功能。
 
 ## 获取源码
 
@@ -103,6 +105,8 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 在「插件 → 远行之钥」管理固定 DSH 登录 Token，保存远程基础地址并复制登录链接。固定 Token 由 DSH_HOME 的凭据库保存；轮换或撤销会使旧链接和认证 Cookie 失效，`DSH_WEB_TOKEN` 环境变量优先于界面设置。插件保存地址，不自动修改 Tailscale、代理或防火墙。
 
+**仅本地 0.3.0：**配置 Token 并保存地址后，可点击「显示登录二维码」，在浏览器本地生成登录二维码供手机或平板扫码，不调用第三方二维码服务。隐藏二维码、修改地址、更新或撤销 Token、刷新状态或切到后台时会清除二维码。扫码设备仍需具备可达的网络路径；二维码包含登录凭据，请勿公开分享。**GitHub 0.2.1 尚无二维码入口，请使用「复制登录链接」。**
+
 **安装前先阅读 [认证兼容补丁](patches/README.md)。** 已验证基线为 DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；原版缺少相关 Connection 接口时，仅安装插件无法工作。Windows 可选 [Tailscale HTTPS 启动器](vpn-launcher/README.md) 通过参数指定源码目录，不包含本机凭据。
 
 完整安装、固定 Token 设置及故障排查见 [远行之钥 README](remote-access/README.md)。
@@ -140,7 +144,7 @@ dsh-ui-suite/
 | 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
-| 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局与保存流程）；先按插件 README 设置 `DSH_SOURCE` |
+| 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局与保存流程；本地 0.3.0 另含二维码解码与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |
 
 例如：
 
