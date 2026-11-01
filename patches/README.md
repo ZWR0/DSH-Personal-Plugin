@@ -29,3 +29,7 @@ pnpm exec vitest run packages/client/connection/tests/browser-auth.host.spec.ts 
 发布前已检查补丁可应用到该基线的独立文件副本；认证层两份测试共 19 项通过，插件 Host 测试包含独立 Node 子进程重启与模拟凭据存储，浏览器测试使用模拟 Host。未在其他 DSH 提交或完整全新构建上验证，也未代替真实手机网络验证。
 
 补丁含上游 DeepSeek Harness 源码上下文，保留其 [MIT 许可证](UPSTREAM-LICENSE)。插件仓库自身许可证见 [LICENSE](../LICENSE)。
+
+## 可选嵌入登录诊断
+
+见 [Web 嵌入登录诊断](WEB-AUTH-DIAGNOSTICS.md)。先应用默认关闭的脱敏诊断补丁，确认真实请求失败阶段后再决定 Cookie 兼容策略；当前未改变 SameSite 或 Origin/CSRF 检查。

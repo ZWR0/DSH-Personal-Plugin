@@ -1,0 +1,3 @@
+- insert:
+    - id: mobile-deck
+      name: '@local/dsh-mobile-deck'

@@ -118,7 +118,7 @@ try {
     for (const [name, component] of Object.entries(window.__components)) {
       component.face.call = window.__call
     }
-    window.__settings = window.__components['settings.section']
+    window.__settings = window.__components['plugins.tab']
     window.__composer = window.__components['conversation.input.right']
   }, { settings, entries, proposal, replacement, now })
 

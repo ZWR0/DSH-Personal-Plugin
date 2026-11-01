@@ -129,13 +129,13 @@ if (!styleElement.textContent.includes('width: 100%;')) throw new Error('rail do
 if (!styleElement.textContent.includes('max-width: var(--dsh-composer-card-max-width')) throw new Error('rail width is not the composer card width')
 if (styleElement.textContent.includes('animation: au-sheen')) throw new Error('rail still sweeps its background while live')
 
-const row = registrations.find(item => item.options.name === 'settings.general.item')
+const row = registrations.find(item => item.options.name === 'plugins.tab')
 const dock = registrations.find(item => item.options.name === 'conversation.input.dock')
 if (registrations.some(item => !['aurum-theme', 'aurum-navigation'].includes(item.options.id))) throw new Error('slot ids drifted')
 if (!registrations.some(item => item.options.id === 'aurum-navigation')) throw new Error('answer navigation was never registered')
 if (!row) throw new Error('settings row was never registered')
 if (!dock) throw new Error('rail was never registered')
-if (row.options.order !== 10.5) throw new Error(`settings row order ${row.options.order}`)
+if (row.options.order !== 50) throw new Error(`settings row order ${row.options.order}`)
 if (dock.options.order !== 20) throw new Error(`rail order ${dock.options.order}`)
 
 // --- render smoke ----------------------------------------------------------

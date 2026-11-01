@@ -1,0 +1,104 @@
+--- a/packages/client/connection/src/browser-auth.ts
++++ b/packages/client/connection/src/browser-auth.ts
+@@ -557,6 +557,25 @@
+     return payload
+   }
+ 
++  /** Return only non-secret authentication facts for opt-in request diagnostics. */
++  diagnosticFacts(request: ConnectionIndexRequest, secure = false): {
++    path: string; tokenPresent: boolean; tokenMatched: boolean;
++    cookiePresent: boolean; cookieAuthenticated: boolean;
++  } {
++    // Never decode or include the query in diagnostics, including parse errors.
++    const rawPath = (request.url ?? '/').split(/[?#]/, 1)[0] ?? '/'
++    let tokens: string[] = []
++    try { tokens = new URL(request.url ?? '/', 'http://dsh.invalid').searchParams.getAll(TOKEN_QUERY) }
++    catch { /* Malformed targets carry no usable token. */ }
++    return {
++      path: rawPath.startsWith('/') && !rawPath.startsWith('//') ? rawPath : '[invalid-path]',
++      tokenPresent: tokens.length > 0,
++      tokenMatched: tokens.length === 1 && tokenMatches(tokens[0]!, this.tokenValue),
++      cookiePresent: header(request.headers, 'cookie') !== undefined,
++      cookieAuthenticated: this.isAuthenticated(request, secure),
++    }
++  }
++
+   private writeUnauthorized(req: ConnectionIndexRequest, res: ConnectionIndexResponse): void {
+     res.writeHead(401, {
+       'cache-control': 'no-store',
+--- a/packages/client/connection/src/index.ts
++++ b/packages/client/connection/src/index.ts
+@@ -97,6 +97,8 @@
+ export interface ConnectionConfig {
+   /** Browser recovery timing, injected into each served page. */
+   recovery?: ConnectionRecoveryConfig
++  /** Log redacted HTTP authentication facts. Default: false. */
++  authDiagnostics?: boolean
+   /**
+    * Authorities this deployment serves beyond loopback: exact `host:port`, or
+    * port-less `host` matching any port. The fence accepts loopback and the
+@@ -112,6 +114,7 @@
+ 
+ export const Config: z<ConnectionConfig> = z.object({
+   recovery: ConnectionRecoveryConfigSchema.default({}),
++  authDiagnostics: z.boolean().default(false),
+   trustedHosts: z.array(String).default([]),
+   cookieMaxAgeDays: z.natural().min(1).default(30),
+   maxRequestBodyBytes: z.natural().min(1).default(DEFAULT_MAX_REQUEST_BODY_BYTES),
+@@ -134,13 +137,30 @@
+   // silently authorizing its hostname prefix at request time.
+   for (const entry of trustedHosts) assertTrustedAuthority(entry)
+   assertImageBodyCapacity(ctx, maxRequestBodyBytes)
++  const browserAuth = await BrowserAuth.create(ctx.root, ctx.credentials, cookieMaxAgeDays)
+   const connection = new HostConnectionService(
+     ctx,
+     trustedHosts,
+-    await BrowserAuth.create(ctx.root, ctx.credentials, cookieMaxAgeDays),
++    browserAuth,
+   )
+   ctx.inject(['webServer'], (webCtx) => {
+     assertImageBodyCapacity(webCtx, maxRequestBodyBytes)
++    if (config?.authDiagnostics === true) {
++      webCtx.on('webserver/request-observe', (request, response) => {
++        const facts = browserAuth.diagnosticFacts(request, webCtx.webServer.protocol === 'https:')
++        let recorded = false
++        const record = (): void => {
++          if (recorded) return
++          recorded = true
++          // No request/response objects, headers, query, redirect or error text.
++          webCtx.logger.info('[web-auth] ' + JSON.stringify({
++            ...facts, status: response.headersSent ? response.statusCode : null,
++          }))
++        }
++        response.once('finish', record)
++        response.once('close', record)
++      })
++    }
+     webCtx.on('webserver/index-inject', (table) => {
+       table.push({ kind: 'global', name: '__DSH_CONNECTION_RECOVERY__', value: recovery })
+     })
+--- a/packages/host/webserver/src/index.ts
++++ b/packages/host/webserver/src/index.ts
+@@ -32,6 +32,14 @@
+     webServer: WebServer
+   }
+   interface Events {
++    /**
++     * Observe HTTP requests before route admission without changing dispatch.
++     * @param request - Incoming HTTP request; may contain authentication secrets.
++     * @param response - Response whose finish or close supplies the final status.
++     * @mode emit
++     */
++    'webserver/request-observe'(request: IncomingMessage, response: ServerResponse): void
++
+     /**
+      * Collect the structured index injection table for the page `peer` speaks
+      * for. Emitted on every index render and every worker boot-payload
+@@ -545,6 +553,7 @@
+     // client dropping mid-body). Per-request failures log and answer 400 —
+     // never a process exit.
+     const listener = (req: IncomingMessage, res: ServerResponse): void => {
++      this.ctx.emit('webserver/request-observe', req, res)
+       const next = (): void => {
+         void handle(req, res).catch((err: unknown) => {
+           this.ctx.logger.warn(err instanceof Error ? err : new Error(String(err)))

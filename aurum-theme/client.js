@@ -1465,11 +1465,11 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
           locale: NS, label: function () { return t('navTitle') } }, AnswerNavigation)
       })
 
-      ctx.slots.inject('settings.general.item', function () {
+      ctx.slots.inject('plugins.tab', function () {
         return ctx.slots.register({
-          name: 'settings.general.item',
+          name: 'plugins.tab',
           id: 'aurum-theme',
-          order: 10.5,
+          order: 50,
           locale: NS,
           label: function () { return t('settingsTitle') },
         }, ThemeRow)

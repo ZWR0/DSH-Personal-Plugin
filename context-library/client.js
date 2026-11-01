@@ -656,6 +656,8 @@ window.__ModuleLoader__.load({
       '@media (max-width:820px){.cl-workspace{grid-template-columns:minmax(0,1fr);}.cl-list{max-height:260px;}}',
       '@media (max-width:600px){.cl-overlay{padding:10px;}.cl-dialog{max-height:92vh;}.cl-field textarea{min-height:200px;}}',
       '@media (prefers-reduced-motion:reduce){.cl-btn,.cl-book{transition:none;}}',
+      '.cl-book{position:relative;flex:none;width:40px;min-width:40px;height:40px;padding:0;border-radius:12px;border:1px solid var(--dsw-alias-border-l2,rgba(138,106,8,.16));background:linear-gradient(145deg,var(--dsw-alias-bg-layer-1,#fff),var(--dsw-alias-bg-layer-2,#f2f1ed));color:var(--dsw-alias-link,#866719);box-shadow:0 2px 5px rgba(35,28,12,.06),inset 0 1px 0 rgba(255,255,255,.12);touch-action:manipulation;-webkit-tap-highlight-color:transparent}.cl-book svg{width:21px;height:21px}.cl-book .cl-badge{top:-3px;right:-3px;min-width:16px;height:16px;font-size:10px;line-height:16px;background:var(--dsw-alias-link,#866719);color:var(--dsw-alias-bg-layer-1,#fff);box-shadow:0 0 0 2px var(--dsw-alias-bg-base,#faf9f6)}body[data-ds-dark-theme] .cl-book{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-link,#e3c45f)}.cl-book:active{filter:brightness(.92);box-shadow:inset 0 2px 5px rgba(35,28,12,.15)}',
+      '@media(pointer:coarse),(max-width:600px){.cl-book{width:44px;min-width:44px;height:44px;border-radius:13px}}@media(hover:hover){.cl-book:hover,body[data-ds-dark-theme] .cl-book:hover{border-color:var(--dsw-alias-link,#866719);color:var(--dsw-alias-link,#866719);box-shadow:0 4px 10px rgba(35,28,12,.10)}}@media(prefers-reduced-motion:no-preference){.cl-book{transition:transform .16s ease,box-shadow .2s ease}.cl-book:active{transform:scale(.94)}}',
     ].join('')
 
     function StyleTag() {
@@ -1496,6 +1498,7 @@ window.__ModuleLoader__.load({
       }
 
       return h(React.Fragment, null,
+        h(StyleTag),
         h('button', {
           type: 'button', className: 'cl-book', title: t('openPreview'), 'aria-haspopup': 'dialog', 'aria-expanded': open,
           'aria-label': count > 0 ? t('label') + ' · ' + t('pendingBadge', { count }) : t('label'),
@@ -1556,11 +1559,11 @@ window.__ModuleLoader__.load({
           try { return ctx.uiSession.adapter.current.getSnapshot().key } catch { return '' }
         },
       }
-      ctx.slots.inject('settings.section', function () {
+      ctx.slots.inject('plugins.tab', function () {
         return ctx.slots.register({
-          name: 'settings.section',
+          name: 'plugins.tab',
           id: 'context-library',
-          order: 40,
+          order: 60,
           label: function () { return t('nav') },
           locale: NS,
           inject: function () { return face },
