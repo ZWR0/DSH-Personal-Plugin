@@ -1,18 +1,17 @@
+
 @echo off
 title DeepSeek Harness Web
 
+REM Enter project directory
 cd /d "D:\deepseek-harness"
-if errorlevel 1 exit /b 1
-
-REM Start Tailscale HTTPS proxy
-tailscale serve --bg 3080
 if errorlevel 1 (
-    echo Failed to start Tailscale Serve
+    echo Failed to enter project directory
     pause
     exit /b 1
 )
 
-REM Start DeepSeek Harness
-pnpm dsh web --port 3080 --trusted-host msd.tail801f4c.ts.net --public-url https://msd.tail801f4c.ts.net/
+REM Start DeepSeek Harness locally
+echo Starting DeepSeek Harness Web...
+pnpm dsh web --port 3080
 
 pause
