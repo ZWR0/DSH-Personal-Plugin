@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
-    const BUILD = '0.3.0-easy-library'
+    const BUILD = '0.4.0-compact-settings'
     const NS = 'contextLibrary'
     const TYPES = ['identity', 'projects', 'decisions', 'long_term']
     const TYPE_KEY = {
@@ -33,6 +33,10 @@ window.__ModuleLoader__.load({
       importProjectHint: '项目与决策先停用；在编辑器绑定项目目录后启用。', importLimit: '每次最多 64 个 Markdown、共 768 KB。',
       quickOwner: '我的资料（Owner）', quickMemory: '添加长期记忆', quickAgent: '设置 Agent 身份', quickOwnerBody: '## 如何称呼我\n\n## 我的背景\n\n## 稳定偏好\n',
       quickMemoryBody: '## 需要长期记住的事实或偏好\n\n', advanced: '高级设置', simpleHint: '身份写 Agent；我的资料写你自己；长期记忆写已确认的事实和偏好。',
+      loadingSettings: '加载设置', entryProperties: '条目属性', editContent: '编辑', filterEntries: '筛选', previewEmpty: '暂无内容', emptyShort: '书库暂无条目',
+      modeHelp: '补充模式保留原身份；自定义模式只替换 harness:identity，其余系统约束、工具、环境与历史保留。',
+      strategyHelp: '自动加载相关内容并启用 Agent 建议，建议需批准后保存；仅目录按需读取；关闭停止加载和主动建议。',
+      historyHelp: '已保存条目的历史版本，可恢复。Agent 建议先进入待审修订，批准后才保存。',
       nav: '知忆书阁',
       label: '知忆书阁',
       title: '知忆书阁',
@@ -82,7 +86,7 @@ window.__ModuleLoader__.load({
 
       strategyTitle: '加载策略',
       strategyAuto: '自动',
-      strategyAutoHint: '身份、当前项目条目、当前项目关键决策、已启用的长期记忆。',
+      strategyAutoHint: '自动加载相关条目，并提出待审批的修订建议。',
       strategyCatalog: '仅目录',
       strategyCatalogHint: '只注入标题与摘要目录，正文按需读取。',
       strategyOff: '关闭',
@@ -260,6 +264,10 @@ window.__ModuleLoader__.load({
       importProjectHint: 'Projects and decisions start disabled. Bind a project directory before enabling.', importLimit: 'Up to 64 Markdown files, 768 KB per import.',
       quickOwner: 'About me (Owner)', quickMemory: 'Add memory', quickAgent: 'Agent identity', quickOwnerBody: '## Name\n\n## Background\n\n## Stable preferences\n',
       quickMemoryBody: '## Confirmed facts or preferences to remember\n\n', advanced: 'Advanced settings', simpleHint: 'Identity describes the agent; Owner describes you; memory contains confirmed facts and preferences.',
+      loadingSettings: 'Loading settings', entryProperties: 'Entry properties', editContent: 'Edit', filterEntries: 'Filter', previewEmpty: 'No content yet', emptyShort: 'No library entries',
+      modeHelp: 'Supplement keeps the original identity. Custom replaces only harness:identity; other constraints, tools, environment, and history remain.',
+      strategyHelp: 'Automatic loads relevant entries and enables agent proposals, which require approval before saving. Catalog reads on demand. Off stops loading and proposals.',
+      historyHelp: 'Saved entry versions available for restore. Agent proposals appear in Pending first and are saved only after approval.',
       nav: 'Context Library',
       label: 'Context Library',
       title: 'Context Library',
@@ -309,7 +317,7 @@ window.__ModuleLoader__.load({
 
       strategyTitle: 'Load strategy',
       strategyAuto: 'Automatic',
-      strategyAutoHint: 'Identity, current project entries, current key decisions, and explicitly enabled long-term memory.',
+      strategyAutoHint: 'Load relevant entries and propose revisions for approval.',
       strategyCatalog: 'Catalog only',
       strategyCatalogHint: 'Inject only titles and summaries; read full entries on demand.',
       strategyOff: 'Off',
@@ -481,10 +489,28 @@ window.__ModuleLoader__.load({
 
     const CSS = [
       '.cl-root{display:flex;flex-direction:column;gap:16px;color:var(--dsw-alias-label-primary);}',
-      '.cl-head{display:flex;flex-direction:column;gap:4px;}',
+      '.cl-head{display:flex;align-items:center;gap:8px;}',
       '.cl-title{margin:0;font-size:17px;line-height:25px;font-weight:600;letter-spacing:.3px;',
       'background:linear-gradient(92deg,#b8860b 0%,#e8c766 45%,#a67c00 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}',
       '.cl-sub{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);}',
+      '.cl-storage-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}',
+      '.cl-storage-row .cl-path{flex:1;min-width:180px;}',
+      '.cl-controls{display:grid;grid-template-columns:1fr 1.3fr;gap:24px;}',
+      '.cl-control{display:flex;flex-direction:column;gap:8px;min-width:0;}',
+      '.cl-control-label{font-size:11px;color:var(--dsw-alias-label-secondary);}',
+      '.cl-loading-settings .cl-choice{flex-wrap:nowrap;}',
+      '.cl-loading-settings .cl-choice button{min-width:0;align-items:center;text-align:center;justify-content:center;}',
+      '.cl-budget[open]>.cl-fields,.cl-budget[open]>.cl-meta-grid,.cl-entry-preview[open]>.cl-pre{margin-top:12px;}',
+      '.cl-entry-preview .cl-pre{max-height:300px;overflow:auto;}',
+      '.cl-side>.cl-details .cl-fields{grid-template-columns:1fr;margin-top:12px;}',
+      '.cl-help{position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:16px;height:16px;border:1px solid var(--dsw-alias-border-l1);border-radius:50%;font-size:10px;color:var(--dsw-alias-label-secondary);cursor:help;outline-offset:3px;}',
+      '.cl-tooltip{display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:30;width:260px;max-width:70vw;padding:10px 12px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);box-shadow:0 6px 24px #0002;font-size:12px;line-height:1.6;font-weight:400;overflow-wrap:anywhere;}',
+      '.cl-help:hover>.cl-tooltip,.cl-help:focus>.cl-tooltip{display:block;}',
+      '@media(max-width:620px){.cl-controls{grid-template-columns:1fr;gap:18px;}}',
+      '.cl-switch{appearance:none;width:30px;height:18px;border-radius:20px;background:var(--dsw-alias-border-l2,#888);position:relative;cursor:pointer;transition:background .15s;flex-shrink:0;}',
+      '.cl-switch::before{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .15s;}',
+      '.cl-switch:checked{background:#b8860b;}.cl-switch:checked::before{transform:translateX(12px);}',
+      '.cl-switch:focus-visible{outline:2px solid #c9a227;outline-offset:3px;}.cl-switch:disabled{opacity:.5;}',
       '.cl-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}',
       '.cl-card{padding:14px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1);display:flex;flex-direction:column;gap:9px;min-width:0;}',
       '.cl-card h3{margin:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}',
@@ -512,7 +538,15 @@ window.__ModuleLoader__.load({
       '.cl-choice button small{font-size:10px;line-height:15px;color:var(--dsw-alias-label-secondary);white-space:normal;overflow-wrap:anywhere;}',
       '.cl-choice button[aria-pressed="true"]{border-color:rgba(184,134,11,.65);background:linear-gradient(180deg,rgba(201,162,39,.14),rgba(184,134,11,.04));}',
       '.cl-choice button:focus-visible{outline:2px solid #c9a227;outline-offset:2px;}',
-      '.cl-workspace{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:12px;align-items:start;}',
+      '.cl-workspace{display:flex;flex-direction:column;gap:18px;}',
+      '.cl-workspace>.cl-side,.cl-workspace>.cl-main{width:100%;}',
+      '.cl-workspace>.cl-main{border-top:1px solid var(--dsw-alias-border-l1);padding-top:18px;}',
+      '.cl-workspace .cl-list{max-height:180px;}',
+      '.cl-entry-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}',
+      '.cl-entry-tools select{height:30px;max-width:100%;padding:0 26px 0 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:9px;background:var(--dsw-alias-bg-base);color:inherit;font:inherit;font-size:12px;cursor:pointer;}',
+      '.cl-entry-tools select:focus-visible{outline:2px solid #c9a227;outline-offset:2px;}',
+      '.cl-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}',
+      '.cl-main>.cl-details .cl-fields{margin-top:12px;}',
       '.cl-side{display:flex;flex-direction:column;gap:8px;min-width:0;}',
       '.cl-cats{display:flex;flex-wrap:wrap;gap:5px;}',
       '.cl-cat{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);',
@@ -587,11 +621,35 @@ window.__ModuleLoader__.load({
       '.cl-bar{height:7px;border-radius:999px;background:var(--dsw-alias-border-l1);overflow:hidden;}',
       '.cl-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#e8c766,#b8860b);}',
       '.cl-real{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:10px;border:1px dashed var(--dsw-alias-border-l2);font-size:11px;line-height:17px;}',
+      '.cl-book{justify-content:center;min-width:28px;height:28px;padding:0 6px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);}',
+      '.cl-book:hover,.cl-book[aria-expanded="true"]{background:rgba(201,162,39,.10);border-color:transparent;color:var(--dsw-alias-label-primary);}',
+      '.cl-book svg{width:16px;height:16px;}.cl-book .cl-badge{position:absolute;top:-4px;right:-5px;min-width:13px;height:13px;padding:0 3px;font-size:8px;}',
+      '.cl-dialog{gap:14px;border-color:var(--dsw-alias-border-l1);box-shadow:0 20px 64px #0004;}',
+      '.cl-dialog-head{align-items:center;gap:6px;}.cl-dialog-head h2{font-weight:600;}',
+      '.cl-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;flex-shrink:0;}',
+      '.cl-icon-btn:hover:not(:disabled){background:rgba(201,162,39,.10);color:var(--dsw-alias-label-primary);}',
+      '.cl-icon-btn:focus-visible{outline:2px solid #c9a227;outline-offset:2px;}.cl-icon-btn:disabled{opacity:.5;cursor:default;}',
+      '.cl-icon-btn.spinning svg{animation:cl-spin 1s linear infinite;}@keyframes cl-spin{to{transform:rotate(360deg);}}',
+      '.cl-plan-mode,.cl-plan-status{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);}',
+      '.cl-plan-status::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:#b8860b;margin:0 7px 2px 0;}',
+      '.cl-budget-line{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;}.cl-budget-line b{font-size:16px;font-weight:600;}',
+      '.cl-dialog .cl-bar{height:4px;margin-top:-5px;}.cl-bar.near span{background:#b8860b;}.cl-bar.full span{background:var(--dsw-alias-state-error-primary,#b54b3e);}',
+      '.cl-dialog .cl-plan-list{gap:0;}.cl-dialog .cl-plan-item{padding:10px 0;border:0;border-bottom:1px solid var(--dsw-alias-border-l1);border-radius:0;background:transparent;}',
+      '.cl-dialog .cl-plan-item-head{display:flex;align-items:baseline;gap:14px;flex-wrap:nowrap;list-style:none;cursor:pointer;}',
+      '.cl-plan-item-head::-webkit-details-marker{display:none;}.cl-plan-item-head:focus-visible{outline:2px solid #c9a227;outline-offset:3px;}',
+      '.cl-plan-type{font-size:11px;font-weight:400;color:var(--dsw-alias-label-secondary);flex:0 0 64px;}',
+      '.cl-plan-item-head>span:last-child{overflow-wrap:anywhere;min-width:0;}.cl-entry-summary{padding:9px 0 0 78px;font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary);}',
+      '.cl-entry-summary p{margin:0 0 5px;}.cl-entry-summary code{font:inherit;}',
+      '.cl-dialog>.cl-details{border:0;border-top:1px solid var(--dsw-alias-border-l1);border-radius:0;padding:11px 0 0;background:transparent;}',
+      '.cl-dialog>.cl-details summary{font-size:12px;font-weight:500;}.cl-dialog>.cl-details[open]>:not(summary){margin-top:10px;}',
+      'body[data-ds-dark-theme] .cl-book{border-color:transparent;color:var(--dsw-alias-label-secondary);}',
+      '@media(max-width:600px){.cl-icon-btn{width:36px;height:36px;}.cl-dialog .cl-plan-item-head{min-height:28px;align-items:center;}}',
+      '@media(prefers-reduced-motion:reduce){.cl-icon-btn.spinning svg{animation:none;}}',
       'body[data-ds-dark-theme] .cl-title{background:linear-gradient(92deg,#c9a227 0%,#f0d78a 45%,#a67c00 100%);-webkit-background-clip:text;background-clip:text;}',
       'body[data-ds-dark-theme] .cl-btn.primary,body[data-ds-dark-theme] .cl-path,body[data-ds-dark-theme] .cl-notice{color:#e8c766;}',
       'body[data-ds-dark-theme] .cl-btn:hover:not(:disabled){color:#e8c766;}',
-      'body[data-ds-dark-theme] .cl-book{color:#e8c766;border-color:rgba(201,162,39,.42);}',
-      'body[data-ds-dark-theme] .cl-book:hover{color:#f0d78a;border-color:#c9a227;}',
+      'body[data-ds-dark-theme] .cl-book{color:#e8c766;border-color:transparent;}',
+      'body[data-ds-dark-theme] .cl-book:hover{color:#f0d78a;border-color:transparent;}',
       'body[data-ds-dark-theme] .cl-diff .add{color:#8fd6a8;}',
       'body[data-ds-dark-theme] .cl-diff .del{color:#f0a0a0;}',
       'body[data-ds-dark-theme] .cl-history-row code{color:#e8c766;}',
@@ -704,7 +762,6 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('')
       const [preview, setPreview] = useState(null)
       const [documents, setDocuments] = useState([])
-      const fileRef = useRef(null)
       const folderRef = useRef(null)
       const mounted = useRef(true)
       useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
@@ -734,15 +791,9 @@ window.__ModuleLoader__.load({
         finally { if (mounted.current) setBusy(false) }
       }
       return h('section', { className: 'cl-card' },
-        h('h3', null, t('importTitle')),
-        h('p', { className: 'cl-hint' }, t('simpleHint')),
-        h('div', { className: 'cl-toolbar' },
-          h('button', { className: 'cl-btn primary', type: 'button', disabled: busy || importUnavailable, onClick: () => fileRef.current.click(), title: importUnavailable ? t('buildMismatch') : t('importHint') }, t('importFiles')),
-          h('button', { className: 'cl-btn', type: 'button', disabled: busy || importUnavailable, onClick: () => folderRef.current.click(), title: importUnavailable ? t('buildMismatch') : t('importLimit') }, t('importFolder')),
-          h('button', { className: 'cl-btn', type: 'button', disabled: busy, onClick: props.onOwner }, t('quickOwner')),
-          h('button', { className: 'cl-btn', type: 'button', disabled: busy, onClick: props.onMemory }, t('quickMemory')),
-          h('button', { className: 'cl-btn', type: 'button', disabled: busy, onClick: props.onIdentity }, t('quickAgent'))),
-        h('input', { ref: fileRef, type: 'file', accept: '.md,text/markdown', multiple: true, hidden: true, 'aria-label': t('importFiles'), onChange: select }),
+        h('div', { className: 'cl-toolbar' }, h('h3', null, t('importTitle')), h(Help, { text: t('importHint') + ' ' + t('importLimit') }),
+          h('span', { style: { flex: 1 } }),
+          h('button', { className: 'cl-btn primary', type: 'button', disabled: busy || importUnavailable, onClick: () => folderRef.current.click(), title: importUnavailable ? t('buildMismatch') : t('importLimit') }, t('importFolder'))),
         h('input', { ref: folderRef, type: 'file', accept: '.md,text/markdown', multiple: true, webkitdirectory: '', hidden: true, 'aria-label': t('importFolder'), onChange: select }),
         error ? h('p', { className: 'cl-error', role: 'alert' }, error) : null,
         notice ? h('p', { className: 'cl-notice', role: 'status' }, notice) : null,
@@ -774,20 +825,25 @@ window.__ModuleLoader__.load({
       const issues = (plan.omitted || []).concat((plan.items || []).filter(item => item.error || ['disabled', 'archived', 'other-project', 'off'].includes(item.status)))
       const warnings = plan.warnings || []
       const same = last !== null && last.planId === plan.planId
+      const percent = Math.round((plan.used || 0) / (plan.budget.total || 1) * 100)
+      const tone = percent >= 100 ? 'full' : percent >= 85 ? 'near' : ''
       const status = last === null ? t('compactWaiting') : same ? t('compactCurrent') : t('compactChanged')
       return h(React.Fragment, null,
         h('div', { className: 'cl-toolbar' },
-          h('span', { className: 'cl-chip gold', title: plan.mode === 'custom' ? t('modeCustomHint') : t('modeSupplementHint'), tabIndex: 0 }, plan.mode === 'custom' ? t('modeCustom') : t('modeSupplement')),
-          h('span', { className: 'cl-hint', role: 'status', title: last === null ? t('notLoaded') : t('historyNote'), tabIndex: 0 }, status)),
-        h('div', { className: 'cl-toolbar', title: t('budgetUsed', { used: plan.used || 0, total: plan.budget.total, method: plan.tokenMethod === 'native-token-meter' ? t('tokenNative') : t('tokenHeuristic') }), tabIndex: 0 },
+          h('span', { className: 'cl-plan-mode', title: plan.mode === 'custom' ? t('modeCustomHint') : t('modeSupplementHint'), tabIndex: 0 }, plan.mode === 'custom' ? t('modeCustom') : t('modeSupplement')),
+          h('span', { className: 'cl-plan-status', role: 'status', title: last === null ? t('notLoaded') : t('historyNote'), tabIndex: 0 }, status)),
+        h('div', { className: 'cl-budget-line', title: t('budgetUsed', { used: plan.used || 0, total: plan.budget.total, method: plan.tokenMethod === 'native-token-meter' ? t('tokenNative') : t('tokenHeuristic') }), tabIndex: 0 },
           h('b', null, (plan.used || 0) + ' / ' + plan.budget.total + ' tokens'),
-          h('span', { className: 'cl-hint' }, loaded.length + ' ' + t('compactEntries'))),
-        h('div', { className: 'cl-bar', role: 'meter', 'aria-label': t('budgetTitle'), 'aria-valuemin': 0, 'aria-valuemax': plan.budget.total, 'aria-valuenow': plan.used || 0 },
+          h('span', { className: 'cl-hint' }, percent + '% · ' + loaded.length + ' ' + t('compactEntries'))),
+        h('div', { className: 'cl-bar ' + tone, role: 'meter', 'aria-label': t('budgetTitle'), 'aria-valuemin': 0, 'aria-valuemax': plan.budget.total, 'aria-valuenow': Math.min(plan.used || 0, plan.budget.total), 'aria-valuetext': (plan.used || 0) + ' / ' + plan.budget.total + ' tokens' },
           h('span', { style: { width: Math.min(100, Math.round((plan.used || 0) / (plan.budget.total || 1) * 100)) + '%' } })),
         loaded.length === 0 ? h('p', { className: 'cl-hint' }, t('noEntriesLoaded')) : h('div', { className: 'cl-plan-list' }, loaded.map(item =>
-          h('div', { key: item.type + '/' + item.id, className: 'cl-plan-item', tabIndex: 0,
+          h('details', { key: item.type + '/' + item.id, className: 'cl-plan-item cl-plan-entry',
             title: [item.preview, item.relPath, item.projectPath, 'v' + item.version].filter(Boolean).join('\n') },
-            h('div', { className: 'cl-plan-item-head' }, h(TypeChip, { t, type: item.type }), h('span', null, item.title))))),
+            h('summary', { className: 'cl-plan-item-head' }, h('span', { className: 'cl-plan-type' }, t(TYPE_KEY[item.type])), h('span', null, item.title)),
+            h('div', { className: 'cl-entry-summary' },
+              item.preview ? h('p', null, item.preview) : null,
+              h('code', null, [item.relPath, item.projectPath, item.version ? 'v' + item.version : ''].filter(Boolean).join(' · ')))))),
         issues.length + warnings.length > 0 ? h('details', { className: 'cl-details' },
           h('summary', null, t('compactOther') + ' · ' + (issues.length + warnings.length)),
           issues.map(item => h('div', { key: item.type + '/' + item.id, className: 'cl-plan-item', title: item.error || reasonText(t, item.reason) },
@@ -905,6 +961,11 @@ window.__ModuleLoader__.load({
           }, t('defer'))))
     }
 
+    function Help(props) {
+      return h('span', { className: 'cl-help', tabIndex: 0, role: 'note', 'aria-label': props.text },
+        h('span', { 'aria-hidden': true }, '?'), h('span', { className: 'cl-tooltip', role: 'tooltip' }, props.text))
+    }
+
     function SettingsPage(props) {
       const t = props.t
       const [tree, setTree] = useState(null)
@@ -913,7 +974,6 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState('')
       const [category, setCategory] = useState('identity')
       const [query, setQuery] = useState('')
-      const [typeFilter, setTypeFilter] = useState('all')
       const [scopeFilter, setScopeFilter] = useState('all')
       const [draft, setDraft] = useState(null)
       const [history, setHistory] = useState([])
@@ -953,13 +1013,12 @@ window.__ModuleLoader__.load({
         const needle = query.trim().toLowerCase()
         return entries.filter(function (entry) {
           if (category !== 'pending' && entry.type !== category) return false
-          if (typeFilter !== 'all' && entry.type !== typeFilter) return false
           if (scopeFilter !== 'all' && entry.scope !== scopeFilter) return false
           if (needle === '') return true
           const hay = [entry.id, entry.title, entry.preview, entry.projectPath].filter(Boolean).join(' ').toLowerCase()
           return hay.indexOf(needle) >= 0
         })
-      }, [entries, category, typeFilter, scopeFilter, query])
+      }, [entries, category, scopeFilter, query])
 
       const openEntry = function (entry) {
         setCategory(entry.type)
@@ -1129,36 +1188,41 @@ window.__ModuleLoader__.load({
         h(StyleTag),
         h('div', { className: 'cl-head' },
           h('h2', { className: 'cl-title' }, t('title')),
-          h('p', { className: 'cl-sub' }, t('subtitle')),
-          h('p', { className: 'cl-hint', 'data-context-library-build': BUILD }, t('buildInfo', { client: BUILD, host: tree && tree.build || '—' }))),
+          h(Help, { text: t('subtitle') + ' ' + t('buildInfo', { client: BUILD, host: tree && tree.build || '—' }) })),
         tree && tree.build !== BUILD ? h('p', { className: 'cl-error', role: 'status' }, t('buildMismatch')) : null,
         error !== '' ? h('p', { className: 'cl-error', role: 'alert' }, error) : null,
         notice !== '' ? h('p', { className: 'cl-notice', role: 'status' }, notice) : null,
         loading && tree === null ? h('div', { className: 'cl-empty' }, t('loading')) : null,
 
         tree !== null && settings !== null ? h(React.Fragment, null,
-          h('p', { className: 'cl-hint', title: tree.root }, (settings.mode === 'custom' ? t('modeCustom') : t('modeSupplement')) + ' · ' + entries.filter(item => item.enabled && !item.error && item.status === 'active').length + ' ' + t('compactEntries')),
-          h(MarkdownImport, { t, hostBuild: tree.build, call: face.current.call, onDone: () => { void loadTree(true) },
-            onIdentity: () => { const entry = entries.find(item => item.type === 'identity'); if (entry) openEntry(entry); else newEntry('identity', true) },
-            onOwner: () => { const entry = entries.find(item => item.id === 'owner-profile' && item.type === 'long_term'); if (entry) openEntry(entry); else { newEntry('long_term'); setDraft(current => ({ ...current, id: 'owner-profile', title: t('quickOwner'), body: t('quickOwnerBody') })) } },
-            onMemory: () => { newEntry('long_term'); setDraft(current => ({ ...current, body: t('quickMemoryBody') })) },
-          }),
-          h('details', { className: 'cl-details' }, h('summary', { title: tree.root }, t('advanced')),
-          h('div', { className: 'cl-grid2' },
-            h('section', { className: 'cl-card' },
-              h('h3', null, t('storageTitle')),
-              h('p', { className: 'cl-hint' }, t('storageHint')),
-              h('p', { className: 'cl-hint' }, t('metadataHint')),
-              entries.some(function (entry) { return entry.type === 'identity' && entry.error })
-                ? h('p', { className: 'cl-error', role: 'alert' }, t('identityInvalid', { message: entries.find(function (entry) { return entry.type === 'identity' && entry.error }).error })) : null,
-              h('code', { className: 'cl-path' }, tree.root),
+          h('section', { className: 'cl-card cl-storage' },
+            h('div', { className: 'cl-toolbar' }, h('h3', null, t('storageTitle')), h(Help, { text: t('storageHint') + ' ' + t('metadataHint') })),
+            h('div', { className: 'cl-storage-row' },
+              h('code', { className: 'cl-path', title: tree.root }, tree.root),
               h('div', { className: 'cl-toolbar' },
-                h('button', { type: 'button', className: 'cl-btn', disabled: picking || busy !== '', onClick: pickRoot },
-                  picking ? t('choosing') : t('chooseFolder')),
+                h('button', { type: 'button', className: 'cl-btn primary', disabled: picking || busy !== '', onClick: pickRoot }, picking ? t('choosing') : t('chooseFolder')),
                 h('button', { type: 'button', className: 'cl-btn', disabled: busy !== '', onClick: resetRoot }, t('useDefault')))),
-            h('section', { className: 'cl-card' },
-              h('h3', null, t('budgetTitle')),
-              h('p', { className: 'cl-hint' }, t('budgetHint')),
+            entries.some(entry => entry.type === 'identity' && entry.error)
+              ? h('p', { className: 'cl-error', role: 'alert' }, t('identityInvalid', { message: entries.find(entry => entry.type === 'identity' && entry.error).error })) : null),
+          h('section', { className: 'cl-card cl-loading-settings' },
+            h('h3', null, t('loadingSettings')),
+            h('div', { className: 'cl-controls' },
+              h('div', { className: 'cl-control' },
+                h('div', { className: 'cl-toolbar cl-control-label' }, t('modeTitle'), h(Help, { text: t('modeHelp') })),
+                h('div', { className: 'cl-choice', role: 'group', 'aria-label': t('modeTitle') },
+                  h('button', { type: 'button', 'aria-pressed': settings.mode === 'supplement', disabled: busy !== '', title: t('modeSupplementHint'), onClick: () => saveSettings({ mode: 'supplement' }) }, t('modeSupplement')),
+                  h('button', { type: 'button', 'aria-pressed': settings.mode === 'custom', disabled: busy !== '', title: t('modeCustomHint'), onClick: () => saveSettings({ mode: 'custom' }) }, t('modeCustom')))),
+              h('div', { className: 'cl-control' },
+                h('div', { className: 'cl-toolbar cl-control-label' }, t('strategyTitle'), h(Help, { text: t('strategyHelp') })),
+                h('div', { className: 'cl-choice', role: 'group', 'aria-label': t('strategyTitle') },
+                  h('button', { type: 'button', 'aria-pressed': settings.strategy === 'auto', disabled: busy !== '', title: t('strategyAutoHint'), onClick: () => saveSettings({ strategy: 'auto', suggestions: true }) }, t('strategyAuto')),
+                  h('button', { type: 'button', 'aria-pressed': settings.strategy === 'catalog', disabled: busy !== '', title: t('strategyCatalogHint'), onClick: () => saveSettings({ strategy: 'catalog', suggestions: false }) }, t('strategyCatalog')),
+                  h('button', { type: 'button', 'aria-pressed': settings.strategy === 'off', disabled: busy !== '', title: t('strategyOffHint'), onClick: () => saveSettings({ strategy: 'off', suggestions: false }) }, t('strategyOff'))))),
+            replacement !== null && replacement.sections[0].errors.length > 0
+              ? h('p', { className: 'cl-error' }, t('customErrors', { list: replacement.sections[0].errors.map(item => item.sessionId.slice(0, 16)).join(', ') })) : null),
+          h(MarkdownImport, { t, hostBuild: tree.build, call: face.current.call, onDone: () => { void loadTree(true) } }),
+            h('details', { className: 'cl-details cl-budget' },
+              h('summary', { title: t('budgetHint') }, t('budgetTitle')),
               h('div', { className: 'cl-fields' },
                 h('label', { className: 'cl-field' }, t('totalBudget'),
                   h('input', {
@@ -1181,59 +1245,6 @@ window.__ModuleLoader__.load({
                       onBlur: function () { saveSettings({ perType: form.perType }) },
                     }))
                 }))),
-            h('section', { className: 'cl-card' },
-              h('h3', null, t('modeTitle')),
-              h('div', { className: 'cl-choice', role: 'group' },
-                h('button', {
-                  type: 'button', 'aria-pressed': settings.mode === 'supplement', disabled: busy !== '',
-                  onClick: function () { saveSettings({ mode: 'supplement' }) },
-                }, t('modeSupplement'), h('small', null, t('modeSupplementHint'))),
-                h('button', {
-                  type: 'button', 'aria-pressed': settings.mode === 'custom', disabled: busy !== '',
-                  onClick: function () { saveSettings({ mode: 'custom' }) },
-                }, t('modeCustom'), h('small', null, t('modeCustomHint')))),
-              replacement !== null && settings.mode === 'custom'
-                ? (replacement.sections[0].active
-                  ? h('p', { className: 'cl-notice' }, t('customAttached', { count: replacement.sections[0].attachedSessions.length }))
-                  : h('p', { className: 'cl-hint' }, t(entries.some(function (entry) { return entry.type === 'identity' && !entry.error && entry.enabled && entry.status === 'active' }) && settings.enabled && settings.strategy !== 'off' ? 'identityReady' : 'customUnavailable')))
-                : null,
-              replacement !== null && replacement.sections[0].errors.length > 0
-                ? h('p', { className: 'cl-error' }, t('customErrors', { list: replacement.sections[0].errors.map(function (item) { return item.sessionId.slice(0, 16) }).join(', ') }))
-                : null),
-            h('section', { className: 'cl-card' },
-              h('h3', null, t('strategyTitle')),
-              h('div', { className: 'cl-choice', role: 'group' },
-                h('button', {
-                  type: 'button', 'aria-pressed': settings.strategy === 'auto', disabled: busy !== '',
-                  onClick: function () { saveSettings({ strategy: 'auto' }) },
-                }, t('strategyAuto'), h('small', null, t('strategyAutoHint'))),
-                h('button', {
-                  type: 'button', 'aria-pressed': settings.strategy === 'catalog', disabled: busy !== '',
-                  onClick: function () { saveSettings({ strategy: 'catalog' }) },
-                }, t('strategyCatalog'), h('small', null, t('strategyCatalogHint'))),
-                h('button', {
-                  type: 'button', 'aria-pressed': settings.strategy === 'off', disabled: busy !== '',
-                  onClick: function () { saveSettings({ strategy: 'off' }) },
-                }, t('strategyOff'), h('small', null, t('strategyOffHint')))),
-              h('label', { className: 'cl-field' }, t('suggestionsTitle'),
-                h('span', { className: 'cl-toolbar' },
-                  h('input', {
-                    type: 'checkbox', checked: settings.suggestions !== false, disabled: busy !== '',
-                    onChange: function (event) { saveSettings({ suggestions: event.target.checked }) },
-                  }),
-                  h('span', { className: 'cl-hint' }, t('suggestionsHint'))))))),
-          replacement !== null
-            ? h('details', { className: 'cl-details' },
-              h('summary', null, t('replacementTitle')),
-              h('p', { className: 'cl-hint' }, t('replacementIntro')),
-              h('ul', { className: 'cl-hint', style: { margin: 0, paddingInlineStart: '18px' } },
-                h('li', null, t('preservedHarness')),
-                h('li', null, t('preservedRuntime')),
-                h('li', null, t('preservedTools')),
-                h('li', null, t('preservedAgents')),
-                h('li', null, t('preservedHistory'))),
-              h('p', { className: 'cl-hint' }, t('cannotReplace')))
-            : null,
           (tree.warnings || []).length > 0
             ? h('details', { className: 'cl-details' },
               h('summary', null, t('warningsTitle') + ' · ' + tree.warnings.length),
@@ -1241,13 +1252,13 @@ window.__ModuleLoader__.load({
                 return h('p', { key: index, className: 'cl-hint' }, (item.path || '') + ' · ' + (item.message || ''))
               }))
             : null,
-          h('div', { className: 'cl-workspace' },
+          h('section', { className: 'cl-card cl-workspace' },
             h('aside', { className: 'cl-side' },
               h('div', { className: 'cl-cats', role: 'group' },
                 TYPES.map(function (type) {
                   return h('button', {
                     key: type, type: 'button', className: 'cl-cat', 'aria-pressed': category === type,
-                    onClick: function () { setCategory(type) },
+                    onClick: function () { setCategory(type); setDraft(null); setHistory([]) },
                   }, t(TYPE_KEY[type]) + (counts[type] ? ' ' + counts[type] : ''))
                 }),
                 h('button', {
@@ -1258,24 +1269,21 @@ window.__ModuleLoader__.load({
                 h('label', { className: 'cl-search' }, h('span', { 'aria-hidden': true }, '⌕'),
                   h('input', { type: 'search', value: query, placeholder: t('searchPlaceholder'), 'aria-label': t('searchPlaceholder'),
                     onChange: function (event) { setQuery(event.target.value) } })),
-                h('div', { className: 'cl-filters' },
-                  h('select', { value: typeFilter, 'aria-label': t('filterType'), onChange: function (event) { setTypeFilter(event.target.value) } },
-                    h('option', { value: 'all' }, t('filterType') + ' · ' + t('all')),
-                    TYPES.map(function (type) { return h('option', { key: type, value: type }, t(TYPE_KEY[type])) })),
+                h('div', { className: 'cl-entry-tools' },
                   h('select', { value: scopeFilter, 'aria-label': t('filterScope'), onChange: function (event) { setScopeFilter(event.target.value) } },
                     h('option', { value: 'all' }, t('filterScope') + ' · ' + t('all')),
                     h('option', { value: 'global' }, t('scopeGlobal')),
-                    h('option', { value: 'project' }, t('scopeProject')))),
+                    h('option', { value: 'project' }, t('scopeProject'))),
                 h('button', { type: 'button', className: 'cl-btn', disabled: busy !== '', onClick: function () { newEntry() } },
-                  t('newInType', { type: t(TYPE_KEY[category]) }))),
+                  t('newInType', { type: t(TYPE_KEY[category]) })))),
               category === 'pending'
                 ? h('p', { className: 'cl-hint' }, t('pendingHint'))
                 : (filtered.length === 0
                   ? h('div', { className: 'cl-empty' },
-                    h('span', null, entries.length === 0 ? t('emptyLibrary') : t('noSelection')),
+                    h('span', null, entries.length === 0 ? t('emptyShort') : t('noSelection')),
                     entries.length === 0
                       ? h(React.Fragment, null,
-                        h('span', { className: 'cl-hint' }, t('emptyLibraryHint')),
+                        h(Help, { text: t('emptyLibraryHint') }),
                         h('button', { type: 'button', className: 'cl-btn primary', disabled: busy !== '', onClick: function () { newEntry('identity', true) } }, t('createTemplate')))
                       : null)
                   : h('div', { className: 'cl-list', role: 'list' }, filtered.map(function (entry) {
@@ -1291,7 +1299,7 @@ window.__ModuleLoader__.load({
                       entry.scope === 'project' ? h('span', { className: 'cl-chip' }, t('scopeProject')) : null,
                       h('span', null, 'v' + entry.version)),
                     entry.error ? h('span', { className: 'cl-error' }, entry.error) : null)
-                  })))
+                  }))),
             ),
             h('section', { className: 'cl-main' },
               category === 'pending'
@@ -1318,8 +1326,8 @@ window.__ModuleLoader__.load({
                   : h(React.Fragment, null,
                     h('div', { className: 'cl-toolbar' },
                       h('h3', { className: 'cl-section-title' }, draft.mode === 'create' ? t('newEntry') : t('editorTitle')),
-                      h('span', { className: 'cl-hint' }, draft.mode === 'edit' ? 'v' + (draft.version || '') : t('templateHint'))),
-                    h('details', { className: 'cl-details' }, h('summary', null, t('advanced')),
+                      draft.mode === 'edit' ? h('span', { className: 'cl-hint' }, 'v' + (draft.version || '')) : h(Help, { text: t('templateHint') })),
+                    h('details', { className: 'cl-details' }, h('summary', null, t('entryProperties')),
                     h('div', { className: 'cl-fields' },
                       h('label', { className: 'cl-field' }, t('entryId'),
                         h('input', {
@@ -1339,9 +1347,7 @@ window.__ModuleLoader__.load({
                       h('label', { className: 'cl-field' }, t('entryScope'),
                         h('select', { value: draft.scope, disabled: busy !== '', onChange: function (event) { updateDraft({ scope: event.target.value }) } },
                           h('option', { value: 'global' }, t('scopeGlobal')),
-                          h('option', { value: 'project' }, t('scopeProject')))))),
-                    h('label', { className: 'cl-field' }, t('entryTitle'),
-                      h('input', { value: draft.title, disabled: busy !== '', onChange: function (event) { updateDraft({ title: event.target.value }) } })),
+                          h('option', { value: 'project' }, t('scopeProject'))))),
                     draft.scope === 'project'
                       ? h(React.Fragment, null,
                         h('label', { className: 'cl-field' }, t('projectPath'),
@@ -1352,17 +1358,19 @@ window.__ModuleLoader__.load({
                           draft.projectPath !== ''
                             ? h('button', { type: 'button', className: 'cl-btn', disabled: busy !== '', onClick: function () { updateDraft({ projectPath: '' }) } }, t('unbind'))
                             : null))
-                      : null,
+                      : null),
+                    h('label', { className: 'cl-field' }, t('entryTitle'),
+                      h('input', { value: draft.title, disabled: busy !== '', onChange: function (event) { updateDraft({ title: event.target.value }) } })),
                     h('div', { className: 'cl-toolbar' },
                       h('label', { className: 'cl-toolbar' },
-                        h('input', { type: 'checkbox', checked: draft.enabled === true, disabled: busy !== '', onChange: function (event) { updateDraft({ enabled: event.target.checked }) } }),
+                        h('input', { type: 'checkbox', role: 'switch', className: 'cl-switch', checked: draft.enabled === true, disabled: busy !== '', onChange: function (event) { updateDraft({ enabled: event.target.checked }) } }),
                         h('span', { className: 'cl-hint' }, t('entryEnabled'))),
                       draft.type === 'decision'
                         ? h('label', { className: 'cl-toolbar' },
-                          h('input', { type: 'checkbox', checked: draft.key !== false, disabled: busy !== '', onChange: function (event) { updateDraft({ key: event.target.checked }) } }),
+                          h('input', { type: 'checkbox', role: 'switch', className: 'cl-switch', checked: draft.key !== false, disabled: busy !== '', onChange: function (event) { updateDraft({ key: event.target.checked }) } }),
                           h('span', { className: 'cl-hint' }, t('entryKey')))
                         : null),
-                    h('label', { className: 'cl-field' }, t('entryBody'),
+                    h('label', { className: 'cl-field' }, h('span', { className: 'cl-sr-only' }, t('entryBody')),
                       h('textarea', { value: draft.body, disabled: busy !== '', onChange: function (event) { updateDraft({ body: event.target.value }) } })),
                     h('div', { className: 'cl-toolbar' },
                       h('button', { type: 'button', className: 'cl-btn primary', disabled: busy !== '', onClick: saveDraft },
@@ -1375,9 +1383,9 @@ window.__ModuleLoader__.load({
                         ? h('button', { type: 'button', className: 'cl-btn danger', disabled: busy !== '', onClick: deleteDraft },
                           confirmDelete ? t('deleteConfirm') : t('delete'))
                         : null,
-                      h('span', { className: 'cl-hint' }, t('templateHint'))),
+                      null),
                     h('details', { className: 'cl-details' },
-                      h('summary', null, t('history') + ' · ' + history.length),
+                      h('summary', { title: t('historyHelp') }, t('history') + ' · ' + history.length),
                       history.length === 0
                         ? h('p', { className: 'cl-hint' }, t('noHistory'))
                         : h('div', { className: 'cl-history' }, history.map(function (row) {
@@ -1399,6 +1407,11 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M8 4.3c1.1-.7 2.6-1 4.4-.9.5 0 .9.4.9.9v7.2c0 .5-.4.9-.9.9-1.6-.1-3 .2-4.4 1' }),
         h('path', { d: 'M8 4.3v9.1' }),
         h('path', { d: 'M9.9 2.2h3v5.4l-1.5-1.3-1.5 1.3z', fill: 'currentColor', stroke: 'none' }))
+    }
+
+    function DialogIcon(props) {
+      return h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+        props.close ? h('path', { d: 'M6 6l12 12M18 6L6 18' }) : h('path', { d: 'M20 7v5h-5M19 12a7 7 0 1 0-2 5M20 7l-3-3' }))
     }
 
     function ComposerButton(props) {
@@ -1461,7 +1474,7 @@ window.__ModuleLoader__.load({
         const onKey = function (event) {
           if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); return }
           if (event.key !== 'Tab' || dialogRef.current === null) return
-          const nodes = Array.from(dialogRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+          const nodes = Array.from(dialogRef.current.querySelectorAll('button, summary, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
             .filter(function (node) { return node.disabled !== true && node.offsetParent !== null })
           if (nodes.length === 0) return
           const first = nodes[0]
@@ -1484,7 +1497,7 @@ window.__ModuleLoader__.load({
 
       return h(React.Fragment, null,
         h('button', {
-          type: 'button', className: 'cl-book', title: t('openPreview'),
+          type: 'button', className: 'cl-book', title: t('openPreview'), 'aria-haspopup': 'dialog', 'aria-expanded': open,
           'aria-label': count > 0 ? t('label') + ' · ' + t('pendingBadge', { count }) : t('label'),
           onClick: openDialog,
         },
@@ -1494,18 +1507,16 @@ window.__ModuleLoader__.load({
           ? ReactDom.createPortal(
             h('div', { className: 'cl-overlay', onMouseDown: function (event) { if (event.target === event.currentTarget) setOpen(false) } },
               h('div', {
-                className: 'cl-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'cl-preview-title', ref: dialogRef,
+                className: 'cl-dialog', role: 'dialog', 'aria-busy': loading, 'aria-modal': 'true', 'aria-labelledby': 'cl-preview-title', ref: dialogRef,
               },
               h(StyleTag),
               h('div', { className: 'cl-dialog-head' },
                 h('h2', { id: 'cl-preview-title', title: t('previewHint'), tabIndex: 0 }, t('previewTitle')),
-                h('button', { type: 'button', className: 'cl-btn', ref: closeRef, onClick: function () { setOpen(false) } }, t('close'))),
+                h('button', { type: 'button', className: 'cl-icon-btn' + (loading ? ' spinning' : ''), title: t('previewRefresh'), 'aria-label': t('previewRefresh'), disabled: loading, onClick: load }, h(DialogIcon)),
+                h('button', { type: 'button', className: 'cl-icon-btn', title: t('close'), 'aria-label': t('close'), ref: closeRef, onClick: function () { setOpen(false) } }, h(DialogIcon, { close: true }))),
 
               error !== '' ? h('p', { className: 'cl-error', role: 'alert' }, error) : null,
               notice !== '' ? h('p', { className: 'cl-notice', role: 'status' }, notice) : null,
-              h('div', { className: 'cl-toolbar' },
-                h('button', { type: 'button', className: 'cl-btn', disabled: loading, onClick: function () { load() } },
-                  loading ? t('previewLoading') : t('previewRefresh'))),
               h(PlanPanel, { t: t, data: data, loading: loading }),
               pendingList.length > 0
                 ? h('details', { className: 'cl-details' },

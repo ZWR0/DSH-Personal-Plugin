@@ -31,7 +31,9 @@ window.__ModuleLoader__.load({
     const STORAGE_KEY = 'dsh.aurum.theme.v1'
     const SAMPLE_WINDOW_MS = 2400
     const SAMPLE_FLOOR_MS = 300
-    const HISTORY_LIMIT = 40
+    const HISTORY_LIMIT = 1200
+    // Numeric samples only; retain up to eight recently viewed sessions per page.
+    const speedHistories = new Map()
 
     const zh = {
       title: '暗金仪表',
@@ -48,7 +50,9 @@ window.__ModuleLoader__.load({
       ttft: '首字延迟',
       cache: '缓存命中',
       modelTool: '模型 / 工具耗时',
-      liveSpeed: '实时速度 · tok/s',
+      liveSpeed: '速度记录 · tok/s',
+      recorded: '已保留 · 估算',
+      timeAxis: '时间',
       perSecond: 'tok/s',
       estimated: '估算',
       waitingSpeed: '等待速度采样',
@@ -84,7 +88,9 @@ window.__ModuleLoader__.load({
       ttft: 'First token',
       cache: 'Cache hit',
       modelTool: 'Model / tool time',
-      liveSpeed: 'Live speed · tok/s',
+      liveSpeed: 'Speed history · tok/s',
+      recorded: 'Retained · estimated',
+      timeAxis: 'Time',
       perSecond: 'tok/s',
       estimated: 'est.',
       waitingSpeed: 'Waiting for speed samples',
@@ -502,7 +508,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
 .au-expand {
   margin: 0 12px 10px;
   padding-top: 9px;
-  border-top: 1px dashed var(--au-cell-line, rgba(150, 112, 14, 0.22));
+  border-top: 1px solid var(--au-cell-line, rgba(150, 112, 14, 0.22));
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px 18px;
@@ -510,8 +516,11 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
 .au-cell {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
   min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--au-gold-soft);
 }
 .au-cell b {
   font-size: 12.5px;
@@ -531,9 +540,12 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
 }
 .au-chart svg {
   width: 100%;
-  height: 30px;
+  height: auto;
+  max-height: 140px;
   display: block;
 }
+.au-chart text { fill: var(--dsw-alias-label-tertiary); font: 10px system-ui; }
+.au-toggle:focus-visible { outline: 2px solid var(--au-gold); outline-offset: 3px; }
 .au-chart small {
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
@@ -881,7 +893,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
         samplesRef.current = []
         lastPushRef.current = 0
         setRate(null)
-        setHistory([])
+        setHistory(speedHistories.get(sessionId) || [])
       }, [sessionId])
 
       useEffect(function () {
@@ -911,8 +923,16 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
         if (now - lastPushRef.current >= SAMPLE_FLOOR_MS) {
           lastPushRef.current = now
           setHistory(function (previous) {
-            const next = previous.concat([value])
-            return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next
+            const next = previous.concat([{ at: now, value: value }])
+            // Compact older samples while retaining the full time span.
+            const kept = next.length > HISTORY_LIMIT
+              ? next.filter(function (_, index) { return index % 2 === 0 || index === next.length - 1 }) : next
+            if (sessionId) {
+              speedHistories.delete(sessionId)
+              speedHistories.set(sessionId, kept)
+              if (speedHistories.size > 8) speedHistories.delete(speedHistories.keys().next().value)
+            }
+            return kept
           })
         }
         return undefined
@@ -966,28 +986,32 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
           h('small', null, props.caption)))
     }
 
+    /** Timestamped speed history; pauses remain visible as gaps between model steps. */
     function Sparkline(props) {
       const values = props.values
-      if (values.length < 2) {
-        return h('svg', { viewBox: '0 0 120 30', preserveAspectRatio: 'none', 'aria-hidden': true })
-      }
-      let max = 1
-      for (const value of values) if (value > max) max = value
-      const step = 120 / (values.length - 1)
+      const max = Math.max(10, Math.ceil(Math.max(0, ...values.map(row => row.value)) / 10) * 10)
+      const start = values.length ? values[0].at : 0
+      const span = values.length > 1 ? Math.max(1000, values[values.length - 1].at - start) : 1000
       let path = ''
-      values.forEach(function (value, index) {
-        const x = index * step
-        const y = 28 - (value / max) * 26
-        path += (index === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1)
+      values.forEach(function (row, index) {
+        const x = 40 + (row.at - start) / span * 548
+        const y = 92 - row.value / max * 76
+        const gap = index > 0 && row.at - values[index - 1].at > SAMPLE_WINDOW_MS
+        path += (index === 0 || gap ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1)
       })
-      const area = path + ' L120 30 L0 30 Z'
-      return h('svg', { viewBox: '0 0 120 30', preserveAspectRatio: 'none', 'aria-hidden': true },
-        h('defs', null,
-          h('linearGradient', { id: 'au-spark-grad', x1: '0', y1: '0', x2: '0', y2: '1' },
-            h('stop', { offset: '0', stopColor: 'var(--au-gold, #8a6a08)', stopOpacity: 0.28 }),
-            h('stop', { offset: '1', stopColor: 'var(--au-gold, #8a6a08)', stopOpacity: 0 }))),
-        h('path', { d: area, fill: 'url(#au-spark-grad)', stroke: 'none' }),
-        h('path', { d: path, fill: 'none', stroke: 'var(--au-gold, #8a6a08)', strokeWidth: 1.4, strokeLinejoin: 'round' }))
+      return h('svg', { viewBox: '0 0 600 116', role: 'img', 'aria-label': props.t('liveSpeed') },
+        h('title', null, props.t('liveSpeed') + ' · ' + props.t('timeAxis')),
+        [0, 0.5, 1].map(function (fraction) {
+          const y = 92 - fraction * 76
+          return h('g', { key: fraction },
+            h('line', { x1: 40, x2: 588, y1: y, y2: y, stroke: 'var(--au-cell-line)', strokeDasharray: fraction ? '3 5' : undefined }),
+            h('text', { x: 32, y: y + 3, textAnchor: 'end' }, String(Math.round(max * fraction))))
+        }),
+        h('path', { d: path, fill: 'none', stroke: 'var(--au-gold)', strokeWidth: 2, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+        values.length === 1 ? h('circle', { cx: 40, cy: 92 - values[0].value / max * 76, r: 3, fill: 'var(--au-gold)' }) : null,
+        h('text', { x: 40, y: 110 }, '0s'),
+        h('text', { x: 314, y: 110, textAnchor: 'middle' }, props.t('timeAxis') + ' · ' + formatDuration(span / 2)),
+        h('text', { x: 588, y: 110, textAnchor: 'end' }, formatDuration(span)))
     }
 
     function TelemetryRail(props) {
@@ -1053,7 +1077,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
       const shownSpeed = liveSpeed !== null ? liveSpeed : averageSpeed
       const speedEstimated = liveSpeed !== null
       const history = useMemo(function () {
-        return live.history.map(function (value) { return value * tokensPerChar })
+        return live.history.map(function (row) { return { at: row.at, value: row.value * tokensPerChar } })
       }, [live.history, tokensPerChar])
       const hasData = totalTokens > 0 || steps > 0 || usedTokens > 0
 
@@ -1140,8 +1164,8 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
                 })))
             : null,
           h('div', { className: 'au-chart' },
-            h(Sparkline, { values: history }),
-            h('small', null, t('liveSpeed') + ' · ' + t(history.length > 1 ? 'estimated' : 'waitingSpeed'))))
+            h(Sparkline, { values: history, t: t }),
+            h('small', null, t('liveSpeed') + ' · ' + t(history.length ? (running ? 'estimated' : 'recorded') : 'waitingSpeed'))))
         : null)
     }
 

@@ -15,12 +15,18 @@
 | 暗金主题 | 0.3.1 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
 | 引文速递 | 0.2.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
 | 选项领航 | 0.2.1 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
-| 知忆书阁 | 0.3.1 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
+| 知忆书阁 | 0.4.3 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
 | 远行之钥 | 0.3.2 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
 
 本表描述本次提交中的源码，旧克隆或旧 ZIP 不会自动更新。请在更新源码后按下方说明重启或刷新。
+
+## 本次更新（2026-11-01）
+
+- **知忆书阁 0.4.3**：聊天框入口改为带待审角标的书本图标；浮窗集中刷新与关闭操作，显示预算用量和条目详情，刷新后保留展开状态。
+- **暗金主题 0.3.1**：仪表详情增加带时间轴的速度记录，回答结束或切换会话后保留本页采样；刷新页面后清空。
+- **更新方式**：本次包含知忆书阁 Host 策略调整。更新源码后，停止原 DSH 进程并以原环境重新启动，再刷新网页；不要仅根据版本号判断是否需要重启。
 
 ## 获取源码
 
@@ -56,18 +62,11 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 ## 知忆书阁：从这里开始
 
-进入「设置 → 知忆书阁」，按资料用途选择入口：
+进入「设置 → 知忆书阁」，先在顶部确认书库位置，再通过「添加资料 → 导入文件夹」导入 Markdown。预览分类后确认导入，原始文件保持不变。Agent 身份描述它的定位与沟通习惯，Owner 与长期记忆保存你的资料和已确认偏好。
 
-| 你要添加什么 | 入口 | 存储方式 |
-| --- | --- | --- |
-| Axiom 的名称、定位、原则、表达习惯 | 设置 Agent 身份 | 唯一的 `identity.md` |
-| 你的称呼、背景和稳定偏好 | 我的资料（Owner） | 独立的 `long_term/owner-profile.md` |
-| 已确认的事实、偏好与工作习惯 | 添加长期记忆 | 自动生成 ID 的记忆条目 |
-| 已有 Owner / Memory Markdown | 导入 Markdown / 导入文件夹 | 预览分类后，生成书库格式的副本 |
+当前版本沿用 0.4.2 的单栏条目管理：选择分类、搜索或新建条目后，在同一个编辑区修改属性和正文，直接编辑正文，不再单列内容预览。作用域筛选与新建按钮集中在紧凑工具栏，属性按需展开，预算默认折叠；自动策略同时启用待审批的 Agent 建议。必要说明悬停或聚焦查看。
 
-不需要手动给 Markdown 写元数据，也不需要复制文件到插件目录。Axiom 的 `identity.md`、`principles.md`、`personality.md` 可在一次导入中合并；`user_profile.md`、`owner.md`、`owner-profile.md` 识别为 Owner 资料。项目和决策导入后默认停用，绑定项目目录后再启用。
-
-聊天框书本按钮只展示简洁的状态、预算和条目名称；鼠标悬停查看更多说明，历史与其他条目按需展开。「待发送」表示下一次请求的计划，不能当成已发送给模型。
+0.4.3 的聊天框书本图标带待审角标，浮窗集中提供刷新与关闭操作，展示状态、预算用量和条目名称；鼠标悬停查看更多说明，历史与其他条目按需展开。「待发送」表示下一次请求的计划，不能当成已发送给模型。
 
 自定义模式**仅替换 `harness:identity`**，保留部署人设前后缀、其他系统约束、工具、运行环境、项目指令、技能和历史。身份文档不会自动赋予 Axiom runtime 的任务控制或检索能力。
 
@@ -143,7 +142,7 @@ DSH-Personal-Plugin/
 | --- | --- |
 | 行囊宝匣 | `local-vault-host-test.mjs`、`local-vault-connection-test.mjs`、`local-vault-client-test.mjs` |
 | 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
-| 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
+| 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
 | 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局、保存流程、旧主机接口兼容、二维码显示与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |

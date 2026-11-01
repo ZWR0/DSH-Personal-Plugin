@@ -12,7 +12,7 @@ import * as lib from './library.js'
 import { previewImport, applyImport } from './importer.js'
 
 export const name = 'context-library'
-export const BUILD = '0.3.0-easy-library'
+export const BUILD = '0.4.0-compact-settings'
 
 /** Services this plugin cannot operate without. */
 export const inject = ['connection', 'profileContext', 'systemPrompt', 'tools', 'agents', 'workingDirectory']
@@ -103,6 +103,12 @@ export async function apply(ctx) {
   function bump() {
     revision += 1
     planCache.clear()
+  }
+
+  function suggestionsEnabled() {
+    const current = settingsNow()
+    // The automatic strategy replaces the former independent suggestions toggle.
+    return current.enabled && current.strategy === 'auto'
   }
 
   function serial(task) {
@@ -283,7 +289,7 @@ export async function apply(ctx) {
   ctx.effect(() => ctx.systemPrompt.section({
     name: 'tool:context-library',
     order: ctx.systemPrompt.getSectionOrder('TOOL_SESSION_QUERY') + 10,
-    text: () => settingsNow().suggestions ? GUIDANCE : '',
+    text: () => suggestionsEnabled() ? GUIDANCE : '',
   }), 'context-library: guidance section')
 
   ctx.effect(() => ctx.on('agent/created', payload => { attachCustom(payload?.agent) }), 'context-library: attach persona')
@@ -408,8 +414,9 @@ export async function apply(ctx) {
       required: ['kind', 'type', 'reason', 'evidence'],
     },
     output: PROPOSE_OUTPUT,
-    when: () => settingsNow().suggestions === true,
+    when: suggestionsEnabled,
     async execute(args, exec) {
+      if (!suggestionsEnabled()) throw new Error('自动建议未启用，请先选择自动加载策略。')
       const input = assertObject(args, '参数')
       const sessionId = exec?.agent?.id ?? ''
       const result = await lib.createProposal({
@@ -673,7 +680,11 @@ export async function apply(ctx) {
         assertObject(payload, 'payload')
         return serial(async () => {
           const previousRoot = lib.libraryRoot(profileDir, current)
-          const result = await lib.saveSettings(profileDir, payload)
+          const result = await lib.saveSettings(profileDir, {
+            ...payload,
+            ...(['auto', 'catalog', 'off'].includes(payload.strategy)
+              ? { suggestions: payload.strategy === 'auto' } : {}),
+          })
           settings = result.settings
           settingsRaw = JSON.stringify(settings)
           settingsWarning = null

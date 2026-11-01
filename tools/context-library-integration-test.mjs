@@ -240,6 +240,14 @@ try {
 
   const proposeTool = tools.get('context_library_propose')
   assert.ok(proposeTool !== undefined)
+  const catalogSettings = await value('saveSettings', { strategy: 'catalog', suggestions: true })
+  assert.equal(catalogSettings.settings.suggestions, false)
+  await assert.rejects(() => proposeTool.execute({}, { agent: agentA }), /自动建议未启用/)
+  const offSettings = await value('saveSettings', { strategy: 'off' })
+  assert.equal(offSettings.settings.suggestions, false)
+  const autoSettings = await value('saveSettings', { strategy: 'auto', suggestions: false })
+  assert.equal(autoSettings.settings.suggestions, true)
+  ok('automatic strategy owns suggestions; catalog and off reject stale proposal calls')
   const proposal = await proposeTool.execute({
     kind: 'create', type: 'long_term', title: 'Review preference',
     body: 'PENDING-BODY-MUST-NOT-LEAK', scope: 'global', enabled: true,
