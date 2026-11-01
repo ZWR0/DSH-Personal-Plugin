@@ -1,6 +1,6 @@
 # 可选 Windows Tailscale HTTPS 启动器
 
-从插件仓库根目录运行 `start-dsh-web.bat -HarnessRoot "<DSH源码绝对路径>"`，或通过 `DSH_SOURCE` 指定源码目录。保持原来的 DSH_HOME；不把实际 Token 写入脚本。
+从插件仓库根目录运行 `.\vpn-launcher\start-dsh-web.bat -HarnessRoot "<DSH源码绝对路径>"`，或通过 `DSH_SOURCE` 指定源码目录。保持原来的 DSH_HOME；不把实际 Token 写入脚本。
 
 先用 `-CheckOnly` 只读检查 Tailscale 状态和 Serve 配置。启动需要本机已安装 Tailscale、pnpm、Node 和完成依赖安装的 DSH checkout；首次可能需要开通 MagicDNS/HTTPS。启动器保持前台，Ctrl+C 停止 DSH；Serve 的后台配置会保留。
 

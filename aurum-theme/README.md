@@ -1,6 +1,6 @@
-# 暗金主题 · Aurum Theme
+# 暗金主题
 
-`@local/dsh-aurum-theme` · **0.3.0** · Web 客户端插件
+`@local/dsh-aurum-theme` · **0.3.1** · Web 客户端插件
 
 提供可开关的暗金主题、会话仪表条、回答概览和标题目录。
 原「暗金仪表」（`@local/dsh-aurum-telemetry`）已并入本包，独立 bundle 不再安装。

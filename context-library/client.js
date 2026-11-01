@@ -35,7 +35,7 @@ window.__ModuleLoader__.load({
       quickMemoryBody: '## 需要长期记住的事实或偏好\n\n', advanced: '高级设置', simpleHint: '身份写 Agent；我的资料写你自己；长期记忆写已确认的事实和偏好。',
       nav: '知忆书阁',
       label: '知忆书阁',
-      title: '知忆书阁 · 自定义上下文',
+      title: '知忆书阁',
       subtitle: '维护身份、项目、决策与长期记忆，在每次模型请求前按预算加载。Agent 只能提出修订，写入必须由你批准。',
 
       buildInfo: '界面 {client} · 后端 {host}',
@@ -262,7 +262,7 @@ window.__ModuleLoader__.load({
       quickMemoryBody: '## Confirmed facts or preferences to remember\n\n', advanced: 'Advanced settings', simpleHint: 'Identity describes the agent; Owner describes you; memory contains confirmed facts and preferences.',
       nav: 'Context Library',
       label: 'Context Library',
-      title: 'Context Library · Custom Context',
+      title: 'Context Library',
       subtitle: 'Maintain identity, projects, decisions, and long-term memory; load a bounded selection before each request. Agents may only propose revisions — you approve every write.',
 
       buildInfo: 'Client {client} · Host {host}',

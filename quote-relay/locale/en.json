@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Relay · Quote Selection",
+    "title": "Quote Relay",
     "description": "Select assistant reply text and add a native quote card while preserving your draft. Supports short selections, preview and length warnings; older DSH versions use Markdown quotes."
   }
 }

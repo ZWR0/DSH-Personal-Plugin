@@ -1,6 +1,6 @@
-# 知忆书阁 · 自定义上下文
+# 知忆书阁
 
-`@local/dsh-context-library` · **0.3.0** · Host + Web 客户端
+`@local/dsh-context-library` · **0.3.1** · Host + Web 客户端
 
 维护 Agent 身份、Owner 资料、项目、决策和长期记忆，在模型请求前按预算加载。日常通过界面编辑或导入 Markdown；不需要手动整理目录或编写元数据。Agent 可以提出记忆修订，须经你批准才进入正式书库。
 

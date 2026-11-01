@@ -136,7 +136,7 @@ export function lifecycleDisposer(agent) {
   const label = `agentLoop.scope(${agent.id})`
   const matches = [...(fiber?._disposables ?? [])].filter(dispose =>
     Object.getOwnPropertySymbols(dispose).some(key => dispose[key]?.label === label))
-  if (matches.length !== 1) throw new Error('当前 DSH 版本无法安全释放此会话，请升级清道夫适配后重试。')
+  if (matches.length !== 1) throw new Error('当前 DSH 版本无法安全释放此会话，请升级会话清道适配后重试。')
   return matches[0]
 }
 

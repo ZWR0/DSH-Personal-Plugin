@@ -1,26 +1,26 @@
 # 暗金工坊 · DSH Web UI 本地插件套件
 
-本地开发版包含 **7 个插件**；[GitHub 仓库](https://github.com/ZWR0/DSH-Personal-Plugin)现已发布 **7 个插件**。本 README 同时说明本地开发状态与已发布状态，安装时以实际下载目录中的 `package.json` 为准。
+本仓库包含 **7 个 DSH 插件**，覆盖本地插件管理、会话清理、主题、引用、提问、上下文和远程登录。安装时以所下载目录中的 `package.json` 为准。
 
-版本核对日期：**2026-11-01**。清道夫本地为 0.4.0（支持撤回），GitHub 为 0.3.0（立即永久删除）；远行之钥本地为 0.3.0（支持扫码登录），GitHub 为 0.2.1（复制登录链接）。其余五个插件版本一致。仓库另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
+版本核对日期：**2026-11-01**。插件统一使用四字中文名，名称不附加功能或英文后缀。包名、插件 ID 和配置路径保持兼容。当前版本见下表。仓库另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
 
 插件使用 `@local/*` 包名，安装在 DSH profile 中。其余六个插件不直接修改官方包；远行之钥依赖匹配的 DSH 认证层扩展，仓库提供独立兼容补丁，不能只复制界面插件就获得固定 Token 能力。
 
 ## 插件一览
 
-| 插件 | 本地 / GitHub 版本 | 包名 / 目录 | 用途 |
+| 插件 | 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
-| 行囊 | 0.3.1 | `@local/dsh-local-vault` · [local-vault](local-vault/) | 扫描本机插件目录，批量安装选中项 |
-| 清道夫 | 0.4.0 / 0.3.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/) | 删除已停止的会话；短时撤回仅本地 0.4.0 支持 |
-| 暗金主题 | 0.3.0 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
-| 引文速递 | 0.2.0 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/) | 将回复中的选中文本插入输入框引用卡片 |
-| 选项领航 | 0.2.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
-| 知忆书阁 | 0.3.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 远行之钥 | 0.3.0 / 0.2.1 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 启动 Token、复制登录链接；扫码登录仅本地 0.3.0 支持 |
+| 行囊宝匣 | 0.5.3 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 扫描本机插件目录，批量安装选中项 |
+| 会话清道 | 0.3.1 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 立即永久删除已停止的会话 |
+| 暗金主题 | 0.3.1 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
+| 引文速递 | 0.2.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
+| 选项领航 | 0.2.1 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
+| 知忆书阁 | 0.3.1 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
+| 远行之钥 | 0.3.2 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
 
-版本栏仅有一个版本号时，表示本地与 GitHub 的 `package.json` 版本一致，不代表逐文件内容完全相同。通过克隆或 ZIP 安装的用户获得 GitHub 版本，不能直接使用仅本地版本具备的功能。
+本表描述本次提交中的源码，旧克隆或旧 ZIP 不会自动更新。请在更新源码后按下方说明重启或刷新。
 
 ## 获取源码
 
@@ -34,8 +34,8 @@ cd DSH-Personal-Plugin
 ## 安装与更新
 
 1. 首次使用时，在 DSH 原生插件页安装源码目录下的 `local-vault` 文件夹。
-2. 重启 DSH 并刷新网页，进入「插件 → 行囊 → 目录安装」。
-3. 选择源码根目录（本地工作区为 `dsh-ui-suite`，克隆后通常为 `DSH-Personal-Plugin`），检查扫描结果，点击「一键安装选中项」。
+2. 重启 DSH 并刷新网页，进入「插件 → 行囊宝匣 → 目录安装」。
+3. 选择源码根目录（克隆后通常为 `DSH-Personal-Plugin`），检查扫描结果，点击「一键安装选中项」。
 4. 按安装结果提示完成重启或刷新。也可以通过原生插件页分别安装需要的插件目录。
 
 通过本地目录链接安装时，profile 会引用源码，无需把源码再次复制到 profile。链接安装并不代表运行进程会自动重载所有修改：
@@ -75,17 +75,19 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 ## 其他插件
 
-### 行囊
+### 行囊宝匣
 
-选择 **DSH Host 所在设备** 的插件总目录后自动保存并扫描。根目录及下两级中的合法 bundle 可被识别；不进入目录链接、隐藏目录和 `node_modules`。已安装项跳过，同名来源冲突时显示原因。配置保存在 profile 的 `local-vault.json`。
+0.5.3 将“选择可卸载项 / 清空选择”合并为一个随选择状态切换的按钮。来源与插件详情可展开查看；按钮提供轻阴影、悬浮与按压反馈，支持键盘焦点及减少动态效果偏好。批量安装与卸载显示进度条、已处理数量及当前插件；进度按插件数量计算。已安装列表支持多选、二次确认卸载和逐项结果，失败项保留选择以便重试。批量卸载排除官方、不可移除项和行囊宝匣自身；离开页面后不再启动后续卸载，已经开始的操作会继续。
+
+选择 **DSH Host 所在设备** 的插件总目录后自动保存并扫描。根目录及下两级中的合法 bundle 可被识别；不进入目录链接、隐藏目录和 `node_modules`。有效的已安装项跳过，同名来源冲突时显示原因。支持手动输入 Host 上的绝对路径；没有原生文件夹选择能力时也可点击「保存目录并扫描」。旧目录不可用时保留路径并提示重新设置。
+
+移动插件目录后，输入新总目录并保存扫描，选中「待迁移」项后一键安装：仅对旧本地来源已不存在、包名一致且可移除的插件，自动移除旧安装记录并安装新来源，保留启停状态；有效来源和官方插件不迁移。失败后重新扫描重试，恢复所需启停状态保存在 profile 的 `local-vault-recovery.json`。不删除磁盘插件文件。行囊宝匣不迁移自身：若行囊宝匣已无法启动，请先在原生插件页移除旧行囊宝匣记录、安装新目录的 `local-vault` 并重启，再批量处理其他插件。配置保存在 profile 的 `local-vault.json`。
 
 安装调用原生 PluginManager，逐项显示结果；失败不阻断其他项，也不自动批准安装脚本。离开页面后不再开始下一项，已开始的安装仍可能完成。
 
-### 清道夫
+### 会话清道
 
-**本地 0.4.0：**会话「… → 删除会话」会立即从列表移除会话，无需确认。删除后的提示浮窗提供 **8 秒「撤回」**入口，点击后恢复并打开原会话。运行中的会话禁止删除；已停止的当前会话可以直接删除。服务器短暂保留恢复副本以容纳网络延迟，30 秒后清理；关闭提示不会撤回删除。失败时显示原因。
-
-**GitHub 已发布的 0.3.0：删除立即永久生效，没有撤回入口或回收站。** 安装前请核对版本，不能按本地 0.4.0 的行为预期使用旧版。
+在会话菜单中点击“删除会话”立即永久删除，无需确认，也没有撤回或回收站。运行中的会话禁止删除；已停止的当前会话可删除，随后刷新列表并切换会话。删除失败时显示原因。0.3.1 统一显示名称，保留现有删除行为。
 
 当前实现适配 DSH 的 Agent 生命周期和 JSONL 会话目录，仅支持匹配 `DSH_HOME/sessions` 的存储布局。上游内部结构变化或路径校验失败时拒绝删除。验证脚本只操作临时会话。
 
@@ -103,9 +105,9 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 ### 远行之钥
 
-在「插件 → 远行之钥」管理固定 DSH 登录 Token，保存远程基础地址并复制登录链接。固定 Token 由 DSH_HOME 的凭据库保存；轮换或撤销会使旧链接和认证 Cookie 失效，`DSH_WEB_TOKEN` 环境变量优先于界面设置。插件保存地址，不自动修改 Tailscale、代理或防火墙。
+在「插件 → 远行之钥」管理固定 DSH 登录 Token，保存远程基础地址并通过手机扫码登录。固定 Token 由 DSH_HOME 的凭据库保存；轮换或撤销会使旧链接和认证 Cookie 失效，`DSH_WEB_TOKEN` 环境变量优先于界面设置。插件保存地址，不自动修改 Tailscale、代理或防火墙。
 
-**仅本地 0.3.0：**配置 Token 并保存地址后，可点击「显示登录二维码」，在浏览器本地生成登录二维码供手机或平板扫码，不调用第三方二维码服务。隐藏二维码、修改地址、更新或撤销 Token、刷新状态或切到后台时会清除二维码。扫码设备仍需具备可达的网络路径；二维码包含登录凭据，请勿公开分享。**GitHub 0.2.1 尚无二维码入口，请使用「复制登录链接」。**
+**0.3.2：**连接状态改为简洁信息栏，远程地址独占一行，移除重启要求和固定 Token 安全提示卡片。配置 Token 并保存地址后，可点击「显示登录二维码」，通过已有 `/link` 接口获取链接，在浏览器本地生成登录二维码供手机或平板扫码，不调用第三方二维码服务，也不依赖新增 `/qr` 接口（修复 HTTP 404）。隐藏二维码、修改地址、更新或撤销 Token、刷新状态或切到后台时会清除二维码。扫码设备仍需具备可达的网络路径；二维码包含登录凭据，请勿公开分享。
 
 **安装前先阅读 [认证兼容补丁](patches/README.md)。** 已验证基线为 DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；原版缺少相关 Connection 接口时，仅安装插件无法工作。Windows 可选 [Tailscale HTTPS 启动器](vpn-launcher/README.md) 通过参数指定源码目录，不包含本机凭据。
 
@@ -114,7 +116,7 @@ node --import tsx/esm apps/cli/src/bin.ts web
 ## 工作区与迁移
 
 ```text
-dsh-ui-suite/
+DSH-Personal-Plugin/
 ├─ local-vault/
 ├─ session-reaper/
 ├─ aurum-theme/
@@ -135,16 +137,16 @@ dsh-ui-suite/
 
 远程访问设置插件使用独立的加载 ID `local-remote-access-settings`，保留 DSH 内置 `remote-access` 权限服务。两者不能使用相同 ID，否则内置服务会被覆盖，工作区、会话等 UI 插件将无法激活。
 
-以下命令均从源码根目录执行（本地为 `dsh-ui-suite`，克隆后为 `DSH-Personal-Plugin`）。部分脚本使用本机 `D:/deepseek-harness` 的依赖；浏览器测试还依赖 Edge。换设备后应先检查脚本中的绝对路径。文档更新本身不需要启动服务或重跑所有测试。
+以下命令均从源码根目录执行（`DSH-Personal-Plugin`）。部分脚本使用本机 `D:/deepseek-harness` 的依赖；浏览器测试还依赖 Edge。换设备后应先检查脚本中的绝对路径。文档更新本身不需要启动服务或重跑所有测试。
 
 | 插件 | 测试脚本（位于 `tools/`） |
 | --- | --- |
-| 行囊 | `local-vault-host-test.mjs`、`local-vault-connection-test.mjs`、`local-vault-client-test.mjs` |
-| 清道夫 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
+| 行囊宝匣 | `local-vault-host-test.mjs`、`local-vault-connection-test.mjs`、`local-vault-client-test.mjs` |
+| 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
 | 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
-| 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局与保存流程；本地 0.3.0 另含二维码解码与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |
+| 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局、保存流程、旧主机接口兼容、二维码显示与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |
 
 例如：
 
@@ -158,8 +160,8 @@ node tools/context-library-client-test.mjs
 
 ## 发布范围与同步
 
-GitHub 只包含已发布插件源码、文档、回归测试、通用模板及仓库内已有启动文件。个人 Owner 档案、真实 Memory、会话、凭据、运行日志、截图和本机认证修复脚本不随插件上传。
+仓库包含插件源码、文档、回归测试、通用模板及启动文件。个人 Owner 档案、真实 Memory、会话、凭据、运行日志、截图和本机认证修复脚本不随插件上传。
 
-README 的更新与插件代码发布分别进行。新增插件或新版功能只有在对应源码、依赖和测试同步后，才会列为仓库可安装版本。上述本地 / GitHub 差异为本次发布核对结果，后续发布以仓库文件为准。
+文档、版本信息与对应源码一起同步。插件功能更新后按需递增版本号；仅整理文档不额外增加插件版本。
 
 使用、修改与分发遵循仓库的 [MIT License](https://github.com/ZWR0/DSH-Personal-Plugin/blob/main/LICENSE)。

@@ -1,11 +1,10 @@
 /**
- * Client half of 行囊 · Local Plugin Vault.
+ * Client half of 行囊宝匣.
  *
  * A read/management view over the profile's `pluginManager` Remote focused on
  * locally authored bundles (`@local/*`, or installed from a filesystem path).
  * It never invents install machinery: enable/disable/remove call the same Host
- * operations the Plugins page calls, and the migration manifest is plain text
- * the person can carry to another device.
+ * operations the Plugins page calls.
  */
 window.__ModuleLoader__.load({
   id: '@local/dsh-local-vault',
@@ -17,6 +16,7 @@ window.__ModuleLoader__.load({
     const NS = 'localVault'
 
     const zh = {
+      help: '使用说明', selectVisible: '选择可卸载项', clearSelection: '清空选择', uninstall: '卸载选中（{count}）', confirmBatch: '确认卸载（{count}）', removing: '正在卸载', removed: '已卸载', removeFailed: '卸载失败', batchDone: '已完成', results: '处理结果',
       buildBlocked: '安装脚本需要在原生插件管理页单独处理',
       changeOverridden: '已安装，但启用状态被更高优先级配置覆盖',
       chooseDirectory: "选择插件文件夹",
@@ -31,6 +31,7 @@ window.__ModuleLoader__.load({
       scanEmpty: "此目录未找到可安装的 DSH bundle。",
       scanFirst: "点击文件夹按钮选择目录，自动保存并扫描，之后可直接安装选中插件。",
       ready: "待安装",
+      repair: '待迁移 · 保留启停状态',
       installed: "已安装 · 跳过",
       conflict: "同名冲突",
       installing: "安装中",
@@ -42,12 +43,13 @@ window.__ModuleLoader__.load({
       restartHint: "部分插件需要重启 dsh 后生效。",
       dirtyDirectory: "目录已修改，请保存并扫描后再安装。",
       scanWarnings: "扫描提示",
-      hostHint: "若提示 HTTP 404/405，请在「已安装」中查看行囊的启动异常详情。",
-      installNote: "已安装插件保留当前版本及启停状态；仅安装选中的新插件并启用。关闭此页后不再开始后续安装，已开始的安装会继续。",
+      pickerFallback: '此界面不支持文件夹选择，请在左侧输入 DSH 所在设备的绝对路径，然后点击「保存目录并扫描」。',
+      hostHint: "若提示 HTTP 404/405，请在「已安装」中查看行囊宝匣的启动异常详情。",
+      installNote: "有效的已安装插件会跳过；旧来源失效且新目录包名一致时，选中安装会自动移除旧记录并迁移，保留启停状态。迁移失败可重新扫描重试。关闭此页后不再开始后续安装，已开始的安装会继续。",
 
-      tab: '行囊',
-      title: '本地插件行囊',
-      subtitle: '保存本地插件目录，扫描并批量安装；集中管理与迁移个人插件。',
+      tab: '行囊宝匣',
+      title: '行囊宝匣',
+      subtitle: '扫描安装 · 批量管理 · 目录迁移',
       search: '搜索包名、路径或版本',
       refresh: '刷新',
       refreshTitle: '重新读取 profile 中的 bundle',
@@ -72,14 +74,6 @@ window.__ModuleLoader__.load({
       copySpec: '复制路径',
       copied: '已复制',
       copyFailed: '复制失败',
-      manifest: '迁移清单',
-      download: '下载 JSON',
-      manifestTitle: 'DSH 本地插件迁移清单',
-      manifestHint: '把插件目录复制到新设备，先安装行囊，再设置总目录并批量安装；清单用于核对版本与来源。',
-      steps: '恢复步骤',
-      step1: '把每个「来源」目录完整复制到新设备（保持可读）。',
-      step2: '新设备先安装「行囊」，再通过文件夹按钮选择插件总目录，扫描后一键安装选中项。',
-      step3: '重启后确认启用状态；本地 bundle 与官方包互不覆盖。',
       statBundles: '本地包',
       statEnabled: '启用中',
       statRows: '插件项',
@@ -89,6 +83,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
+      help: 'Instructions', selectVisible: 'Select removable', clearSelection: 'Clear selection', uninstall: 'Uninstall selected ({count})', confirmBatch: 'Confirm uninstall ({count})', removing: 'Uninstalling', removed: 'Uninstalled', removeFailed: 'Uninstall failed', batchDone: 'Finished', results: 'Results',
       buildBlocked: 'Handle build script permissions in the native Plugins page',
       changeOverridden: 'Installed, but a higher-priority configuration overrides activation',
       chooseDirectory: "Choose plugin folder",
@@ -103,6 +98,7 @@ window.__ModuleLoader__.load({
       scanEmpty: "No installable DSH bundles found here.",
       scanFirst: "Choose a folder to save and scan it, then install selected plugins.",
       ready: "Ready",
+      repair: "Relocate · preserve enablement",
       installed: "Installed · skipped",
       conflict: "Duplicate name",
       installing: "Installing",
@@ -114,8 +110,9 @@ window.__ModuleLoader__.load({
       restartHint: "Some plugins require restarting DSH.",
       dirtyDirectory: "Directory changed. Save and scan before installing.",
       scanWarnings: "Scan notes",
+      pickerFallback: "Folder picker unavailable. Enter an absolute path on the DSH host and save to scan.",
       hostHint: "For HTTP 404/405, inspect Vault startup errors in Installed plugins.",
-      installNote: "Existing versions and enablement stay unchanged. Selected new plugins are installed and enabled. Leaving this tab stops subsequent installs; an install already started continues.",
+      installNote: "Valid installations are skipped. Selected bundles with missing local sources are removed and reinstalled from the new directory with enablement preserved. Rescan to retry failures. Leaving this tab stops subsequent installs; an install already started continues.",
 
       tab: 'Vault',
       title: 'Local Plugin Vault',
@@ -144,14 +141,6 @@ window.__ModuleLoader__.load({
       copySpec: 'Copy path',
       copied: 'Copied',
       copyFailed: 'Copy failed',
-      manifest: 'Migration manifest',
-      download: 'Download JSON',
-      manifestTitle: 'DSH local plugin migration manifest',
-      manifestHint: 'Copy your plugin directories to the new device, install Vault first, then set the parent directory and install in bulk. Use the manifest to compare versions and sources.',
-      steps: 'Restore steps',
-      step1: 'Copy every Source directory to the new device, keeping it readable.',
-      step2: 'Install Vault on the new device first, then save the parent plugin directory, scan, and install selected bundles.',
-      step3: 'After a restart, re-enable what you need. Local bundles never overwrite official packages.',
       statBundles: 'Local bundles',
       statEnabled: 'Enabled',
       statRows: 'Rows',
@@ -202,18 +191,6 @@ window.__ModuleLoader__.load({
       })
     }
 
-    function download(name, text) {
-      const blob = new Blob([text], { type: 'application/json;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = name
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      setTimeout(function () { URL.revokeObjectURL(url) }, 1000)
-    }
-
     const STYLE = [
       '.lv-root{display:flex;flex-direction:column;gap:16px;color:var(--dsw-alias-label-primary);}',
       '.lv-head{display:flex;flex-direction:column;gap:4px;}',
@@ -227,9 +204,23 @@ window.__ModuleLoader__.load({
       '.lv-search span{font-size:12px;color:#b8860b;}',
       '.lv-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:9px;',
       'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);',
-      'font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,background .15s,color .15s;}',
+      'font:inherit;font-size:12px;cursor:pointer;box-shadow:0 2px 5px rgba(30,24,8,.05),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease,color .16s ease;}',
       '.lv-btn:hover:not(:disabled){border-color:#b8860b;color:#b8860b;}',
-      '.lv-btn:disabled{opacity:.45;cursor:default;}',
+      '.lv-btn:disabled{opacity:.45;cursor:default;box-shadow:none;}',
+      '.lv-root .lv-btn:not(:disabled):active{transform:translateY(1px) scale(.98);box-shadow:inset 0 2px 4px rgba(30,24,8,.10)}',
+      '.lv-root .lv-btn:focus-visible,.lv-root input:focus-visible,.lv-root summary:focus-visible{outline:2px solid #b8860b;outline-offset:3px}',
+      '.lv-root .lv-btn[aria-pressed="true"]{border-color:rgba(184,134,11,.55);background:rgba(184,134,11,.10);box-shadow:inset 0 1px 3px rgba(100,72,8,.10)}',
+      '.lv-root input[type="checkbox"]{width:15px;height:15px;flex:none;accent-color:#b8860b;cursor:pointer;transition:transform .15s ease,filter .15s ease;filter:drop-shadow(0 1px 2px rgba(30,24,8,.10))}',
+      '.lv-root input[type="checkbox"]:not(:disabled):active{transform:scale(.9)}.lv-root input[type="checkbox"]:disabled{cursor:default;filter:none}',
+      '.lv-search:focus-within,.lv-directory-path:focus{border-color:rgba(184,134,11,.65);box-shadow:0 0 0 3px rgba(184,134,11,.08)}',
+      '.lv-search,.lv-directory-path{transition:border-color .16s ease,box-shadow .16s ease}.lv-root .lv-install{box-shadow:0 4px 16px rgba(30,24,8,.035)}',
+      '.lv-root .lv-toolbar{gap:8px 10px}.lv-root .lv-foot{padding-top:12px;gap:10px}.lv-root .lv-stats{flex-wrap:wrap}',
+      '.lv-root .lv-list{gap:6px}.lv-root .lv-card{border:1px solid transparent;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease}',
+      '.lv-root .lv-card:has(>input:checked){border-color:rgba(184,134,11,.25);background:rgba(184,134,11,.045)}',
+      '.lv-root .lv-progress-head{flex-wrap:wrap}.lv-root .lv-progress-head span{font-variant-numeric:tabular-nums}',
+      '@media(hover:hover){.lv-root .lv-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(100,72,8,.12)}.lv-root .lv-card:hover{border-color:rgba(184,134,11,.13);box-shadow:0 3px 12px rgba(30,24,8,.04)}}',
+      '@media(max-width:560px){.lv-root .lv-directory-path{flex-basis:100%;min-width:0}.lv-root .lv-directory .lv-btn{flex:1;justify-content:center}.lv-root .lv-actions{gap:8px}}',
+      '@media(prefers-reduced-motion:reduce){.lv-root .lv-btn,.lv-root input,.lv-root .lv-card,.lv-root .lv-search{transition:none!important;transform:none!important}}',
       '.lv-btn.primary{border-color:rgba(184,134,11,.55);background:linear-gradient(180deg,rgba(201,162,39,.16),rgba(184,134,11,.06));color:#b8860b;}',
       '.lv-btn.danger:hover:not(:disabled){border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary);}',
       '.lv-stats{display:flex;gap:22px;padding:12px 16px;border-radius:14px;border:1px solid rgba(184,134,11,.22);',
@@ -261,6 +252,13 @@ window.__ModuleLoader__.load({
       '.lv-hint{margin:0;flex:1;min-width:200px;font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary);}',
       '.lv-toast{font-size:11px;color:#b8860b;}',
       '@media (max-width:720px){.lv-actions{width:100%;justify-content:flex-start;}.lv-card{flex-wrap:wrap;}}',
+      '.lv-help{font-size:11px;color:var(--dsw-alias-label-secondary)}.lv-root details>summary{cursor:pointer}',
+      '.lv-progress{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:10px;background:rgba(184,134,11,.07);font-size:12px}',
+      '.lv-progress-head{display:flex;justify-content:space-between;gap:12px}.lv-progress progress{width:100%;height:10px;accent-color:#b8860b}',
+      '.lv-current{display:flex;align-items:center;gap:8px;overflow-wrap:anywhere}.lv-spinner{width:10px;height:10px;border:2px solid rgba(184,134,11,.2);border-top-color:#b8860b;border-radius:50%;animation:lv-spin .9s linear infinite;flex:none}',
+      '@keyframes lv-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.lv-spinner{animation:none}}',
+      '[data-state="installedNow"]{color:#23834d}[data-state="installFailed"]{color:var(--dsw-alias-state-error-primary)}[data-state="installing"]{color:#b8860b}',
+      '.lv-stats{padding:8px 12px;gap:18px}.lv-stat{flex-direction:row;align-items:center;gap:6px}.lv-stat b{font-size:15px}.lv-install-list details{font-size:11px}',
     ].join('')
 
     const INSTALL_STYLE = `
@@ -293,7 +291,7 @@ window.__ModuleLoader__.load({
       const dirty = !plan || directory.trim() !== plan.directory
       const adopt = function (result) {
         setPlan(result); setDirectory(result.directory)
-        setSelected(new Set(result.candidates.filter(function (item) { return item.status === 'ready' }).map(function (item) { return item.path })))
+        setSelected(new Set(result.candidates.filter(function (item) { return ['ready', 'repair'].includes(item.status) }).map(function (item) { return item.path })))
       }
       async function scan(save, pick = false) {
         if (lock.current) return
@@ -302,10 +300,10 @@ window.__ModuleLoader__.load({
         try {
           const chosen = pick ? await face.current.pickDirectory() : directory
           if (!alive.current || (pick && chosen === null)) return
-          setPhase('scan'); setSummary(null)
+          setPhase('scan'); setSummary(null); setProgress(null)
           const result = await face.current.vaultCall(save ? 'save' : 'scan', save ? { directory: chosen } : {})
           if (alive.current) adopt(result)
-        } catch (cause) { if (alive.current) { setError(errorText(cause)); if (!pick) setPlan(null) } }
+        } catch (cause) { if (alive.current) { setError(pick ? t('pickerFallback') : errorText(cause)); if (!pick) setPlan(null) } }
         finally { lock.current = false; if (alive.current) { setPhase('idle'); face.current.onBusyChange(false) } }
       }
       useEffect(function () {
@@ -317,7 +315,7 @@ window.__ModuleLoader__.load({
         if (lock.current || dirty || selected.size === 0 || props.externalBusy) return
         lock.current = true; setPhase('install'); setError(''); setSummary(null)
         face.current.onBusyChange(true)
-        const queue = plan.candidates.filter(function (item) { return selected.has(item.path) && ['ready', 'installFailed'].includes(item.status) })
+        const queue = plan.candidates.filter(function (item) { return selected.has(item.path) && ['ready', 'repair', 'installFailed'].includes(item.status) })
         const totals = { success: 0, skipped: 0, failed: 0, restart: false }
         const update = function (path, status, detail) {
           if (!alive.current) return
@@ -326,7 +324,7 @@ window.__ModuleLoader__.load({
         try {
           for (let index = 0; index < queue.length && alive.current; index++) {
             const item = queue[index]
-            setProgress({ done: index, total: queue.length })
+            setProgress({ done: index, total: queue.length, current: item.name })
             update(item.path, 'installing', '')
             try {
               const result = await face.current.vaultCall('install', { path: item.path })
@@ -339,7 +337,7 @@ window.__ModuleLoader__.load({
               update(item.path, result.skipped ? 'installed' : 'installedNow', result.application === 'restart-required' ? t('changeRestart') : result.application === 'overridden' ? t('changeOverridden') : '')
               if (alive.current) setSelected(function (old) { const next = new Set(old); next.delete(item.path); return next })
             } catch (cause) { totals.failed++; update(item.path, 'installFailed', errorText(cause).slice(0, 1800)) }
-            if (alive.current) setProgress({ done: index + 1, total: queue.length })
+            if (alive.current) setProgress({ done: index + 1, total: queue.length, current: item.name })
           }
           if (alive.current) { setSummary(totals); void face.current.onInstalled() }
         } finally {
@@ -347,27 +345,28 @@ window.__ModuleLoader__.load({
           if (alive.current) { setPhase('idle'); face.current.onBusyChange(false) }
         }
       }
-      const selectable = plan ? plan.candidates.filter(function (item) { return ['ready', 'installFailed'].includes(item.status) }) : []
+      const selectable = plan ? plan.candidates.filter(function (item) { return ['ready', 'repair', 'installFailed'].includes(item.status) }) : []
       return h('section', { className: 'lv-install', 'aria-label': t('directoryTitle'), 'aria-busy': busy },
         h('style', null, INSTALL_STYLE), h('h3', null, t('directoryTitle')),
-        h('p', { className: 'lv-hint' }, t('directoryHint')),
+
         h('div', { className: 'lv-directory' },
-          h('output', { className: 'lv-directory-path', 'aria-label': t('directoryPath') }, directory || t('scanFirst')),
+          h('input', { className: 'lv-directory-path', 'aria-label': t('directoryPath'), value: directory, placeholder: t('directoryPath'), disabled: blocked, onChange: function (event) { setDirectory(event.target.value) } }),
           h('button', { className: 'lv-btn', type: 'button', disabled: blocked,
             title: t('chooseDirectory'), 'aria-label': t('chooseDirectory'), onClick: function () { void scan(true, true) } },
             h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, 'aria-hidden': true },
               h('path', { d: 'M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v2M3 7h6l2 3h11l-3 10H4L2 9a2 2 0 0 1 1-2Z', strokeLinejoin: 'round' })),
             t('chooseDirectory')),
+          h('button', { className: 'lv-btn primary', type: 'button', disabled: blocked || !directory.trim(), onClick: function () { void scan(true) } }, t('saveScan')),
           h('button', { className: 'lv-btn', type: 'button', disabled: blocked, onClick: function () { void scan(false) } }, t('rescan'))),
         error ? h('div', { role: 'alert', className: 'lv-error' }, error, ' ', t('hostHint')) : null,
         dirty && plan?.directory ? h('p', { className: 'lv-hint' }, t('dirtyDirectory')) : null,
         plan && plan.candidates.length ? h('div', { className: 'lv-install-list' }, plan.candidates.map(function (item) {
-          const canSelect = ['ready', 'installFailed'].includes(item.status)
+          const canSelect = ['ready', 'repair', 'installFailed'].includes(item.status)
           return h('div', { className: 'lv-install-row', key: item.path },
             h('label', null, h('input', { type: 'checkbox', checked: selected.has(item.path), disabled: blocked || !canSelect,
               onChange: function (event) { const checked = event.target.checked; setSelected(function (old) { const next = new Set(old); if (checked) next.add(item.path); else next.delete(item.path); return next }) } }),
             h('span', { className: 'lv-body' }, h('span', { className: 'lv-name' }, item.name + (item.version ? ' · ' + item.version : '')),
-              h('small', { className: 'lv-path' }, item.path), h('small', null, t(item.status)),
+              h('small', { className: 'lv-tag', 'data-state': item.status }, t(item.status)), h('details', null, h('summary', null, t('spec')), h('small', { className: 'lv-path' }, item.path)),
               item.detail ? h('span', { className: item.status === 'installFailed' ? 'lv-error' : 'lv-hint' }, item.detail) : null)))
         })) : !busy ? h('p', { className: 'lv-hint' }, t(plan?.directory ? 'scanEmpty' : 'scanFirst')) : null,
         plan?.warnings.length ? h('details', null, h('summary', null, t('scanWarnings') + ' · ' + plan.warnings.length),
@@ -377,10 +376,18 @@ window.__ModuleLoader__.load({
             onClick: function () { setSelected(new Set(selectable.map(function (item) { return item.path }))) } }, t('selectReady')),
           h('button', { className: 'lv-btn primary', type: 'button', disabled: blocked || dirty || selected.size === 0,
             onClick: function () { void install() } }, t('installSelected', { count: selected.size }))),
+        progress ? h(BatchProgress, { progress, label: summary ? t('batchDone') : t('installing'), active: phase === 'install' }) : null,
         h('div', { role: 'status', 'aria-live': 'polite', className: 'lv-hint' },
           phase === 'pick' ? t('choosingDirectory') : phase === 'scan' ? t('scanBusy') : phase === 'install' && progress ? t('installProgress', progress) :
-            summary ? t('installDone', summary) + (summary.restart ? ' ' + t('restartHint') : '') : ''),
-        h('p', { className: 'lv-hint' }, t('installNote')))
+            summary ? t('installDone', summary) + (summary.restart ? ' ' + t('restartHint') : '') : ''))
+    }
+
+    function BatchProgress({ progress, label, active }) {
+      const percent = progress.total ? Math.round(progress.done / progress.total * 100) : 0
+      return h('div', { className: 'lv-progress', 'aria-live': 'polite' },
+        h('div', { className: 'lv-progress-head' }, h('strong', null, label), h('span', null, progress.done + ' / ' + progress.total + ' · ' + percent + '%')),
+        h('progress', { max: progress.total || 1, value: progress.done, 'aria-label': label }),
+        active && progress.current ? h('small', { className: 'lv-current' }, h('span', { className: 'lv-spinner', 'aria-hidden': true }), progress.current) : null)
     }
 
     function StyleTag() {
@@ -401,14 +408,14 @@ window.__ModuleLoader__.load({
       const rows = Array.isArray(bundle.rows) ? bundle.rows.length : 0
       const confirm = props.confirm
       return h('div', { className: 'lv-card' },
+        props.onSelect ? h('input', { type: 'checkbox', 'aria-label': bundle.name, checked: props.selected, disabled: busy || !props.canRemove, onChange: props.onSelect }) : null,
         h('div', { className: 'lv-icon' },
           icon
             ? h('img', { src: icon, alt: '', loading: 'lazy' })
             : h('div', { className: 'lv-glyph' }, (bundle.name || '?').replace('@local/', '').slice(0, 1).toUpperCase())),
         h('div', { className: 'lv-body' },
           h('div', { className: 'lv-name' }, title),
-          description ? h('p', { className: 'lv-path' }, description) : null,
-          h('p', { className: 'lv-path' }, specOf(bundle)),
+          h('details', { className: 'lv-help' }, h('summary', null, props.t('open')), description ? h('p', { className: 'lv-path' }, description) : null, h('p', { className: 'lv-path' }, specOf(bundle))),
           h('div', { className: 'lv-meta' },
             h('span', { className: personal ? 'lv-tag gold' : 'lv-tag' }, personal ? props.t('personal') : props.t('thirdParty')),
             h('span', { className: bundle.enabled ? 'lv-tag gold' : 'lv-tag off' }, bundle.enabled ? props.t('enabled') : props.t('disabled')),
@@ -443,6 +450,39 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState(null)
       const [confirmName, setConfirmName] = useState(null)
       const [copied, setCopied] = useState(null)
+      const [removeSelected, setRemoveSelected] = useState(new Set())
+      const [confirmBatch, setConfirmBatch] = useState(false)
+      const [removal, setRemoval] = useState(null)
+      const operationLock = useRef(false)
+      const mounted = useRef(true)
+      useEffect(function () { mounted.current = true; return function () { mounted.current = false } }, [])
+      const canRemove = bundle => bundle.removable === true && !bundle.official && bundle.name !== '@local/dsh-local-vault'
+      async function uninstallSelected() {
+        if (operationLock.current || busy !== null || bulkBusy) return
+        if (!confirmBatch) { setConfirmBatch(true); return }
+        const queue = state.bundles.filter(bundle => removeSelected.has(bundle.name) && canRemove(bundle))
+        if (!queue.length) return
+        operationLock.current = true; setBusy('batch-remove'); setConfirmBatch(false)
+        const results = []
+        let restart = false
+        try {
+          for (const bundle of queue) {
+            if (!mounted.current) break
+            setRemoval({ done: results.length, total: queue.length, current: bundle.name, results: [...results], active: true })
+            try {
+              const result = await faceRef.current.removeBundle(bundle.name)
+              if (!result || ['failed', 'cancelled'].includes(result.application)) throw new Error(result?.error?.diagnostic || result?.error?.message || result?.error?.code || result?.application || 'Uninstall failed')
+              restart ||= result.application === 'restart-required'
+              results.push({ name: bundle.name, status: 'removed' })
+              if (mounted.current) setRemoveSelected(old => { const next = new Set(old); next.delete(bundle.name); return next })
+            } catch (error) { results.push({ name: bundle.name, status: 'removeFailed', detail: errorText(error) }) }
+            if (mounted.current) setRemoval({ done: results.length, total: queue.length, results: [...results], active: true, restart })
+          }
+        } finally {
+          operationLock.current = false
+          if (mounted.current) { setBusy(null); setRemoval({ done: results.length, total: queue.length, results, active: false, restart }); void load() }
+        }
+      }
       const confirmTimer = useRef(null)
       // The inject face is a fresh object every render; keep the loader stable so
       // the mount effect cannot restart the read on every render.
@@ -481,33 +521,13 @@ window.__ModuleLoader__.load({
       const enabledCount = personal.filter(function (b) { return b.enabled }).length
       const rowCount = personal.reduce(function (sum, b) { return sum + (Array.isArray(b.rows) ? b.rows.length : 0) }, 0)
 
-      const manifest = useMemo(function () {
-        const lines = []
-        lines.push('# ' + t('manifestTitle'))
-        lines.push('')
-        lines.push(t('manifestHint'))
-        lines.push('')
-        personal.forEach(function (bundle) {
-          lines.push('- ' + bundle.name + (bundle.version ? '@' + bundle.version : '') + ' — ' + (bundle.enabled ? t('enabled') : t('disabled')))
-          lines.push('  - ' + t('spec') + ': ' + specOf(bundle))
-          if (Array.isArray(bundle.rows) && bundle.rows.length > 0) {
-            lines.push('  - rows: ' + bundle.rows.map(function (row) { return row.rowId }).join(', '))
-          }
-        })
-        lines.push('')
-        lines.push('## ' + t('steps'))
-        lines.push('1. ' + t('step1'))
-        lines.push('2. ' + t('step2'))
-        lines.push('3. ' + t('step3'))
-        return lines.join('\n')
-      }, [personal, t])
-
       const flash = function (message) {
         setNotice(message)
         setTimeout(function () { setNotice(function (current) { return current === message ? null : current }) }, 2400)
       }
 
       const toggle = function (bundle) {
+        if (operationLock.current || busy !== null || bulkBusy) return
         setBusy(bundle.name)
         setNotice(null)
         props.setBundleEnabled(bundle.name, !bundle.enabled).then(function (result) {
@@ -532,6 +552,7 @@ window.__ModuleLoader__.load({
       }
 
       const remove = function (bundle) {
+        if (operationLock.current || busy !== null || bulkBusy) return
         if (confirmName !== bundle.name) {
           setConfirmName(bundle.name)
           if (confirmTimer.current !== null) clearTimeout(confirmTimer.current)
@@ -583,6 +604,17 @@ window.__ModuleLoader__.load({
             'aria-pressed': showAll,
             onClick: function () { setShowAll(function (value) { return !value }) },
           }, t('showAll'))),
+        h('div', { className: 'lv-toolbar' },
+          h('button', { type: 'button', className: 'lv-btn', disabled: busy !== null || bulkBusy || (!removeSelected.size && !visible.some(canRemove)), onClick: function () {
+            setRemoveSelected(removeSelected.size ? new Set() : new Set(visible.filter(canRemove).map(b => b.name)))
+            setConfirmBatch(false)
+          } }, t(removeSelected.size ? 'clearSelection' : 'selectVisible')),
+          h('button', { className: 'lv-btn danger', disabled: busy !== null || bulkBusy || !removeSelected.size, onClick: function () { void uninstallSelected() } }, t(confirmBatch ? 'confirmBatch' : 'uninstall', { count: removeSelected.size })),
+          confirmBatch ? h('button', { className: 'lv-btn', onClick: function () { setConfirmBatch(false) } }, t('cancel')) : null),
+        removal ? h('section', { className: 'lv-install' },
+          h(BatchProgress, { progress: removal, label: t(removal.active ? 'removing' : 'batchDone'), active: removal.active }),
+          removal.restart ? h('p', { className: 'lv-hint' }, t('changeRestart')) : null,
+          h('details', { open: true }, h('summary', null, t('results')), removal.results.map(item => h('p', { key: item.name, className: item.detail ? 'lv-error' : 'lv-hint' }, t(item.status) + ' · ' + item.name, item.detail ? ' · ' + item.detail : '')))) : null,
         state.status === 'error'
           ? h('p', { className: 'lv-error' }, t('failed', { message: state.error || '' }))
           : null,
@@ -595,6 +627,8 @@ window.__ModuleLoader__.load({
                 key: bundle.name,
                 bundle: bundle,
                 personal: isPersonalBundle(bundle),
+                selected: removeSelected.has(bundle.name), canRemove: canRemove(bundle),
+                onSelect: function (event) { const checked = event.target.checked; setConfirmBatch(false); setRemoveSelected(old => { const next = new Set(old); if (checked) next.add(bundle.name); else next.delete(bundle.name); return next }) },
                 busy: busy !== null || bulkBusy,
                 confirm: confirmName === bundle.name,
                 copied: copied === bundle.name,
@@ -606,37 +640,9 @@ window.__ModuleLoader__.load({
                 onOpen: function (target) { props.openPackage(target.name) },
               })
             })),
-        h('div', { className: 'lv-foot' },
-          h('p', { className: 'lv-hint' }, t('manifestHint')),
-          notice ? h('span', { className: 'lv-toast', role: 'status' }, notice) : null,
-          copied ? h('span', { className: 'lv-toast', role: 'status' }, t('copied')) : null,
-          h('button', {
-            type: 'button', className: 'lv-btn primary',
-            onClick: function () {
-              copyText(manifest).then(function () { flash(t('copied')) }, function () { flash(t('copyFailed')) })
-            },
-          }, t('manifest')),
-          h('button', {
-            type: 'button', className: 'lv-btn',
-            onClick: function () {
-              const payload = {
-                kind: 'dsh-local-plugin-manifest',
-                version: 1,
-                generatedAt: new Date().toISOString(),
-                bundles: personal.map(function (bundle) {
-                  return {
-                    name: bundle.name,
-                    version: bundle.version,
-                    enabled: bundle.enabled,
-                    spec: specOf(bundle),
-                    rows: Array.isArray(bundle.rows) ? bundle.rows.map(function (row) { return row.rowId }) : [],
-                  }
-                }),
-                restore: [t('step1'), t('step2'), t('step3')],
-              }
-              download('dsh-local-bundles.json', JSON.stringify(payload, null, 2))
-            },
-          }, t('download'))))
+        notice || copied ? h('div', { className: 'lv-foot', role: 'status' },
+          notice ? h('span', { className: 'lv-toast' }, notice) : null,
+          copied ? h('span', { className: 'lv-toast' }, t('copied')) : null) : null)
     }
 
     function apply(ctx) {

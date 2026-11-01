@@ -2,6 +2,14 @@
 import { readFile, readdir, stat, realpath, mkdir, writeFile, rename } from 'node:fs/promises'
 import { resolve, join, relative, isAbsolute } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { fileURLToPath } from 'node:url'
+
+function localPath(spec) {
+  if (typeof spec !== 'string') return null
+  if (spec.startsWith('file://')) { try { return fileURLToPath(spec) } catch { return null } }
+  const path = spec.replace(/^(?:link:|file:)/, '')
+  return isAbsolute(path) ? path : null
+}
 
 // Exact Fetch routes share Connection's authenticated /api carrier.
 export const inject = ['connection', 'pluginManager', 'profileContext']
@@ -13,6 +21,7 @@ const message = error => error instanceof Error ? error.message : String(error)
 
 /** Root plus two directory levels; never follow directory symlinks/junctions. */
 export async function scanDirectory(directory, bundles = []) {
+  if (typeof directory === 'string') directory = directory.trim().replace(/^"(.*)"$/, '$1')
   if (typeof directory !== 'string' || !isAbsolute(directory.trim())) throw new Error('请输入 dsh 所在设备上的绝对目录路径')
   const root = await realpath(directory.trim())
   if (!(await stat(root)).isDirectory()) throw new Error('指定路径不是目录')
@@ -55,14 +64,33 @@ export async function scanDirectory(directory, bundles = []) {
   await walk(root, 0)
   const counts = new Map()
   for (const item of found) counts.set(item.name, (counts.get(item.name) || 0) + 1)
-  return { directory: root, warnings, candidates: found.map(item => {
+  return { directory: root, warnings, candidates: await Promise.all(found.map(async item => {
     const existing = bundles.find(bundle => bundle.name === item.name && (bundle.installed || bundle.official || bundle.availability === 'installation'))
+    const previous = localPath(existing?.source || existing?.installTarget?.spec)
+    if (counts.get(item.name) === 1 && existing?.installed && !existing.official && existing.removable === true && previous && item.name !== '@local/dsh-local-vault') {
+      try { await stat(previous) }
+      catch (error) {
+        if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return { ...item, status: 'repair', previous, enabled: existing.enabled, detail: '旧来源已失效：' + previous }
+        warnings.push({ path: previous, message: message(error) })
+      }
+    }
     return { ...item, status: counts.get(item.name) > 1 ? 'conflict' : existing ? 'installed' : 'ready' }
-  }) }
+  })) }
 }
 
 export function apply(ctx) {
   const settingsFile = join(ctx.profileContext.dir, 'local-vault.json')
+  const recoveryFile = join(ctx.profileContext.dir, 'local-vault-recovery.json')
+  async function recovery() {
+    try { return JSON.parse(await readFile(recoveryFile, 'utf8')) }
+    catch (error) { if (error.code === 'ENOENT') return {}; throw error }
+  }
+  async function saveRecovery(value) {
+    await mkdir(ctx.profileContext.dir, { recursive: true })
+    const temporary = recoveryFile + '.' + randomUUID() + '.tmp'
+    await writeFile(temporary, JSON.stringify(value), { flag: 'wx' })
+    await rename(temporary, recoveryFile)
+  }
   let locked = false
   async function settings() {
     try {
@@ -70,7 +98,7 @@ export function apply(ctx) {
       return { directory: typeof value.directory === 'string' ? value.directory : '' }
     } catch (error) {
       if (error.code === 'ENOENT') return { directory: '' }
-      throw new Error('读取行囊目录配置失败：' + message(error))
+      throw new Error('读取行囊宝匣目录配置失败：' + message(error))
     }
   }
   const scan = async directory => scanDirectory(directory, await ctx.pluginManager.listBundles())
@@ -79,10 +107,11 @@ export function apply(ctx) {
       if (endpoint === 'settings') return { ok: true, value: await settings() }
       if (endpoint === 'scan') {
         const { directory } = await settings()
-        return { ok: true, value: directory ? await scan(directory) : { directory: '', candidates: [], warnings: [] } }
+        try { return { ok: true, value: directory ? await scan(directory) : { directory: '', candidates: [], warnings: [] } } }
+        catch (error) { return { ok: true, value: { directory, candidates: [], warnings: [{ path: directory, message: '原目录不可用，请输入或选择新目录后保存扫描：' + message(error) }] } } }
       }
-      if (endpoint !== 'save' && endpoint !== 'install') throw new Error('未知的行囊操作')
-      if (locked) throw new Error('正在处理其他行囊操作，请稍后再试')
+      if (endpoint !== 'save' && endpoint !== 'install') throw new Error('未知的行囊宝匣操作')
+      if (locked) throw new Error('正在处理其他行囊宝匣操作，请稍后再试')
       locked = true
       try {
         signal?.throwIfAborted()
@@ -103,7 +132,22 @@ export function apply(ctx) {
         if (item.status === 'conflict') throw new Error('同名插件存在多个目录，请先解决冲突')
         if (item.status === 'installed') return { ok: true, value: { skipped: true, application: 'applied' } }
         signal?.throwIfAborted()
-        const installed = await ctx.pluginManager.installBundle(item.path, { enabled: true })
+        const pending = await recovery()
+        if (item.status === 'repair') {
+          pending[item.name] = { enabled: item.enabled === true }
+          await saveRecovery(pending)
+          const removed = await ctx.pluginManager.removeBundle(item.name)
+          if (['failed', 'cancelled'].includes(removed.application)) return { ok: true, value: removed }
+          // Complete an accepted migration even if its requesting page closes.
+        }
+        const installed = await ctx.pluginManager.installBundle(item.path, { enabled: pending[item.name]?.enabled ?? true })
+        if (item.status === 'repair' && ['failed', 'cancelled'].includes(installed.application)) {
+          throw new Error('旧失效记录已移除，但新目录安装未完成；请重新扫描并重试。' + message(installed.error?.diagnostic || installed.error?.code || installed.application))
+        }
+        if (!['failed', 'cancelled'].includes(installed.application) && pending[item.name]) {
+          delete pending[item.name]
+          await saveRecovery(pending)
+        }
         return { ok: true, value: installed }
       } finally { locked = false }
     } catch (error) {

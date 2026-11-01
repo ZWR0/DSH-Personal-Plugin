@@ -11,7 +11,6 @@
 import { randomBytes } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-
 export const name = 'remote-access'
 export const inject = ['connection', 'profileContext']
 

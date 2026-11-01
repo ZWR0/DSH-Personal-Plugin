@@ -122,7 +122,7 @@ try {
     window.__root = ReactDOM.createRoot(document.getElementById('root'))
     window.__root.render(React.createElement(window.__settings.component, { ...window.__settings.face, t: window.__t, close() {} }))
   })
-  await page.getByRole('heading', { name: /知忆书阁 · 自定义上下文/ }).waitFor()
+  await page.getByRole('heading', { name: /^知忆书阁$/ }).waitFor()
   await page.locator('details > summary').filter({ hasText: '高级设置' }).first().click()
   await page.getByText('D:\\lib\\context-library', { exact: true }).waitFor()
   await page.getByRole('button', { name: '我的资料（Owner）', exact: true }).click()

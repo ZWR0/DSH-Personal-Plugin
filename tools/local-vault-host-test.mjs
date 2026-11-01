@@ -25,7 +25,8 @@ try {
   await writeFile(join(root, 'bad-json', 'package.json'), '{')
   const external = join(temporary, 'external')
   await bundle(external, '@local/external')
-  await symlink(external, join(root, 'link'), process.platform === 'win32' ? 'junction' : 'dir')
+  try { await symlink(external, join(root, 'link'), process.platform === 'win32' ? 'junction' : 'dir') }
+  catch (error) { if (error.code !== 'EPERM') throw error; console.log('SKIP: sandbox does not permit directory junctions') }
   let existing = [{ name: '@local/old', installed: true, enabled: false }]
   const first = await scanDirectory(root, existing)
   assert.equal(first.candidates.length, 5)
@@ -41,7 +42,7 @@ try {
   let waitForInstall
   apply({ profileContext: { dir: profile }, effect(fn) { this.dispose = fn() },
     connection: { fetch: { register(route) { routes.set(route.path, route.fetch); return () => { disposeCount++ } } } },
-    pluginManager: { listBundles: async () => existing, installBundle: async (path, options) => {
+    pluginManager: { removeBundle: async name => { assert.equal(name, '@local/old'); return { application: 'applied' } }, listBundles: async () => existing, installBundle: async (path, options) => {
       installs.push({ path, options }); if (waitForInstall) await waitForInstall
       existing = [...existing, { name: '@local/new', installed: true }]
       return { changed: true, application: 'restart-required' }
@@ -71,6 +72,18 @@ try {
   assert.deepEqual(installs[0], { path: join(root, 'new'), options: { enabled: true } })
   assert.equal((await call('install', { path: join(root, 'new') })).value.skipped, true)
   assert.equal(installs.length, 1)
+  existing = [{ name: '@local/old', installed: true, enabled: false, removable: true, source: 'link:' + join(temporary, 'deleted-source') }]
+  assert.equal((await scanDirectory(root, existing)).candidates.find(item => item.name === '@local/old').status, 'repair')
+  existing[0].source = 'file:' + join(root, 'old')
+  assert.equal((await scanDirectory(root, existing)).candidates.find(item => item.name === '@local/old').status, 'installed')
+  existing[0].source = 'link:' + join(temporary, 'deleted-source')
+  waitForInstall = null
+  assert.equal((await call('install', { path: join(root, 'old') })).ok, true)
+  assert.deepEqual(installs.at(-1), { path: join(root, 'old'), options: { enabled: false } })
+  await writeFile(join(profile, 'local-vault.json'), JSON.stringify({ directory: join(temporary, 'gone') }))
+  const unavailable = await call('scan')
+  assert.equal(unavailable.ok, true)
+  assert.equal(unavailable.value.warnings.length, 1)
   console.log('VAULT HOST OK: discovery, scoped folders, validation, symlink exclusion, duplicate names, persisted directory, owner access, stale paths, skip installed, install lock')
 } finally {
   const prefix = join(tmpdir(), 'dsh-vault-test-')
