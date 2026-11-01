@@ -52,7 +52,9 @@ window.__ModuleLoader__.load({
       modelTool: '模型 / 工具耗时',
       liveSpeed: '速度记录 · tok/s',
       recorded: '已保留 · 估算',
-      timeAxis: '时间',
+      timeAxis: '累计运行时间',
+      turnLabel: '轮次',
+      interpolated: '最近三轮 · 估算 · 空档连线',
       perSecond: 'tok/s',
       estimated: '估算',
       waitingSpeed: '等待速度采样',
@@ -90,7 +92,9 @@ window.__ModuleLoader__.load({
       modelTool: 'Model / tool time',
       liveSpeed: 'Speed history · tok/s',
       recorded: 'Retained · estimated',
-      timeAxis: 'Time',
+      timeAxis: 'Cumulative run time',
+      turnLabel: 'Turn',
+      interpolated: 'Last three turns · estimated · gaps connected',
       perSecond: 'tok/s',
       estimated: 'est.',
       waitingSpeed: 'Waiting for speed samples',
@@ -544,6 +548,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
   max-height: 140px;
   display: block;
 }
+.au-speed-legend { justify-content: flex-end; padding: 3px 6px 0; }
 .au-chart text { fill: var(--dsw-alias-label-tertiary); font: 10px system-ui; }
 .au-toggle:focus-visible { outline: 2px solid var(--au-gold); outline-offset: 3px; }
 .au-chart small {
@@ -881,11 +886,13 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
      * Live output rate in characters/second from the growing streaming prefix.
      * Samples land per published chunk; the rolling window smooths bursts.
      */
-    function useLiveRate(partial, sessionId, running) {
+    function useLiveRate(partial, sessionId, running, turn) {
       const [rate, setRate] = useState(null)
       const [history, setHistory] = useState([])
       const samplesRef = useRef([])
       const lastPushRef = useRef(0)
+      const sampleTurnRef = useRef(null)
+      const clockRef = useRef({ elapsed: 0, started: null })
       const chars = running ? partialChars(partial) : null
 
       // History belongs to the session; transient gaps only reset the sampler.
@@ -893,8 +900,22 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
         samplesRef.current = []
         lastPushRef.current = 0
         setRate(null)
-        setHistory(speedHistories.get(sessionId) || [])
+        const saved = speedHistories.get(sessionId) || []
+        setHistory(saved)
+        sampleTurnRef.current = null
+        clockRef.current = { elapsed: saved.length ? saved[saved.length - 1].at : 0, started: null }
       }, [sessionId])
+
+      // Count only running intervals; tool/first-token waits inside a turn remain included.
+      useEffect(function () {
+        const clock = clockRef.current
+        const now = Date.now()
+        if (running && clock.started === null) clock.started = now
+        if (!running && clock.started !== null) {
+          clock.elapsed += Math.max(0, now - clock.started)
+          clock.started = null
+        }
+      }, [running, sessionId])
 
       useEffect(function () {
         if (chars === null) {
@@ -907,6 +928,11 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
         }
         const now = Date.now()
         const samples = samplesRef.current
+        if (sampleTurnRef.current !== turn) {
+          samples.length = 0
+          lastPushRef.current = 0
+          sampleTurnRef.current = turn
+        }
         // A new model step can replace the prefix without an intermediate null.
         if (samples.length && chars < samples[samples.length - 1].chars) {
           samples.length = 0
@@ -922,8 +948,12 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
         setRate(value)
         if (now - lastPushRef.current >= SAMPLE_FLOOR_MS) {
           lastPushRef.current = now
+          const clock = clockRef.current
+          const activeAt = clock.elapsed + (clock.started === null ? 0 : Math.max(0, now - clock.started))
           setHistory(function (previous) {
-            const next = previous.concat([{ at: now, value: value }])
+            const all = previous.concat([{ at: activeAt, value: value, turn: turn }])
+            const turns = Array.from(new Set(all.map(row => row.turn))).slice(-3)
+            const next = all.filter(row => turns.includes(row.turn))
             // Compact older samples while retaining the full time span.
             const kept = next.length > HISTORY_LIMIT
               ? next.filter(function (_, index) { return index % 2 === 0 || index === next.length - 1 }) : next
@@ -936,7 +966,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
           })
         }
         return undefined
-      }, [chars, sessionId])
+      }, [chars, sessionId, turn])
 
       return { rate: rate, history: history }
     }
@@ -986,32 +1016,45 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
           h('small', null, props.caption)))
     }
 
-    /** Timestamped speed history; pauses remain visible as gaps between model steps. */
+    /** Three chronological turns share a time axis and meet at their colour boundaries. */
     function Sparkline(props) {
       const values = props.values
+      const turns = Array.from(new Set(values.map(row => row.turn)))
+      const colors = ['var(--au-gold)', 'var(--au-seg-messages)', 'var(--au-seg-tools)']
       const max = Math.max(10, Math.ceil(Math.max(0, ...values.map(row => row.value)) / 10) * 10)
       const start = values.length ? values[0].at : 0
-      const span = values.length > 1 ? Math.max(1000, values[values.length - 1].at - start) : 1000
-      let path = ''
-      values.forEach(function (row, index) {
-        const x = 40 + (row.at - start) / span * 548
-        const y = 92 - row.value / max * 76
-        const gap = index > 0 && row.at - values[index - 1].at > SAMPLE_WINDOW_MS
-        path += (index === 0 || gap ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1)
-      })
-      return h('svg', { viewBox: '0 0 600 116', role: 'img', 'aria-label': props.t('liveSpeed') },
-        h('title', null, props.t('liveSpeed') + ' · ' + props.t('timeAxis')),
-        [0, 0.5, 1].map(function (fraction) {
-          const y = 92 - fraction * 76
-          return h('g', { key: fraction },
-            h('line', { x1: 40, x2: 588, y1: y, y2: y, stroke: 'var(--au-cell-line)', strokeDasharray: fraction ? '3 5' : undefined }),
-            h('text', { x: 32, y: y + 3, textAnchor: 'end' }, String(Math.round(max * fraction))))
-        }),
-        h('path', { d: path, fill: 'none', stroke: 'var(--au-gold)', strokeWidth: 2, strokeLinejoin: 'round', strokeLinecap: 'round' }),
-        values.length === 1 ? h('circle', { cx: 40, cy: 92 - values[0].value / max * 76, r: 3, fill: 'var(--au-gold)' }) : null,
-        h('text', { x: 40, y: 110 }, '0s'),
-        h('text', { x: 314, y: 110, textAnchor: 'middle' }, props.t('timeAxis') + ' · ' + formatDuration(span / 2)),
-        h('text', { x: 588, y: 110, textAnchor: 'end' }, formatDuration(span)))
+      const span = values.length > 1 ? Math.max(1, values[values.length - 1].at - start) : 1000
+      const x = row => 40 + (row.at - start) / span * 548
+      const y = row => 92 - row.value / max * 76
+      return h('div', null,
+        h('div', { className: 'au-context-legend au-speed-legend' }, turns.map(turn =>
+          h('span', { key: turn }, h('i', { style: { background: colors[((turn % 3) + 3) % 3] } }), props.t('turnLabel') + ' ' + (turn + 1)))),
+        h('svg', { viewBox: '0 0 600 116', role: 'img', 'aria-label': props.t('liveSpeed') },
+          h('title', null, props.t('interpolated')),
+          [0, 0.5, 1].map(function (fraction) {
+            const height = 92 - fraction * 76
+            return h('g', { key: fraction },
+              h('line', { x1: 40, x2: 588, y1: height, y2: height, stroke: 'var(--au-cell-line)', strokeDasharray: fraction ? '3 5' : undefined }),
+              h('text', { x: 32, y: height + 3, textAnchor: 'end' }, String(Math.round(max * fraction))))
+          }),
+          turns.map(function (turn, index) {
+            const rows = values.filter(row => row.turn === turn)
+            const firstIndex = values.indexOf(rows[0])
+            if (firstIndex > 0) rows.unshift(values[firstIndex - 1])
+            const path = rows.map((row, i) => (i ? 'L' : 'M') + x(row).toFixed(1) + ' ' + y(row).toFixed(1)).join(' ')
+            const color = colors[((turn % 3) + 3) % 3]
+            const gradient = 'au-speed-fill-' + index
+            return h('g', { key: turn },
+              h('defs', null, h('linearGradient', { id: gradient, x1: '0', y1: '0', x2: '0', y2: '1' },
+                h('stop', { offset: '0', stopColor: color, stopOpacity: 0.24 }),
+                h('stop', { offset: '1', stopColor: color, stopOpacity: 0.02 }))),
+              h('path', { className: 'au-speed-area', d: path + ' L' + x(rows[rows.length - 1]).toFixed(1) + ' 92 L' + x(rows[0]).toFixed(1) + ' 92 Z', fill: 'url(#' + gradient + ')' }),
+              h('path', { className: 'au-speed-line', d: path, fill: 'none', stroke: color, strokeWidth: 2, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+              rows.length === 1 ? h('circle', { cx: x(rows[0]), cy: y(rows[0]), r: 2.5, fill: color }) : null)
+          }),
+          h('text', { x: 40, y: 110 }, '0s'),
+          h('text', { x: 314, y: 110, textAnchor: 'middle' }, props.t('timeAxis') + ' · ' + formatDuration(span / 2)),
+          h('text', { x: 588, y: 110, textAnchor: 'end' }, formatDuration(span))))
     }
 
     function TelemetryRail(props) {
@@ -1025,7 +1068,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
       const nodes = props.useChat(function (snapshot) { return snapshot.legacy.nodes })
       const partial = props.useChat(function (snapshot) { return snapshot.legacy.partial })
       const [expanded, setExpanded] = useState(false)
-      const live = useLiveRate(partial, props.sessionId, running)
+      const live = useLiveRate(partial, props.sessionId, running, partial && typeof partial.turn === 'number' ? partial.turn : (stats ? Math.max(0, stats.turns - 1) : 0))
 
       const inputTokens = usage
         ? usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
@@ -1077,7 +1120,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
       const shownSpeed = liveSpeed !== null ? liveSpeed : averageSpeed
       const speedEstimated = liveSpeed !== null
       const history = useMemo(function () {
-        return live.history.map(function (row) { return { at: row.at, value: row.value * tokensPerChar } })
+        return live.history.map(function (row) { return { at: row.at, value: row.value * tokensPerChar, turn: row.turn } })
       }, [live.history, tokensPerChar])
       const hasData = totalTokens > 0 || steps > 0 || usedTokens > 0
 
@@ -1165,7 +1208,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
             : null,
           h('div', { className: 'au-chart' },
             h(Sparkline, { values: history, t: t }),
-            h('small', null, t('liveSpeed') + ' · ' + t(history.length ? (running ? 'estimated' : 'recorded') : 'waitingSpeed'))))
+            h('small', null, t('liveSpeed') + ' · ' + t(history.length ? 'interpolated' : 'waitingSpeed'))))
         : null)
     }
 
