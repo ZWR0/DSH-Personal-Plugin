@@ -36,7 +36,6 @@ window.__ModuleLoader__.load({
     const LAYOUTS = ['auto', 'phone', 'pad']
 
     const zh = {
-      summaryTitle: '本轮结果', summaryEmpty: '暂无已记录的回答摘要', summaryCompleted: '本轮正常结束', summaryFailed: '本轮失败', summaryStopped: '本轮已停止', summaryOther: '本轮结束（{reason}）', summaryUnknown: '尚无本轮结束记录', summaryFiles: '本轮交付 {n} 个文件', summaryExcerpt: '最后回答摘录',
       nav: '掌上行舟',
       pageTitle: '掌上行舟',
       pageHint: '任务在电脑上运行；这里只显示状态与接管入口。',
@@ -50,19 +49,13 @@ window.__ModuleLoader__.load({
       pendingCenter: '待处理中心', pendingMissing: '打开会话查看请求详情', reviewNeeded: '需要审阅',
       pushUnavailable: '后台推送尚需宿主支持，关闭网页或锁屏后不保证提醒。',
 
-      results: '成果', resultsTitle: '任务成果', resultsLoading: '正在读取成果记录…', resultsEmpty: '当前记录中没有交付文件或文件变更',
-      resultsHint: '默认显示最近 20 次交付 / 变更记录，可继续加载；文件可能已被修改或删除。',
-      resultsOlder: '加载更早记录', resultsRetry: '重新读取', resultsClose: '收起成果',
-      resultsUnsupported: '当前宿主没有提供会话事件读取能力，请进入会话查看成果。',
-      resultsFailure: '读取成果失败：{message}', resultsPartial: '有 {n} 条变更摘要无法读取，其余成果仍可查看。',
-      resultsPresented: '交付文件', resultsChanged: '变更文件', resultsPreview: '预览', resultsReview: '变更对比',
       compactHome: '默认进入', compactEnabled: '启用工作台', settingsHelp: '设置说明', remoteCompact: '地址与登录由远行之钥管理。',
       mobileHome: '手机默认打开掌上行舟', mobileHomeHint: '仅保存到此浏览器。触屏窄屏启动时进入工作台；保留会话深链接，不影响电脑。',
       mobileHomeFailed: '浏览器无法保存此设置，请检查存储权限。',
 
       filterAll: '全部', filterWaiting: '待处理', filterRunning: '运行中', filterUnread: '未查看',
       stateApproval: '需要授权', stateQuestion: '需要回答', stateAttention: '需要处理',
-      files: '文件', filesFailed: '文件入口不可用：{message}', filesUnsupported: '当前宿主未提供文件面板，请进入会话查看文件链接。',
+      files: '工作区文件', filesFailed: '文件入口不可用：{message}', filesUnsupported: '当前宿主未提供文件面板，请进入会话查看文件链接。',
       alerts: '动态', alertsEmpty: '暂无新动态', soundOn: '提示音已开', soundOff: '开启提示音', soundFailed: '此浏览器无法启用提示音',
       soundHint: '开启或点击试听会播放提示音。刷新后需在页面内操作以激活声音；无声时检查手机媒体音量。锁屏后不保证提醒。',
       soundLabel: '声音反馈', soundTest: '试听', soundTestEnable: '开启并试听', soundVolume: '提示音音量', soundMuted: '已静音', soundReady: '已激活', soundWaiting: '等待点击激活', soundBusy: '正在激活…', soundStorage: '声音设置无法保存，刷新后会恢复。',
@@ -94,7 +87,8 @@ window.__ModuleLoader__.load({
       stateRunning: '运行中',
       stateIdle: '空闲',
       stateUnread: '已结束（未查看）',
-      open: '打开',
+      handleRequest: '处理请求',
+      open: '进入会话',
       stopping: '请求停止中…',
       stopPending: '已请求停止，等待确认',
       stopped: '已停止',
@@ -144,7 +138,6 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
-      summaryTitle: 'Turn result', summaryEmpty: 'No recorded answer excerpt', summaryCompleted: 'Turn ended normally', summaryFailed: 'Turn failed', summaryStopped: 'Turn stopped', summaryOther: 'Turn ended ({reason})', summaryUnknown: 'No turn-end record yet', summaryFiles: '{n} files delivered this turn', summaryExcerpt: 'Last answer excerpt',
       nav: 'Pocket deck',
       pageTitle: 'Pocket deck',
       pageHint: 'Tasks keep running on the computer; this page only shows status and the way in.',
@@ -158,19 +151,13 @@ window.__ModuleLoader__.load({
       pendingCenter: 'Needs attention', pendingMissing: 'Open the conversation for request details', reviewNeeded: 'Review needed',
       pushUnavailable: 'Background push requires host support; alerts are not reliable while locked or the page is closed.',
 
-      results: 'Results', resultsTitle: 'Task results', resultsLoading: 'Loading recorded results…', resultsEmpty: 'No delivered files or changes in the current records',
-      resultsHint: 'Starts with the latest 20 delivery/change records; load more as needed. Files may have changed or been deleted.',
-      resultsOlder: 'Load older records', resultsRetry: 'Reload', resultsClose: 'Close results',
-      resultsUnsupported: 'This host does not expose session events. Open the conversation to see results.',
-      resultsFailure: 'Could not load results: {message}', resultsPartial: '{n} change summaries could not be loaded; other results remain available.',
-      resultsPresented: 'Delivered', resultsChanged: 'Changed', resultsPreview: 'Preview', resultsReview: 'Review changes',
       compactHome: 'Mobile home', compactEnabled: 'Workbench', settingsHelp: 'About these settings', remoteCompact: 'Address and sign-in are managed by Remote Key.',
       mobileHome: 'Open Pocket deck on mobile startup', mobileHomeHint: 'Saved only in this browser. Opens on narrow touch screens, preserves session deep links, and does not affect your computer.',
       mobileHomeFailed: 'This browser could not save the setting. Check storage permissions.',
 
       filterAll: 'All', filterWaiting: 'Needs you', filterRunning: 'Running', filterUnread: 'Unseen',
       stateApproval: 'Approval needed', stateQuestion: 'Answer needed', stateAttention: 'Needs attention',
-      files: 'Files', filesFailed: 'Files unavailable: {message}', filesUnsupported: 'This host has no files panel. Open the conversation to use file links.',
+      files: 'Workspace files', filesFailed: 'Files unavailable: {message}', filesUnsupported: 'This host has no files panel. Open the conversation to use file links.',
       alerts: 'Activity', alertsEmpty: 'No new activity', soundOn: 'Sound on', soundOff: 'Enable sound', soundFailed: 'Sound is unavailable in this browser',
       soundHint: 'Enable or test to hear a sample. After reloading, interact with the page to activate audio. Check media volume if silent. Sound is not reliable while locked.',
       soundLabel: 'Sound feedback', soundTest: 'Test', soundTestEnable: 'Enable & test', soundVolume: 'Alert volume', soundMuted: 'Muted', soundReady: 'Active', soundWaiting: 'Tap to activate', soundBusy: 'Activating…', soundStorage: 'Sound settings could not be saved and will reset on reload.',
@@ -202,7 +189,8 @@ window.__ModuleLoader__.load({
       stateRunning: 'Running',
       stateIdle: 'Idle',
       stateUnread: 'Finished (unseen)',
-      open: 'Open',
+      handleRequest: 'Handle request',
+      open: 'Open conversation',
       stopping: 'Requesting stop…',
       stopPending: 'Stop requested, awaiting confirmation',
       stopped: 'Stopped',
@@ -347,13 +335,15 @@ window.__ModuleLoader__.load({
       '.mdk-filemessage{font-size:12px;max-width:220px;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary,#62645e)}',
       '.mdk-launch{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:0;border-radius:8px;border:0;background:transparent;color:var(--dsw-alias-label-secondary);box-shadow:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.mdk-launch .mdk-icon{width:16px;height:16px}.mdk-launchbadge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;border-radius:99px;background:var(--dsw-alias-link,#866719);color:var(--dsw-alias-bg-layer-1,#fff);font:600 10px/16px system-ui;padding:0 4px;box-shadow:0 0 0 2px var(--dsw-alias-bg-base,#faf9f6)}.mdk-launch:focus-visible{outline:2px solid var(--dsw-alias-link,#866719);outline-offset:3px}.mdk-launch:active{filter:brightness(.92);background:var(--dsw-alias-bg-layer-2);box-shadow:none}',
       '@media(pointer:coarse){.mdk-launch{width:44px;height:44px;border-radius:13px}}@media(hover:hover){.mdk-launch:hover{border-color:var(--dsw-alias-link,#866719);background:var(--dsw-alias-bg-layer-2);box-shadow:none}}@media(prefers-reduced-motion:no-preference){.mdk-launch{transition:transform .16s ease,box-shadow .2s ease}.mdk-launch:active{transform:scale(.94)}}@media(max-width:600px){.mdk-launch{width:44px;height:44px;border-radius:13px}.mdk-events{margin-left:16px;margin-right:16px}.mdk-filters{padding-left:16px;padding-right:16px;flex-wrap:nowrap;gap:5px}.mdk-filters .mdk-choice{flex:1;min-width:0;justify-content:center;white-space:nowrap;font-size:12px;padding:0 7px;gap:4px}.mdk-filters .mdk-count{padding:1px 4px;font-size:10px}}',
-      '.mdk-results{margin:0 24px 16px;padding:16px;border:1px solid var(--mdk-line);border-radius:14px;background:var(--dsw-alias-bg-layer-1,#fff);box-shadow:var(--mdk-shadow);scroll-margin-top:110px;outline:none}.mdk-results:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:3px}.mdk-result{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--mdk-line)}.mdk-resulttext{flex:1 1 220px;min-width:0}.mdk-results>.mdk-rowacts{margin-top:12px}.mdk-result .mdk-mono{word-break:break-word}@media(max-width:600px){.mdk-results{margin:0 16px 12px;padding:14px}.mdk-rowwrap>.mdk-rowacts{flex-wrap:wrap;gap:5px}.mdk-rowwrap>.mdk-rowacts>.mdk-btn{padding:0 8px;gap:4px}}',
       '.mdk-soundrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.mdk-soundtitle{display:flex;align-items:center;gap:7px;flex:1;font-size:12px;min-width:140px}.mdk-soundtitle>.mdk-icon{color:var(--mdk-accent)}.mdk-soundstatus{color:var(--dsw-alias-label-secondary,#62645e);font-size:11px}.mdk-sound .mdk-btn{min-height:44px;padding:0 12px;font-size:12px}.mdk-volume{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:12px}.mdk-volume input{min-width:0;flex:1;min-height:44px;accent-color:var(--mdk-accent);cursor:pointer}.mdk-volume output{min-width:36px;text-align:right;font-variant-numeric:tabular-nums}',
       '.mdk-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:960px;align-items:start}.mdk-settings>.mdk-preferences,.mdk-settings>.mdk-note{grid-column:1/-1}.mdk-preferences{padding:0;overflow:hidden}.mdk-switchgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.mdk-switchcell{min-width:0;padding:14px 16px;align-content:center}.mdk-switchcell+.mdk-switchcell{border-left:1px solid var(--mdk-line)}.mdk-switchcell .mdk-fieldhead{gap:8px}.mdk-switchcell .mdk-label{font-size:13px;line-height:1.4;gap:6px}.mdk-switchcell .mdk-toggle{flex:none}.mdk-soundcompact .mdk-soundrow{flex-wrap:nowrap;gap:8px}.mdk-soundcompact .mdk-soundtitle{min-width:0;flex-wrap:wrap;font-size:13px;font-weight:600;gap:5px}.mdk-soundcompact .mdk-soundstatus{font-weight:400}.mdk-tuning{padding:0 16px;border-top:1px solid var(--mdk-line)}.mdk-tuning .mdk-volume{margin:0;gap:12px;min-height:58px}.mdk-tuning .mdk-volume>span{white-space:nowrap}.mdk-settingshelp{padding:0 16px;color:var(--dsw-alias-label-secondary,#62645e);font-size:12px;border-top:1px solid var(--mdk-line)}.mdk-settingshelp summary{cursor:pointer;min-height:44px;align-content:center}.mdk-settingshelp summary:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:2px}.mdk-settingshelp p{line-height:1.6;margin:0 0 10px}@media(max-width:600px){.mdk-settings{grid-template-columns:minmax(0,1fr)}.mdk-switchgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.mdk-switchcell{padding:10px 6px}.mdk-switchcell .mdk-fieldhead,.mdk-soundcompact .mdk-soundrow{flex-direction:column;gap:4px}.mdk-switchcell .mdk-label{font-size:12px;min-height:38px;justify-content:center;text-align:center}.mdk-switchcell .mdk-label .mdk-icon{width:15px;height:15px}.mdk-soundcompact .mdk-soundtitle{justify-content:center;align-content:center;min-height:38px;flex:none;font-size:12px;gap:3px}.mdk-soundcompact .mdk-soundstatus{flex-basis:100%;text-align:center;font-size:10px}.mdk-tuning{padding:0 12px}.mdk-tuning .mdk-volume{gap:7px;flex-wrap:wrap;padding:8px 0}.mdk-tuning .mdk-volume input{flex-basis:80px}.mdk-tuning .mdk-volume .mdk-btn{padding:0 9px}.mdk-settingshelp{padding:0 12px}}',
       '.mdk-rowwrap{position:relative}.mdk-rowtop{padding-right:34px}.mdk-follow{position:absolute;right:5px;top:5px;z-index:1;width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:var(--dsw-alias-label-secondary,#62645e);display:grid;place-items:center;cursor:pointer;touch-action:manipulation}.mdk-follow[aria-pressed=true]{color:var(--mdk-accent);background:color-mix(in srgb,var(--mdk-accent) 8%,transparent)}.mdk-follow[aria-pressed=true] .mdk-icon{fill:color-mix(in srgb,var(--mdk-accent) 22%,transparent)}.mdk-follow:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:-3px}.mdk-follow:active{filter:brightness(.8)}.mdk-pending{font-size:12px;line-height:1.6;color:var(--dsw-alias-label-secondary,#62645e);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.mdk-rules{grid-column:1/-1;padding:12px 16px}.mdk-rulegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:6px}.mdk-rule{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 8px;font-size:12px;min-height:44px}.mdk-rule+.mdk-rule{border-left:1px solid var(--mdk-line)}.mdk-rules .mdk-settingshelp{padding:0;border-top:0}@media(max-width:600px){.mdk-rulegrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-rule:nth-child(3){border-left:0}.mdk-rule:nth-child(n+3){border-top:1px solid var(--mdk-line)}}',
       '.mdk-rulegrid{gap:10px;margin-top:12px}.mdk-rule,.mdk-rule+.mdk-rule{padding:8px 12px;border:1px solid var(--dsw-alias-border-l3,rgba(105,91,62,.25));border-radius:11px;background:var(--dsw-alias-bg-layer-2,#f2f1ed);justify-content:flex-start;gap:12px;box-shadow:inset 0 1px rgba(255,255,255,.08)}.mdk-rule>span:first-child{flex:1;line-height:1.5}.mdk-rule .mdk-toggle{flex:none}.mdk-rule:has(input:checked){border-color:color-mix(in srgb,var(--mdk-accent) 46%,var(--mdk-line));background:color-mix(in srgb,var(--mdk-accent) 6%,var(--dsw-alias-bg-layer-1,#fff))}.mdk-rule:focus-within,.mdk-switchcell:focus-within{outline:2px solid var(--mdk-accent);outline-offset:2px}.mdk-rule:last-child{border-style:dashed}.mdk-switchgrid{gap:10px;padding:12px;background:var(--dsw-alias-bg-base,#faf9f6)}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:10px 12px;border:1px solid var(--dsw-alias-border-l3,rgba(105,91,62,.25));border-radius:11px;background:var(--dsw-alias-bg-layer-1,#fff)}.mdk-switchcell:has(input:checked){border-color:color-mix(in srgb,var(--mdk-accent) 46%,var(--mdk-line));background:color-mix(in srgb,var(--mdk-accent) 6%,var(--dsw-alias-bg-layer-1,#fff))}.mdk-tuning{background:var(--dsw-alias-bg-layer-1,#fff)}@media(max-width:600px){.mdk-rule:nth-child(3),.mdk-rule:nth-child(n+3){border:1px solid var(--dsw-alias-border-l3,rgba(105,91,62,.25))}.mdk-rule:last-child{border-style:dashed}.mdk-rule{gap:6px;padding:6px 9px}.mdk-rulegrid{gap:8px}.mdk-switchgrid{gap:6px;padding:8px}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:8px 4px}.mdk-switchcell .mdk-label{font-size:11px;gap:3px}.mdk-soundcompact .mdk-soundtitle{font-size:11px}}',
-      '.mdk-workbench{flex:1 1 0;min-height:0;height:100%;overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}.mdk-workbench>*{flex-shrink:0}.mdk-workbench>.mdk-body{flex:0 0 auto}.mdk-workbench .mdk-detail{min-width:0;overflow:visible}.mdk-workbench{scroll-padding-bottom:max(16px,env(safe-area-inset-bottom))}.mdk-results>.mdk-fieldhead{flex-wrap:wrap}.mdk-root{min-width:0}.mdk-title,.mdk-grouptitle,.mdk-rowtitle{font-weight:500}.mdk-rowtop,.mdk-rowtitle{min-width:0}',
-      '@media(max-width:600px){.mdk-head{position:static;padding:16px;gap:12px}.mdk-title{font-size:18px}.mdk-sub{font-size:12px;line-height:1.6}.mdk-conn{font-size:12px;padding:7px 10px}.mdk-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 16px}.mdk-searchbox{grid-column:1/-1;width:100%;min-height:48px}.mdk-search{font-size:16px;min-height:48px}.mdk-tools>.mdk-btn{min-width:0;min-height:44px;padding:6px;font-size:13px;line-height:1.4;white-space:normal}.mdk-filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0 16px 12px;overflow:visible}.mdk-filters .mdk-choice{grid-column:span 2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:44px;padding:8px;font-size:13px;line-height:1.4;white-space:normal}.mdk-filters .mdk-choice:nth-child(n+4){grid-column:span 3}.mdk-filters .mdk-count{display:inline-block;font-size:12px;padding:1px 5px}.mdk-row{padding:14px;gap:10px}.mdk-rowtop{flex-wrap:wrap;gap:8px;padding-right:44px}.mdk-rowtitle{flex:1 1 100%;font-size:16px;line-height:1.5}.mdk-chip{font-size:12px;max-width:100%;white-space:normal;overflow-wrap:anywhere}.mdk-rowmeta,.mdk-pending,.mdk-hint{font-size:13px;line-height:1.6}.mdk-rowwrap>.mdk-rowacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 14px;padding:10px 0 12px}.mdk-rowwrap>.mdk-rowacts:has(>.mdk-btn:nth-of-type(4)){grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-rowwrap>.mdk-rowacts>.mdk-btn{min-width:0;min-height:44px;font-size:13px;padding:6px;white-space:normal}.mdk-rowwrap>.mdk-rowacts>.mdk-stopnote{grid-column:1/-1}.mdk-switchgrid{grid-template-columns:minmax(0,1fr);gap:8px;padding:10px}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:10px 12px}.mdk-switchcell .mdk-fieldhead,.mdk-soundcompact .mdk-soundrow{flex-direction:row;gap:12px}.mdk-switchcell .mdk-label{font-size:13px;min-height:44px;justify-content:flex-start;text-align:left}.mdk-soundcompact .mdk-soundtitle{justify-content:flex-start;min-height:44px;font-size:13px}.mdk-soundcompact .mdk-soundstatus{flex-basis:auto;font-size:12px;text-align:left}.mdk-switchcell .mdk-toggle{flex:none}}',
+      '.mdk-workbench{flex:1 1 0;min-height:0;height:100%;overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}.mdk-workbench>*{flex-shrink:0}.mdk-workbench>.mdk-body{flex:0 0 auto}.mdk-workbench .mdk-detail{min-width:0;overflow:visible}.mdk-workbench{scroll-padding-bottom:max(16px,env(safe-area-inset-bottom))}.mdk-root{min-width:0}.mdk-title,.mdk-grouptitle,.mdk-rowtitle{font-weight:500}.mdk-rowtop,.mdk-rowtitle{min-width:0}',
+      '@media(max-width:600px){.mdk-head{position:static;padding:16px;gap:12px}.mdk-title{font-size:18px}.mdk-sub{font-size:12px;line-height:1.6}.mdk-conn{font-size:12px;padding:7px 10px}.mdk-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 16px}.mdk-searchbox{grid-column:1/-1;width:100%;min-height:48px}.mdk-search{font-size:16px;min-height:48px}.mdk-tools>.mdk-btn{min-width:0;min-height:44px;padding:6px;font-size:13px;line-height:1.4;white-space:normal}.mdk-filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0 16px 12px;overflow:visible}.mdk-filters .mdk-choice{grid-column:span 2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:44px;padding:8px;font-size:13px;line-height:1.4;white-space:normal}.mdk-filters .mdk-choice:nth-child(n+4){grid-column:span 3}.mdk-filters .mdk-count{display:inline-block;font-size:12px;padding:1px 5px}.mdk-row{padding:14px;gap:10px}.mdk-rowtop{flex-wrap:wrap;gap:8px;padding-right:44px}.mdk-rowtitle{flex:1 1 100%;font-size:16px;line-height:1.5}.mdk-chip{font-size:12px;max-width:100%;white-space:normal;overflow-wrap:anywhere}.mdk-rowmeta,.mdk-pending,.mdk-hint{font-size:13px;line-height:1.6}.mdk-rowwrap>.mdk-rowacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 14px;padding:10px 0 12px}.mdk-rowwrap>.mdk-rowacts>.mdk-btn{min-width:0;min-height:44px;font-size:13px;padding:6px;white-space:normal}.mdk-rowwrap>.mdk-rowacts>.mdk-stopnote{grid-column:1/-1}.mdk-switchgrid{grid-template-columns:minmax(0,1fr);gap:8px;padding:10px}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:10px 12px}.mdk-switchcell .mdk-fieldhead,.mdk-soundcompact .mdk-soundrow{flex-direction:row;gap:12px}.mdk-switchcell .mdk-label{font-size:13px;min-height:44px;justify-content:flex-start;text-align:left}.mdk-soundcompact .mdk-soundtitle{justify-content:flex-start;min-height:44px;font-size:13px}.mdk-soundcompact .mdk-soundstatus{flex-basis:auto;font-size:12px;text-align:left}.mdk-switchcell .mdk-toggle{flex:none}}',
+      '.mdk-workbench .mdk-conn{box-shadow:none}.mdk-workbench .mdk-rowwrap{box-shadow:0 2px 8px color-mix(in srgb,var(--dsw-alias-label-primary) 3%,transparent)}.mdk-workbench .mdk-rowwrap:has(.mdk-row[aria-current=true]){box-shadow:none}.mdk-workbench .mdk-filters .mdk-choice{box-shadow:none;background:transparent;border-color:transparent;color:var(--dsw-alias-label-secondary)}.mdk-workbench .mdk-filters .mdk-choice[aria-pressed=true]{background:color-mix(in srgb,var(--mdk-accent) 8%,var(--dsw-alias-bg-layer-1));border-color:color-mix(in srgb,var(--mdk-accent) 25%,var(--mdk-line));color:var(--mdk-accent)}.mdk-workbench .mdk-filters .mdk-count{background:transparent;color:inherit;font-variant-numeric:tabular-nums}.mdk-workbench .mdk-card-files{color:var(--mdk-accent);border-color:var(--mdk-line)}.mdk-workbench .mdk-btn[data-variant=quiet],.mdk-workbench .mdk-rowacts .mdk-btn[data-variant=danger]{background:transparent;border-color:transparent;box-shadow:none}.mdk-workbench .mdk-rowacts{column-gap:10px}.mdk-workbench .mdk-rowwrap>.mdk-rowacts{padding-top:10px;padding-bottom:12px}.mdk-workbench .mdk-card-open[data-variant=primary]{box-shadow:none}.mdk-workbench .mdk-btn[data-variant=quiet]:focus-visible,.mdk-workbench .mdk-btn[data-variant=danger]:focus-visible{outline-offset:-2px}',
+      '@media(hover:hover){.mdk-workbench .mdk-btn[data-variant=quiet]:hover:not(:disabled){background:var(--mdk-soft);border-color:transparent;box-shadow:none}.mdk-workbench .mdk-rowacts .mdk-btn[data-variant=danger]:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 8%,transparent);box-shadow:none}.mdk-workbench .mdk-filters .mdk-choice:hover:not([aria-pressed=true]){background:var(--mdk-soft)}}',
+      '@media(max-width:600px){.mdk-workbench .mdk-rowwrap>.mdk-rowacts{grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-workbench .mdk-rowwrap>.mdk-rowacts>.mdk-btn:only-of-type,.mdk-workbench .mdk-rowwrap>.mdk-rowacts>.mdk-btn:nth-of-type(3):last-of-type{grid-column:1/-1}}',
     ].join('')
 
     function ActionIcon({ name }) {
@@ -367,7 +357,6 @@ window.__ModuleLoader__.load({
         settingsRemote: 'M8 12h8M9 7l-2 0a5 5 0 0 0 0 10h2m6-10h2a5 5 0 0 1 0 10h-2',
         star: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z',
         volume: 'M4 9h4l5-4v14l-5-4H4zM17 8a6 6 0 0 1 0 8M19 5a10 10 0 0 1 0 14', mute: 'M4 9h4l5-4v14l-5-4H4zM17 9l5 6m0-6-5 6',
-        results: 'M8 4h8v3h4v13H4V7h4zM8 4v6h8V4M8 14h8M8 17h5',
         files: 'M3 7h7l2 2h9v11H3zM3 7V4h7l2 3', bell: 'M6 17h12l-2-3V9a4 4 0 0 0-8 0v5zM10 20h4',
         deck: 'M7 3h10v18H7zM10 6h4M9 14h6l-2 3h-2zM12 9v5m0-5 3 3h-3',
       }
@@ -456,7 +445,7 @@ window.__ModuleLoader__.load({
       } catch (_) { /* unavailable or damaged browser storage uses defaults */ }
       const activity = createStore({ items: [], sound: savedSound.enabled, volume: savedSound.volume, soundReady: false, soundBusy: false, error: '', storageError: '' })
       const fileNotice = createStore('')
-      const resultsEpoch = createStore(0)
+      const historyEpoch = createStore(0)
       let initialMobileHome = false
       try { initialMobileHome = window.localStorage.getItem(HOME_KEY) === 'true' } catch (_) { /* storage may be blocked */ }
       const devicePreferences = createStore({ mobileHome: initialMobileHome, error: '' })
@@ -634,11 +623,11 @@ window.__ModuleLoader__.load({
           if (notifications.length) chime()
         }
       }
-      function openFiles(id, address, params) {
+      function openFiles(id) {
         if (cancelFileOpen) cancelFileOpen()
         fileNotice.publish('')
         const sidebar = ctx.sidebarRight
-        if (!sidebar || !sidebar.mounted || (address ? typeof sidebar.openResource !== 'function' : typeof sidebar.openTab !== 'function')) {
+        if (!sidebar || !sidebar.mounted || typeof sidebar.openTab !== 'function') {
           fileNotice.publish(t('filesUnsupported')); return
         }
         let disposed = false, unsubscribe = null, timer = null, frame = null
@@ -647,7 +636,7 @@ window.__ModuleLoader__.load({
         const attempt = () => {
           if (disposed || !active || sidebar.mounted.getSnapshot() !== id) return
           cleanup()
-          try { if (address) sidebar.openResource(address, params ? { params } : undefined); else sidebar.openTab('files') } catch (error) { fileNotice.publish(t('filesFailed', { message: String(error.message || error) })) }
+          try { sidebar.openTab('files', { destination: 'sidebar' }) } catch (error) { fileNotice.publish(t('filesFailed', { message: String(error.message || error) })) }
         }
         try {
           const schedule = () => {
@@ -657,7 +646,7 @@ window.__ModuleLoader__.load({
           unsubscribe = sidebar.mounted.subscribe(schedule)
           openSession(id)
           // Opening a new session may mint its native sidebar store after React commits.
-          timer = setTimeout(() => { cleanup(); fileNotice.publish(t('filesFailed', { message: 'session panel not ready' })) }, 5000)
+          timer = setTimeout(() => { cleanup(); fileNotice.publish(t('filesFailed', { message: t('filesNotReady') })) }, 5000)
           schedule()
         } catch (error) { cleanup(); fileNotice.publish(t('filesFailed', { message: String(error.message || error) })) }
       }
@@ -773,9 +762,8 @@ window.__ModuleLoader__.load({
       }
 
       function openConversation() {
-        try { ctx.layout.selectPanel('conversation') } catch (error) {
-          // A composition without the Conversation panel keeps the sidebar usable.
-          console.warn('mobile-deck: the conversation panel is not registered', error)
+        try { ctx.layout.selectPanel(null) } catch (error) {
+          console.warn('mobile-deck: could not reveal the native conversation', error)
         }
       }
 
@@ -858,7 +846,7 @@ window.__ModuleLoader__.load({
 
       /** One row: a large tap target plus its own quick actions, never hover-only. */
       function SessionCard(props) {
-        const { row, status, selected, onSelect, onOpen, onResults, twoPane } = props
+        const { row, status, selected, onSelect, onOpen, twoPane } = props
         const stopMap = useStore(stops)
         const rules = useStore(alertRules)
         const followed = rules.followed.includes(row.id)
@@ -891,14 +879,11 @@ window.__ModuleLoader__.load({
             waiting ? h('span', { className: 'mdk-pending' }, pendingContext(status)) : null,
             meta.length ? h('span', { className: 'mdk-rowmeta' }, meta.map((text, index) => h('span', { key: index }, text))) : null),
           h('div', { className: 'mdk-rowacts' },
-            h('button', {
-              type: 'button',
-              className: 'mdk-btn',
-              'aria-label': t('open') + ' ' + (row.displayTitle || row.id),
-              onClick: () => onOpen(row.id),
-            }, h(ActionIcon, { name: 'open' }), t('open')),
-            h('button', { type: 'button', className: 'mdk-btn', 'aria-label': t('results') + ' ' + (row.displayTitle || row.id), onClick: event => onResults(row.id, event.currentTarget) }, h(ActionIcon, { name: 'results' }), t('results')),
-            h('button', { type: 'button', className: 'mdk-btn', 'aria-label': t('files') + ' ' + (row.displayTitle || row.id), onClick: () => openFiles(row.id) }, h(ActionIcon, { name: 'files' }), t('files')),
+            waiting ? h('button', {
+              type: 'button', className: 'mdk-btn mdk-card-open', 'data-variant': 'primary',
+              'aria-label': t('handleRequest') + ' ' + (row.displayTitle || row.id), onClick: () => onOpen(row.id),
+            }, h(ActionIcon, { name: 'open' }), t('handleRequest')) : null,
+            h('button', { type: 'button', className: 'mdk-btn mdk-card-files', 'aria-label': t('files') + ' ' + (row.displayTitle || row.id), onClick: () => openFiles(row.id) }, h(ActionIcon, { name: 'files' }), t('files')),
             running
               ? h('button', {
                 type: 'button',
@@ -920,10 +905,6 @@ window.__ModuleLoader__.load({
               : null))
       }
 
-      function fileResource(id, path) {
-        const normalized = path.replace(/\\/g, '/').replace(/^(\.\/)+/, '')
-        return 'dsh-resource://file/session/' + encodeURIComponent(id).replace(/%3A/gi, ':') + '/' + normalized.split('/').map(part => encodeURIComponent(part).replace(/%3A/gi, ':')).join('/')
-      }
 
       function SoundControls({ detailed = false, compact = false, tuningOnly = false }) {
         const value = useStore(activity)
@@ -955,155 +936,6 @@ window.__ModuleLoader__.load({
               h('input', { type: 'checkbox', role: 'switch', checked: rules[key], 'aria-label': t(label), onChange: event => saveRules({ [key]: event.target.checked }) }))))),
           h('details', { className: 'mdk-settingshelp' }, h('summary', null, t('settingsHelp')), h('p', null, t('rulesHint')), h('p', null, t('pushUnavailable'))),
           rules.error ? h('p', { role: 'alert', className: 'mdk-hint' }, rules.error) : null)
-      }
-
-      function ResultsPane({ id, onClose }) {
-        const epoch = useStore(resultsEpoch)
-        const resultCatalog = useStore(ctx.sessions.list)
-        const resultStatuses = useStore(ctx.uiSession.sessionStatus)
-        const [attempt, setAttempt] = React.useState(0)
-        const [state, setState] = React.useState({ loading: true, items: [], error: '', partial: 0, hasMore: false })
-        const current = React.useRef(null)
-        const recordLimit = React.useRef(20)
-        const anchor = React.useRef(null)
-        React.useEffect(() => {
-          if (anchor.current) {
-            anchor.current.focus()
-            if (typeof anchor.current.scrollIntoView === 'function') anchor.current.scrollIntoView({ block: 'nearest' })
-          }
-        }, [id])
-        React.useEffect(() => {
-          let disposed = false, reference = null, unsubscribe = null, revision = 0
-          const controller = new AbortController()
-          recordLimit.current = 20
-          const summaries = new Map()
-          setState({ loading: true, items: [], error: '', partial: 0, hasMore: false })
-          const loadSummary = seq => {
-            if (!summaries.has(seq)) summaries.set(seq, (async () => {
-              const query = new URLSearchParams({ sessionId: id, seq: String(seq) })
-              const response = await fetch('api/changes.summary?' + query, { signal: controller.signal, credentials: 'same-origin' })
-              if (!response.ok) throw new Error('HTTP ' + response.status)
-              const data = await response.json()
-              if (!data || !Number.isSafeInteger(data.turn) || data.turn < 1 || !Array.isArray(data.files) ||
-                !data.files.every(file => file && typeof file.path === 'string' && file.path.trim() && typeof file.display === 'string' && Number.isSafeInteger(file.added) && Number.isSafeInteger(file.deleted))) throw new Error('Invalid change summary')
-              return data
-            })())
-            return summaries.get(seq)
-          }
-          async function sync(binding) {
-            const serial = ++revision
-            const window = binding.eventSource.getSnapshot()
-            const allEvents = window.entries.filter(entry => entry.type === 'event').map(entry => entry.event).filter(Boolean)
-            const turn = allEvents.reduce((latest, event) => Number.isSafeInteger(event.data?.turn) ? Math.max(latest, event.data.turn) : latest, 0)
-            const recent = allEvents.filter(event => event.data?.turn === turn).sort((a,b) => a.seq - b.seq)
-            const end = recent.findLast(event => event.type === 'turn/end')
-            const answer = recent.findLast(event => event.type === 'assistant/message')
-            const excerpt = (answer?.data?.message?.content || []).filter(block => block.type === 'text').map(block => block.text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 320)
-            const delivered = new Set(recent.filter(event => event.type === 'deliverables/presented').flatMap(event => (event.data.files || []).filter(file => typeof file.path === 'string' && file.path.trim()).map(file => file.path))).size
-            const summary = { reason: end?.data?.reason?.kind || '', excerpt, delivered }
-            const records = window.entries.filter(entry => entry.type === 'event' && entry.event &&
-              Number.isSafeInteger(entry.event.seq) && entry.event.seq >= 0 && ['deliverables/presented', 'workspace/changes'].includes(entry.event.type))
-              .map(entry => entry.event).sort((a, b) => b.seq - a.seq)
-            const hiddenRecords = records.length > recordLimit.current
-            const shownRecords = records.slice(0, recordLimit.current)
-            const files = new Map()
-            let partial = 0
-            for (const event of shownRecords) {
-              if (disposed || serial !== revision) return
-              if (event.type === 'deliverables/presented') {
-                const data = event.data
-                if (!data || !Number.isSafeInteger(data.turn) || data.turn < 1 || typeof data.callId !== 'string' || !Array.isArray(data.files)) continue
-                for (const file of data.files) {
-                  if (!file || typeof file.path !== 'string' || !file.path.trim() || (file.description !== undefined && typeof file.description !== 'string')) continue
-                  const key = file.path.replace(/\\/g, '/')
-                  const previous = files.get(key)
-                  if (!previous) files.set(key, { path: file.path, description: file.description || '', delivered: true })
-                  else { previous.delivered = true; if (!previous.description) previous.description = file.description || '' }
-                }
-              } else {
-                try {
-                  const summary = await loadSummary(event.seq)
-                  for (let index = 0; index < summary.files.length; index++) {
-                    const file = summary.files[index], key = file.path.replace(/\\/g, '/')
-                    const previous = files.get(key)
-                    const review = { seq: event.seq, turn: summary.turn, index }
-                    if (!previous) files.set(key, { path: file.path, description: '', delivered: false, review, added: file.added, deleted: file.deleted })
-                    else if (!previous.review) Object.assign(previous, { review, added: file.added, deleted: file.deleted })
-                  }
-                } catch (_) { partial++ }
-              }
-            }
-            if (!disposed && serial === revision) setState({ loading: false, items: [...files.values()], error: '', partial, hasMore: window.hasMore === true || hiddenRecords, hiddenRecords, summary })
-          }
-          ;(async () => {
-            try {
-              if (typeof ctx.sessions.retain !== 'function') throw new Error(t('resultsUnsupported'))
-              reference = ctx.sessions.retain(id, { source: 'mobileDeck' })
-              await reference.ready
-              if (disposed) return
-              const binding = reference.binding
-              if (!binding.eventSource || !binding.eventSource.getSnapshot) throw new Error(t('resultsUnsupported'))
-              const snapshot = typeof binding.session.getSnapshot === 'function' ? binding.session.getSnapshot() : null
-              if (snapshot && snapshot.openState === 'error') throw new Error(snapshot.openError && snapshot.openError.message || t('unknownError'))
-              current.current = { binding, sync }
-              unsubscribe = binding.eventSource.subscribe(() => { void sync(binding).catch(fail) })
-              await sync(binding)
-            } catch (error) { fail(error) }
-          })()
-          function fail(error) {
-            if (reference) { reference.release(); reference = null }
-            if (!disposed) setState({ loading: false, items: [], partial: 0, hasMore: false, error: String(error.message || error) })
-          }
-          return () => {
-            disposed = true; current.current = null; controller.abort()
-            if (unsubscribe) unsubscribe()
-            if (reference) { reference.release(); reference = null }
-          }
-        }, [id, epoch, attempt])
-        async function older() {
-          const operation = current.current
-          if (!operation || typeof operation.binding.session.loadOlder !== 'function') return
-          const binding = operation.binding
-          setState(before => ({ ...before, loading: true }))
-          try {
-            if (!state.hiddenRecords) await binding.session.loadOlder()
-            if (current.current !== operation) return
-            const snapshot = typeof binding.session.getSnapshot === 'function' ? binding.session.getSnapshot() : null
-            if (snapshot && snapshot.openError) throw new Error(snapshot.openError.message || t('unknownError'))
-            recordLimit.current += 20
-            await operation.sync(binding)
-          }
-          catch (error) { if (current.current === operation) setState(before => ({ ...before, loading: false, error: String(error.message || error) })) }
-        }
-        const row = resultCatalog.byId[id]
-        const resultStatus = resultStatuses.get ? resultStatuses.get(id) : resultStatuses[id]
-        return h('section', { className: 'mdk-results', ref: anchor, tabIndex: -1, 'aria-label': t('resultsTitle') },
-          h('div', { className: 'mdk-fieldhead' },
-            h('div', null, h('h2', { className: 'mdk-grouptitle' }, t('resultsTitle')), h('div', { className: 'mdk-hint' }, row && (row.displayTitle || row.title) || id)),
-            h('div', { className: 'mdk-rowacts' }, h('button', { type: 'button', className: 'mdk-btn', onClick: () => openFiles(id) }, h(ActionIcon, { name: 'files' }), t('files')), h('button', { type: 'button', className: 'mdk-btn', onClick: onClose }, t('resultsClose')))),
-          state.summary ? h('div', { className: 'mdk-card', 'data-mobile-summary': '' },
-            h('h3', { className: 'mdk-grouptitle' }, t('summaryTitle')),
-            resultStatus?.pendingInteraction ? h('button', { className: 'mdk-btn', type: 'button', onClick: () => openSession(id) }, pendingLabel(resultStatus)) : null,
-            h('p', { className: 'mdk-v' }, t(state.summary.reason === 'completed' ? 'summaryCompleted' : state.summary.reason === 'error' ? 'summaryFailed' : state.summary.reason === 'aborted' ? 'summaryStopped' : state.summary.reason ? 'summaryOther' : 'summaryUnknown', { reason: state.summary.reason })),
-            h('div', { className: 'mdk-hint' }, t('summaryFiles', { n: state.summary.delivered })),
-            h('details', null, h('summary', null, t('summaryExcerpt')), h('p', { className: 'mdk-v' }, state.summary.excerpt || t('summaryEmpty')))) : null,
-          h('p', { className: 'mdk-hint' }, t('resultsHint')),
-          state.loading ? h('p', { role: 'status' }, t('resultsLoading')) : null,
-          state.error ? h('p', { role: 'alert' }, t('resultsFailure', { message: state.error })) : null,
-          state.partial ? h('p', { role: 'status', className: 'mdk-hint' }, t('resultsPartial', { n: state.partial })) : null,
-          !state.loading && !state.error && !state.items.length ? h('p', { className: 'mdk-hint' }, t('resultsEmpty')) : null,
-          state.items.map(item => h('div', { className: 'mdk-result', key: item.path },
-            h('div', { className: 'mdk-resulttext' },
-              h('div', { className: 'mdk-v mdk-mono' }, item.path),
-              item.description ? h('div', { className: 'mdk-hint' }, item.description) : null,
-              h('div', { className: 'mdk-hint' }, t(item.delivered ? 'resultsPresented' : 'resultsChanged'), item.review ? ' · +' + item.added + ' / −' + item.deleted : '')),
-            h('div', { className: 'mdk-rowacts' },
-              h('button', { type: 'button', className: 'mdk-btn', onClick: () => openFiles(id, fileResource(id, item.path)) }, h(ActionIcon, { name: 'open' }), t('resultsPreview')),
-              item.review ? h('button', { type: 'button', className: 'mdk-btn', onClick: () => openFiles(id, 'dsh-resource://changes-review/session/' + encodeURIComponent(id) + '/' + item.review.seq + '/' + item.review.turn, { index: item.review.index }) }, t('resultsReview')) : null))),
-          h('div', { className: 'mdk-rowacts' },
-            h('button', { type: 'button', className: 'mdk-btn', disabled: state.loading, onClick: () => setAttempt(value => value + 1) }, h(ActionIcon, { name: 'refresh' }), t('resultsRetry')),
-            h('button', { type: 'button', className: 'mdk-btn', onClick: onClose }, t('resultsClose')),
-            state.hasMore ? h('button', { type: 'button', className: 'mdk-btn', disabled: state.loading, onClick: () => { void older() } }, t('resultsOlder')) : null))
       }
 
       function DetailPane(props) {
@@ -1145,8 +977,8 @@ window.__ModuleLoader__.load({
       }
 
       /** Pending interactions stay live; failure history is inspected only while this center is open. */
-      function AttentionCenter({ rows, keyword, onSelect, onResults, twoPane, selectedId }) {
-        const epoch = useStore(resultsEpoch)
+      function AttentionCenter({ rows, keyword, onSelect, twoPane, selectedId }) {
+        const epoch = useStore(historyEpoch)
         const reviewed = useStore(reviewedFailures)
         const [category, setCategory] = React.useState('all')
         const [attempt, setAttempt] = React.useState(0)
@@ -1214,7 +1046,7 @@ window.__ModuleLoader__.load({
               h('p', { className: 'mdk-hint' }, t('todoFailureHint')),
               h('div', { className: 'mdk-rowacts' }, h('button', { className: 'mdk-btn', type: 'button', onClick: () => openSession(item.row.id) }, t('todoOpen')),
                 h('button', { className: 'mdk-btn', type: 'button', onClick: () => reviewedFailures.publish({ ...reviewedFailures.getSnapshot(), [item.row.id]: item.key }) }, t('todoReview'))))
-            : h(SessionCard, { key: item.row.id, row: item.row, status: item.status, selected: selectedId === item.row.id, twoPane, onSelect, onOpen: openSession, onResults })),
+            : h(SessionCard, { key: item.row.id, row: item.row, status: item.status, selected: selectedId === item.row.id, twoPane, onSelect, onOpen: openSession })),
           h('button', { className: 'mdk-btn', type: 'button', disabled: scan.loading, onClick: () => setAttempt(value => value + 1) }, h(ActionIcon, { name: 'refresh' }), t('todoRecheck')))
       }
 
@@ -1233,23 +1065,6 @@ window.__ModuleLoader__.load({
         const connectionState = useStore(ctx.connection.state)
         const wide = useWideEnough()
         const [selectedId, setSelectedId] = React.useState(null)
-        const [resultsId, setResultsId] = React.useState(null)
-        const resultsOrigin = React.useRef(null)
-        const openResults = (id, origin) => {
-          resultsOrigin.current = origin
-          if (resultsId === id) {
-            const pane = origin?.closest('.mdk-workbench')?.querySelector('.mdk-results')
-            if (pane) { pane.focus({ preventScroll: true }); pane.scrollIntoView({ block: 'nearest' }) }
-          }
-          setResultsId(id)
-        }
-        React.useEffect(() => {
-          if (resultsId !== null || !resultsOrigin.current?.isConnected) return
-          const origin = resultsOrigin.current
-          resultsOrigin.current = null
-          origin.focus({ preventScroll: true })
-          if (typeof origin.scrollIntoView === 'function') origin.scrollIntoView({ block: 'nearest' })
-        }, [resultsId])
         const [query, setQuery] = React.useState('')
         const [filter, setFilter] = React.useState('all')
         const knownFailures = useStore(failureRecords)
@@ -1303,7 +1118,6 @@ window.__ModuleLoader__.load({
               twoPane,
               onSelect: setSelectedId,
               onOpen: openSession,
-              onResults: openResults,
             })))
         }
 
@@ -1315,7 +1129,7 @@ window.__ModuleLoader__.load({
         } else if (rows.length === 0) {
           body = h(EmptyState, { title: t('emptyTitle'), body: t('emptyBody') })
         } else if (filter === 'waiting') {
-          body = h(AttentionCenter, { rows, keyword, selectedId, onSelect: setSelectedId, onResults: openResults, twoPane })
+          body = h(AttentionCenter, { rows, keyword, selectedId, onSelect: setSelectedId, twoPane })
         } else if (filtered.length === 0) {
           body = h(EmptyState, { title: t('searchEmpty'), body: t('searchEmptyHint') })
         } else {
@@ -1369,7 +1183,7 @@ window.__ModuleLoader__.load({
             h('button', {
               type: 'button', className: 'mdk-btn', disabled: fresh.refreshing,
               onClick: () => { void refreshSessions() },
-            'data-busy': fresh.refreshing,
+            'data-busy': fresh.refreshing, 'data-variant': 'quiet',
             }, h(ActionIcon, { name: 'refresh' }), fresh.refreshing ? t('refreshing') : t('refresh'))),
           h('div', { className: 'mdk-filters', role: 'group', 'aria-label': t('filterAll') },
             [['all', 'filterAll', rows.length], ['followed', 'filterFollowed', rows.filter(item => rules.followed.includes(item.row.id)).length], ['waiting', 'filterWaiting', rows.filter(isTodo).length], ['running', 'filterRunning', rows.filter(item => !isWaiting(item) && isRunning(item)).length], ['unread', 'filterUnread', rows.filter(item => item.status && item.status.completionUnread).length]].map(([value, key, count]) =>
@@ -1381,7 +1195,6 @@ window.__ModuleLoader__.load({
 
             events.items.length ? events.items.map(item => h('button', { key: item.id, type: 'button', className: 'mdk-event', onClick: () => openSession(item.sessionId) },
               h('span', null, item.label + ' · ' + item.title), h('time', null, formatClock(item.at)))) : h('p', { className: 'mdk-hint' }, t('alertsEmpty'))),
-          resultsId ? h(ResultsPane, { key: resultsId, id: resultsId, onClose: () => setResultsId(null) }) : null,
           h('div', { className: 'mdk-body' },
             h('div', { className: 'mdk-list' }, body),
             twoPane ? h(DetailPane, { row: selected && selected.row, status: selected && selected.status }) : null))
@@ -1584,7 +1397,7 @@ window.__ModuleLoader__.load({
       }, 'mobile-deck: sync clock')
 
       ctx.effect(() => ctx.on('connection/reset', () => {
-        resultsEpoch.publish(resultsEpoch.getSnapshot() + 1)
+        historyEpoch.publish(historyEpoch.getSnapshot() + 1)
         void refreshSessions()
       }), 'mobile-deck: resync after a new connection generation')
 
@@ -1621,7 +1434,7 @@ window.__ModuleLoader__.load({
         reviewedFailures.dispose()
         fileNotice.dispose()
         devicePreferences.dispose()
-        resultsEpoch.dispose()
+        historyEpoch.dispose()
         alertRules.dispose()
         if (cancelFileOpen) cancelFileOpen()
         if (audio) { audio.onstatechange = null; void audio.close().catch(() => {}) }

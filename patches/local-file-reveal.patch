@@ -1,0 +1,248 @@
+diff --git a/packages/client/ui-sidebar-files/README.i18n.yaml b/packages/client/ui-sidebar-files/README.i18n.yaml
+index d420350ecc..cc19544de1 100644
+--- a/packages/client/ui-sidebar-files/README.i18n.yaml
++++ b/packages/client/ui-sidebar-files/README.i18n.yaml
+@@ -3,8 +3,11 @@
+ # After editing either side, bring the other along and re-record with:
+ #   pnpm run verify-translation-pairing --write packages/client/ui-sidebar-files/README.md
+ /:
+-  en: d7dbdeee1744fac0
+-  zh: 35dc07a9e797f855
++  en: cb3f91d54eee30e5
++  zh: cb3f91d54eee30e5
++/description-the-right-sidebar-s-workspace-file-browser-for-the-dsh-web-client-the-files-page-and-one-workspace-tree-per-pane-beside-docked-and-floating-file-previews-listed-one-level-at-a-time-over-the-wire-kind-package-reference:
++  en: 9d1a4da317a0cdab
++  zh: 1d2b9d66ff6cbf17
+ /deepseek-ai-dsh-client-ui-sidebar-files:
+   en: ae5625c23b3a864f
+   zh: 20cf48a229e806bf
+@@ -12,17 +15,17 @@
+   en: 27a736e484be8693
+   zh: 4778c310014c2c16
+ /deepseek-ai-dsh-client-ui-sidebar-files/table-of-contents:
+-  en: 94e520881bd8666e
+-  zh: 869ed79bd370c8b3
++  en: df6933a8ed3be0bb
++  zh: 473e0086e5d650f2
+ /deepseek-ai-dsh-client-ui-sidebar-files/what-it-registers:
+-  en: 2b620997cf39cac8
+-  zh: ddfaa2da1c1bcd55
++  en: c68f67c6c8f3ae52
++  zh: 1f69b8fb8ef1fda1
+ /deepseek-ai-dsh-client-ui-sidebar-files/the-navigator:
+   en: 803d10142360264b
+   zh: 042568a8ba293037
+ /deepseek-ai-dsh-client-ui-sidebar-files/the-tree:
+-  en: c6d5d2d068bdec7b
+-  zh: dd41bcfa3e9080ad
++  en: f86ae2f5f83994b5
++  zh: 767670c09e4b83c4
+ /deepseek-ai-dsh-client-ui-sidebar-files/reusable-tree-factory:
+   en: 0a3e9645426b4203
+   zh: 0478669e4157f15c
+@@ -33,8 +36,8 @@
+   en: 5a6febb45089991a
+   zh: b17ed755fd098b83
+ /deepseek-ai-dsh-client-ui-sidebar-files/known-limitations-and-deferred-work:
+-  en: dd317b62980a9269
+-  zh: 0be3b9924f6b6c67
++  en: 210c715ad68d3085
++  zh: 441664727110ada9
+ /deepseek-ai-dsh-client-ui-sidebar-files/known-limitations-and-deferred-work/dev-note:
+-  en: 1ec99e9fb6b4c948
+-  zh: c4f7883934307c3c
++  en: a48ff10f5fe70801
++  zh: b1b5748c027b7492
+diff --git a/packages/client/ui-sidebar-files/README.md b/packages/client/ui-sidebar-files/README.md
+index 7443828930..fbecb02506 100644
+--- a/packages/client/ui-sidebar-files/README.md
++++ b/packages/client/ui-sidebar-files/README.md
+@@ -28,6 +28,8 @@ Browse a Session's workspace tree beside the files you preview. Each pane, docke
+ 
+ The `workspace.files` command shows the navigator drawn beside a docked tab's content in the focused pane and moves keyboard focus to its tree, keeping the tab; from the conversation it uses the current Session's active dock pane. Elsewhere — the files page itself, a tab without the navigator, a Session without a working directory, a floating tab — it opens or focuses the files page, whose tree always shows. A guide gives way to the files page, and repeated opens retain one files page per pane. Desktop defaults to Mod+P. The guide entry displays the effective shortcut; Windows and macOS Web use the [shortcut service’s platform defaults](../shortcuts/README.md); Linux Web leaves this command unbound by default.
+ 
++Call `ctx.sidebarRight.openTab('files', { destination: 'sidebar', params: { revealPath } })` to show the local tree and reveal a file without opening its preview. `revealPath` accepts an absolute or workspace-relative file path; only files inside the Session workspace are revealed. Ancestors expand through the normal directory listings, the target row is marked and scrolled into view, and clicking that row opens the native preview. Opening the files page again without parameters clears the target; repeating a targeted open reveals it again. Missing or external paths leave the workspace tree available without listing outside its root.
++
+ - **The type** — `ctx.sidebarRightTabs.register(...)` with kind `files`, id `@deepseek-ai/dsh-client-ui-sidebar-files`, band `builtin`, no patterns, and one guide entry (order 10, its title and description from the `sidebarFiles` namespace, its glyph a yellow folder) that opens the type.
+ - **The page body** — the keyed `sidebar.right.pane.tab` seat under that id. Its header row spans the page and shows the root through the shared [`PathLabel`](../ui-primitives/README.md#component-catalog) with subdued directories and a primary final segment; a clipped path retains its trailing characters with a left-edge fade, and hovering reveals the full path. The tree's reload control, the Session-scoped `sidebar.right.tab.files.actions` list, which the page's registration declares, with the displayed root passed as `absolutePath`, follow at its end, in the order a preview's header ends with its reload and file actions; [`ui-open-in-app`](../ui-open-in-app/README.md) contributes the workspace directory opener. The pane's navigator fills the page below the header, docked or floating, and has no toggle there.
+ - **The rows** — the root-scoped Component Factory `sidebar.files.tree`, with caller-owned entries and a local `accessory` slot; see [Reusable tree Factory](#tree-factory).
+diff --git a/packages/client/ui-sidebar-files/README.zh.md b/packages/client/ui-sidebar-files/README.zh.md
+index 69e40033ca..43ca40ec0c 100644
+--- a/packages/client/ui-sidebar-files/README.zh.md
++++ b/packages/client/ui-sidebar-files/README.zh.md
+@@ -28,6 +28,8 @@ kind: "package-reference"
+ 
+ 命令 `workspace.files` 在焦点分栏内显示画在停靠 tab 内容旁的导航栏，并把键盘焦点移到目录树，保留该 tab；从聊天区触发时使用当前会话的活动停靠分栏。其他情况下（文件页本身、不带导航栏的 tab、没有工作目录的会话、浮动 tab）打开或聚焦文件页，文件页的目录树始终显示。文件页替换开始页，同一分栏内重复打开仍保留一个文件页。桌面默认键为 Mod+P。开始页入口显示有效快捷键；Windows 和 macOS Web 使用[快捷键服务的平台默认值](../shortcuts/README.zh.md)；Linux Web 默认不绑定此命令。
+ 
++调用 `ctx.sidebarRight.openTab('files', { destination: 'sidebar', params: { revealPath } })` 可显示本地文件树并定位文件，不直接打开预览。`revealPath` 接受绝对或工作区相对文件路径，仅定位当前 Session 工作区内的文件。父目录通过正常目录读取展开，目标行被标记并滚动到可见位置，点击该行后再打开原生预览。不带参数重新打开文件页会清除目标，重复定位同一文件会再次显示目标。文件不存在或位于工作区外时仍保留工作区文件树，不读取根目录之外的内容。
++
+ - **类型**：`ctx.sidebarRightTabs.register(...)`，kind 为 `files`，id 为 `@deepseek-ai/dsh-client-ui-sidebar-files`，档位 `builtin`，没有 patterns，另有一个打开该类型的引导页入口（order 10，标题与描述取自 `sidebarFiles` 命名空间，图标为黄色文件夹）。
+ - **文件页正文**：以该 id 为键的 `sidebar.right.pane.tab` slot。其标题行横跨页面，通过共享的 [`PathLabel`](../ui-primitives/README.zh.md#component-catalog) 显示根路径，目录使用弱化颜色，最后一段使用主色；路径过长时保留尾部字符并在左侧渐隐，悬停显示完整路径。末端依次是目录树的重新读取控件、由文件页注册声明的 Session 作用域 `sidebar.right.tab.files.actions` 列表（通过 `absolutePath` 传入当前显示的根目录），顺序与预览标题行末端的重新读取与文件操作一致；[`ui-open-in-app`](../ui-open-in-app/README.zh.md) 在此提供工作区目录打开按钮。标题行下方由该分栏的导航栏铺满整页，停靠与浮动时都一样，这里没有开关。
+ - **各行**：root 作用域的 Component Factory `sidebar.files.tree`，接收调用方的条目和局部 `accessory` slot；见[复用目录树 Factory](#tree-factory)。
+diff --git a/packages/client/ui-sidebar-files/src/client/FileNavigator.tsx b/packages/client/ui-sidebar-files/src/client/FileNavigator.tsx
+index 6ce68e82b2..bcedd2620e 100644
+--- a/packages/client/ui-sidebar-files/src/client/FileNavigator.tsx
++++ b/packages/client/ui-sidebar-files/src/client/FileNavigator.tsx
+@@ -75,6 +75,8 @@ export function FileNavigator({
+   const { tab, panel } = useTabInfo()
+   const { getTriggerProps } = useContextMenu()
+   const paneId = panel.id
++  const params = tab.navigation.params
++  const revealPath = page && params !== undefined && 'revealPath' in params && typeof params.revealPath === 'string' ? params.revealPath : undefined
+   const cwd = useSessions(sessions => sessions.byId[sessionId]?.cwd)
+   const state = useStore(store => store.byPane[paneId])
+   const rowWidth = useRowWidth(paneId)
+@@ -90,9 +92,14 @@ export function FileNavigator({
+     (element: HTMLElement | null) => { navigatorDrawn(paneId, element, !page) },
+     [navigatorDrawn, paneId, page],
+   )
++  const treeAddress = revealPath !== undefined && cwd !== undefined ? fileAddressFor(sessionId, cwd, revealPath) : tab.contentId
++  const pageRevision = page ? tab.navigation.revision : 0
+   const bodyRef = useCallback(
+-    (body: HTMLDivElement | null) => { bodyDrawn(paneId, tab.contentId, body) },
+-    [bodyDrawn, paneId, tab.contentId],
++    (body: HTMLDivElement | null) => {
++      if (body !== null && revealPath !== undefined) bodyDrawn(paneId, treeAddress, body, true)
++      else bodyDrawn(paneId, treeAddress, body)
++    },
++    [bodyDrawn, paneId, treeAddress, pageRevision, revealPath],
+   )
+   const currentRef = useCallback((row: HTMLElement | null) => { currentDrawn(paneId, row) }, [currentDrawn, paneId])
+ 
+@@ -101,7 +108,7 @@ export function FileNavigator({
+   useEffect(() => page || cwd === undefined ? undefined : placeBeside(tab.id), [page, cwd, placeBeside, tab.id])
+   useEffect(() => cwd === undefined || !open ? undefined : hold(paneId, cwd), [cwd, open, paneId, hold])
+ 
+-  const relativePath = tree === undefined ? undefined : relativeFileOf(tab.contentId, sessionId, tree.root)
++  const relativePath = tree === undefined ? undefined : relativeFileOf(treeAddress, sessionId, tree.root)
+   const location = useMemo(
+     () => tree === undefined || relativePath === undefined ? undefined : locateFile(tree, relativePath),
+     [tree, relativePath],
+diff --git a/packages/client/ui-sidebar-files/src/client/definition.tsx b/packages/client/ui-sidebar-files/src/client/definition.tsx
+index 2abf29e33f..07b1cf233e 100644
+--- a/packages/client/ui-sidebar-files/src/client/definition.tsx
++++ b/packages/client/ui-sidebar-files/src/client/definition.tsx
+@@ -11,6 +11,16 @@ import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+ import type {} from './locales.ts'
+ import { GuideArtworkFiles } from '@deepseek-ai/dsh-client-ui-primitives'
+ 
++declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
++  interface SidebarRightTabParamsMap {
++    /** Show the local file tree and reveal a file without opening its preview. */
++    files: {
++      /** Absolute or workspace-relative file path; only descendants of the workspace are revealed. */
++      readonly revealPath: string
++    }
++  }
++}
++
+ /** The tab kind this package owns. */
+ export const FILES_KIND = 'files'
+ 
+diff --git a/packages/client/ui-sidebar-files/src/client/face.ts b/packages/client/ui-sidebar-files/src/client/face.ts
+index 0957339723..a645524964 100644
+--- a/packages/client/ui-sidebar-files/src/client/face.ts
++++ b/packages/client/ui-sidebar-files/src/client/face.ts
+@@ -177,10 +177,11 @@ export interface FilesInjected {
+    * that the previous drawing held when it went or that `focus` asked for, and
+    * reveals the tab's file unless the pane revealed it last.
+    * @param paneId - the pane being drawn.
+-   * @param address - the tab's content address.
++   * @param address - the file to reveal, or the tab's content address when no file is targeted.
+    * @param body - the scroll container, or `null` once it is removed.
++   * @param forceReveal - reveal the target again even if this pane showed it before.
+    */
+-  readonly bodyDrawn: (paneId: PaneId, address: string, body: HTMLElement | null) => void
++  readonly bodyDrawn: (paneId: PaneId, address: string, body: HTMLElement | null, forceReveal?: boolean) => void
+   /**
+    * Register the drawn row of the tab's file, or with `null` as gone; a reveal
+    * that completed before the row was drawn scrolls it into view then.
+@@ -604,7 +605,7 @@ export function filesFace(
+         if (pane.drawn === undefined) pane.focus = REQUESTED
+         else focusTree(pane)
+       },
+-      bodyDrawn(paneId, address, body) {
++      bodyDrawn(paneId, address, body, forceReveal) {
+         if (body === null) {
+           // A drawing goes after its pane may have been forgotten; that leaves nothing to record.
+           const pane = panes.get(paneId)
+@@ -625,7 +626,7 @@ export function filesFace(
+         pane.drawn = { body, address }
+         body.scrollTop = pane.scrollTop
+         if (pane.focus !== undefined) focusTree(pane)
+-        pane.revealing = pane.revealed === address ? undefined : address
++        pane.revealing = !forceReveal && pane.revealed === address ? undefined : address
+         step(paneId, pane)
+       },
+       currentDrawn(paneId, row) {
+diff --git a/packages/client/ui-sidebar-files/tests/files-body.client.spec.tsx b/packages/client/ui-sidebar-files/tests/files-body.client.spec.tsx
+index ddb3dd2dfa..5b0da73899 100644
+--- a/packages/client/ui-sidebar-files/tests/files-body.client.spec.tsx
++++ b/packages/client/ui-sidebar-files/tests/files-body.client.spec.tsx
+@@ -28,6 +28,42 @@ function names(root: HTMLElement): string[] {
+ }
+ 
+ describe('FilesBody', () => {
++  it.each([`${ROOT}/src/a.ts`, 'src/a.ts'])('reveals %s in the local tree without opening a preview', async (revealPath) => {
++    const previous = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
++    const scroll = vi.fn()
++    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scroll })
++    onTestFinished(() => {
++      if (previous) Object.defineProperty(Element.prototype, 'scrollIntoView', previous)
++      else Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
++    })
++    const { view, script, tabActions, placement, rerender } = mountBody(ROOT, { params: { revealPath } })
++    await act(() => script.watches.ready(ROOT))
++    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
++    await act(() => script.watches.ready(`${ROOT}/src`))
++    await act(() => script.settle({ ok: true, value: { entries: [{ name: 'a.ts', type: 'file', size: 1 }], truncated: false } }))
++    const file = view.container.querySelector(`[data-files-path="${ROOT}/src/a.ts"] button[aria-current="true"]`)
++    expect(file).not.toBeNull()
++    expect(scroll).toHaveBeenCalled()
++    expect(tabActions.openResource).not.toHaveBeenCalled()
++    scroll.mockClear()
++    placement.revision = 2
++    act(() => { rerender() })
++    expect(scroll).toHaveBeenCalled()
++    delete placement.params
++    placement.revision = 3
++    act(() => { rerender() })
++    expect(view.container.querySelector('button[aria-current="true"]')).toBeNull()
++    act(() => { fireEvent.click(file!) })
++    expect(tabActions.openResource).toHaveBeenCalledWith(fileAddressFor(SESSION, ROOT, `${ROOT}/src/a.ts`), expect.anything())
++  })
++
++  it('does not list outside the workspace for an external reveal path', async () => {
++    const { script } = mountBody(ROOT, { params: { revealPath: '/outside/a.ts' } })
++    await act(() => script.watches.ready(ROOT))
++    await act(() => script.settle({ ok: true, value: ROOT_LEVEL }))
++    expect(script.list.mock.calls.map(call => call[1])).toEqual([ROOT])
++  })
++
+   it('displays the effective file-tree refresh accelerator', async () => {
+     const { view, script } = mountBody(ROOT, { refreshShortcut: { id: 'page.refresh' as never, label: 'Refresh', aliases: [],
+       binding: null, keys: ['Ctrl', 'R'], aria: 'Control+R', modified: true, conflicts: [], issue: null } })
+diff --git a/packages/client/ui-sidebar-files/tests/mount.client.tsx b/packages/client/ui-sidebar-files/tests/mount.client.tsx
+index 35a660f264..0ae1b1216c 100644
+--- a/packages/client/ui-sidebar-files/tests/mount.client.tsx
++++ b/packages/client/ui-sidebar-files/tests/mount.client.tsx
+@@ -55,6 +55,10 @@ interface MockedTabActions {
+ /** What the tab and its pane look like to the components; a spec may change it and rerender. */
+ export interface Placement {
+   contentId: string
++  /** Parameters carried by a files-page navigation. */
++  params?: { readonly revealPath: string }
++  /** Revision of a repeated files-page navigation. */
++  revision?: number
+   isFloating?: boolean
+   /** The tab drawing; a spec changes it, with `signal`, to replace the tab in the same pane. */
+   tabId: TabId
+@@ -137,7 +141,7 @@ function harness(placement: Placement, controller: AbortController) {
+     panel: { id: PANE, isFloating: placement.isFloating ?? false },
+     tab: {
+       id: placement.tabId, kind: 'files', contentId: placement.contentId, title: zh['type.label'], visible: true,
+-      navigation: { address: placement.contentId, params: undefined, revision: 1 },
++      navigation: { address: placement.contentId, params: placement.params, revision: placement.revision ?? 1 },
+       signal: placement.signal,
+       actions: tabActions, refreshShortcut: placement.refreshShortcut,
+     },

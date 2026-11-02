@@ -26,6 +26,8 @@ let opened = []
 let started = 0
 let reconnected = 0
 let panelSelections = []
+let activePanelId = 'mobile-deck'
+let nativePanelChanged = () => {}
 let rpcCalls = []
 let refreshCount = 0
 let stopGate = null
@@ -132,7 +134,7 @@ const ctx = {
     openSession(id) { opened.push(id) },
     startSession() { started += 1 },
   },
-  layout: { selectPanel(id) { panelSelections.push(id) } },
+  layout: { selectPanel(id) { activePanelId=id; panelSelections.push(id); nativePanelChanged() } },
 }
 
 // ---------------------------------------------------------------- load module
@@ -181,7 +183,7 @@ assert.match(document.querySelector('.mdk-detail').textContent, /等待提问的
 // Opening uses the native conversation.
 await React.act(async () => document.querySelector('.mdk-rowacts .mdk-btn').click())
 assert.deepEqual(opened, ['wait'])
-assert.deepEqual(panelSelections, ['conversation'])
+assert.deepEqual(panelSelections, [null], 'native sidebar only adopts the conversation when activePanelId is null')
 
 // Search covers the full catalog before applying the recent-session limit.
 const search = document.querySelector('.mdk-search')
@@ -205,7 +207,7 @@ assert.equal(document.querySelector('.mdk-guide'), null)
 const newButton = [...document.querySelectorAll('.mdk-btn')].find(node => node.textContent === '新建会话')
 await React.act(async () => newButton.click())
 assert.equal(started, 1)
-assert.equal(panelSelections.at(-1), 'conversation')
+assert.equal(panelSelections.at(-1), null)
 
 // ---------------------------------------------------------------- stop semantics
 
@@ -258,6 +260,9 @@ assert.equal(opened.length, beforePhoneOpen + 1)
 assert.equal(opened.at(-1), 'wait')
 
 // Filters and activity distinguish approval from questions, deduplicate snapshots.
+assert.match(document.querySelector('.mdk-card-open').textContent,/处理请求/)
+assert.equal(document.querySelector('.mdk-card-open').dataset.variant,'primary')
+assert.equal(document.querySelector('.mdk-rowwrap .mdk-card-files').textContent,'工作区文件')
 const filterButton = text => [...document.querySelectorAll('.mdk-filters button')].find(el => el.textContent.startsWith(text))
 await React.act(async () => filterButton('待处理').click())
 assert.deepEqual(rows(), ['等待提问的会话'])
@@ -321,7 +326,7 @@ audioSettingsMount.remove()
 
 
 // Unsupported hosts show an error instead of pretending a preview opened.
-await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '文件').click())
+await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '工作区文件').click())
 assert.match(document.querySelector('.mdk-banner').textContent, /当前宿主未提供文件面板/)
 
 // Native file navigation waits for the requested session and uses the public tab API.
@@ -329,19 +334,28 @@ globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window)
 globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window)
 const fileListeners = new Set(), fileTabs = []
 let fileSession = 'some-other-session'
+activePanelId='mobile-deck'
+nativePanelChanged=()=>emit(fileListeners)
 ctx.sidebarRight = {
-  mounted: { getSnapshot: () => fileSession, subscribe(fn) { fileListeners.add(fn); return () => fileListeners.delete(fn) } },
-  openTab(kind) { fileTabs.push({ kind, session: fileSession }) },
+  mounted: { getSnapshot: () => activePanelId===null ? fileSession : undefined, subscribe(fn) { fileListeners.add(fn); return () => fileListeners.delete(fn) } },
+  openTab(kind, options) { fileTabs.push({ kind, session: fileSession, options }) },
 }
-await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '文件').click())
+await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '工作区文件').click())
 assert.equal(fileTabs.length, 0)
 fileSession = 'wait'
 await React.act(async () => {
   emit(fileListeners)
   await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)))
 })
-assert.deepEqual(fileTabs, [{ kind: 'files', session: 'wait' }])
+assert.deepEqual(fileTabs, [{ kind: 'files', session: 'wait', options: {destination:'sidebar'} }])
 assert.equal(fileListeners.size, 0, 'native file navigation releases its subscription')
+activePanelId='mobile-deck'
+await React.act(async()=>[...document.querySelectorAll('.mdk-rowacts button')].find(el=>el.textContent==='工作区文件').click())
+await React.act(async()=>{await new Promise(resolve=>window.requestAnimationFrame(()=>window.requestAnimationFrame(resolve)))})
+assert.equal(fileTabs.length,2,'already selected session opens files after the global panel is cleared')
+assert.equal(activePanelId,null)
+assert.equal(fileTabs.at(-1).session,'wait')
+assert.equal(fileListeners.size,0)
 
 // Composer shortcut works without opening the sidebar and shows an attention badge.
 const ComposerEntry = registrations.get('conversation.input.left:mobile-deck').component
@@ -350,98 +364,12 @@ assert.ok(document.querySelector('.mdk-launchbadge'))
 await React.act(async () => document.querySelector('.mdk-launch').click())
 assert.equal(panelSelections.at(-1), 'mobile-deck')
 
-// Results load only on demand from durable file/changes records, never assistant prose.
-await React.act(async () => root.render(React.createElement(Workbench)))
-const originalRetain = ctx.sessions.retain
-let resultListeners = new Set(), resultReleased = 0, olderLoads = 0
-let resultWindow = { hasMore: true, entries: [
-  { type: 'event', event: { type: 'assistant/message', seq: 1, data: { text: 'created imaginary.txt' } } },
-  { type: 'event', event: { type: 'deliverables/presented', seq: 2, data: { turn: 1, callId: 'p1', files: [{ path: 'D:/work/report #1?.md', description: '交付报告' }, { path: '' }] } } },
-  { type: 'event', event: { type: 'workspace/changes', seq: 3, data: { turn: 1 } } },
-  { type: 'event', event: { type: 'assistant/message', seq: 4, data: { turn: 1, message: { content: [{ type: 'text', text: '记录中的回答摘要' }] } } } },
-  { type: 'event', event: { type: 'turn/end', seq: 5, data: { turn: 1, reason: { kind: 'aborted' } } } },
-] }
-ctx.sessions.retain = () => ({ ready: Promise.resolve(), binding: {
-  eventSource: { getSnapshot: () => resultWindow, subscribe(fn) { resultListeners.add(fn); return () => resultListeners.delete(fn) } },
-  session: { async loadOlder() { olderLoads++; resultWindow = { ...resultWindow, hasMore: false }; emit(resultListeners) } },
-}, release() { resultReleased++ } })
-const originalFetch = globalThis.fetch
-const summaryCalls = []
-globalThis.fetch = async (url, options) => {
-  summaryCalls.push({ url: String(url), options })
-  return { ok: true, json: async () => ({ turn: 1, files: [
-    { path: 'D:/work/report #1?.md', display: 'report #1?.md', added: 3, deleted: 1 },
-    { path: 'D:/work/code.js', display: 'code.js', added: 5, deleted: 0 },
-  ] }) }
+await React.act(async()=>root.render(React.createElement(Workbench)))
+assert.equal(document.querySelector('.mdk-results'),null,'no duplicate results browser')
+for(const card of document.querySelectorAll('.mdk-rowwrap')){
+ assert.equal(card.querySelectorAll('.mdk-card-files').length,1,'one workspace-files action per session')
+ assert.equal([...card.querySelectorAll('.mdk-rowacts button')].some(button=>['成果','预览','定位文件','变更对比','打开'].includes(button.textContent)),false)
 }
-await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '成果').click())
-await flush()
-assert.equal(document.querySelectorAll('.mdk-result').length, 2, 'paths deduplicate across presented and changes')
-assert.ok(!document.querySelector('.mdk-results').textContent.includes('imaginary.txt'), 'prose is not a file source')
-assert.match(document.querySelector('[data-mobile-summary]').textContent,/本轮已停止/)
-assert.match(document.querySelector('[data-mobile-summary]').textContent,/记录中的回答摘要/)
-assert.match(document.querySelector('[data-mobile-summary]').textContent,/交付 1 个文件/)
-assert.equal(summaryCalls.length, 1)
-assert.equal(summaryCalls[0].options.credentials, 'same-origin')
-assert.ok(summaryCalls[0].url.includes('sessionId=wait'))
-assert.match(document.querySelector('.mdk-results').textContent, /交付报告/)
-const nativeResources = []
-ctx.sidebarRight.openResource = (address, options) => nativeResources.push({ address, options })
-await React.act(async () => [...document.querySelectorAll('.mdk-result button')].find(el => el.textContent === '预览').click())
-await React.act(async () => { await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))) })
-assert.match(nativeResources.at(-1).address, /file\/session\/wait\/D:\/work\/report%20%231%3F.md$/)
-await React.act(async () => [...document.querySelectorAll('.mdk-result button')].find(el => el.textContent === '变更对比').click())
-await React.act(async () => { await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve))) })
-assert.equal(nativeResources.at(-1).address, 'dsh-resource://changes-review/session/wait/3/1')
-assert.deepEqual(nativeResources.at(-1).options, { params: { index: 0 } })
-await React.act(async () => [...document.querySelectorAll('.mdk-results button')].find(el => el.textContent === '加载更早记录').click())
-await flush()
-assert.equal(olderLoads, 1)
-assert.equal(summaryCalls.length, 1, 'stable summaries are cached for this result view')
-assert.equal([...document.querySelectorAll('.mdk-results button')].some(el => el.textContent === '加载更早记录'), false)
-await React.act(async () => [...document.querySelectorAll('.mdk-results button')].find(el => el.textContent === '收起成果').click())
-assert.equal(resultListeners.size, 0)
-assert.equal(resultReleased, 1, 'closing results releases the session reference')
-
-// A missing summary preserves presented files with a partial-result message.
-globalThis.fetch = async () => ({ ok: false, status: 403 })
-await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '成果').click())
-await flush()
-assert.equal(document.querySelectorAll('.mdk-result').length, 1)
-assert.match(document.querySelector('.mdk-results').textContent, /1 条变更摘要无法读取/)
-await React.act(async () => [...document.querySelectorAll('.mdk-results button')].find(el => el.textContent === '收起成果').click())
-// More than 20 recorded batches stay bounded initially and expand without rereading history.
-resultWindow = { hasMore: false, entries: Array.from({ length: 25 }, (_, index) => ({ type: 'event', event: {
-  type: 'deliverables/presented', seq: index + 1, data: { turn: index + 1, callId: 'p' + index, files: [{ path: 'out/' + index + '.md' }] },
-} })) }
-await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '成果').click())
-await flush()
-assert.equal(document.querySelectorAll('.mdk-result').length, 20)
-const beforeOlder = olderLoads
-await React.act(async () => [...document.querySelectorAll('.mdk-results button')].find(el => el.textContent === '加载更早记录').click())
-await flush()
-assert.equal(document.querySelectorAll('.mdk-result').length, 25)
-assert.equal(olderLoads, beforeOlder, 'already loaded records do not request another history page')
-await React.act(async () => [...document.querySelectorAll('.mdk-results button')].find(el => el.textContent === '收起成果').click())
-
-// Closing results aborts in-flight summary requests and releases the borrowed session.
-resultWindow = { hasMore: false, entries: [{ type: 'event', event: { type: 'workspace/changes', seq: 99, data: { turn: 2 } } }] }
-let resolvePendingSummary, pendingSummarySignal
-const beforeRelease = resultReleased
-globalThis.fetch = async (_, options) => {
-  pendingSummarySignal = options.signal
-  return await new Promise(resolve => { resolvePendingSummary = resolve })
-}
-await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')].find(el => el.textContent === '成果').click())
-await flush()
-assert.ok(pendingSummarySignal)
-await React.act(async () => [...document.querySelectorAll('.mdk-results button')].find(el => el.textContent === '收起成果').click())
-assert.equal(pendingSummarySignal.aborted, true)
-assert.equal(resultReleased, beforeRelease + 1)
-await React.act(async () => resolvePendingSummary({ ok: false, status: 404 }))
-assert.equal(document.querySelector('.mdk-results'), null)
-ctx.sessions.retain = originalRetain
-globalThis.fetch = originalFetch
 
 // Followed sessions are pinned within urgency groups and can be filtered.
 await React.act(async () => document.querySelector('.mdk-follow').click())
@@ -567,4 +495,4 @@ assert.equal(registrations.has('main:mobile-deck'), false, 'teardown releases th
 assert.equal(registrations.has('sidebar.panellist:mobile-deck'), false)
 
 await React.act(async () => root.unmount())
-console.log('MOBILE DECK CLIENT OK: grouping/search/filters, task activity deduplication, audio fallback, composer badge/navigation, native files/results lifecycle and pagination, device preference, stop, offline state, enable switching and teardown')
+console.log('MOBILE DECK CLIENT OK: grouping/search/filters, task activity deduplication, audio fallback, composer badge/navigation, single native workspace-files action and navigation, device preference, stop, offline state, enable switching and teardown')

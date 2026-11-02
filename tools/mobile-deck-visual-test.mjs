@@ -27,19 +27,18 @@ await page.evaluate(fixture+`
 const dictionaries={};const original=ctx.locale.register;
 ctx.locale.register=(ns,d)=>{dictionaries[ns]=d;return original(ns,d)};
 window.entry.factory(()=>React).apply(ctx);
-ctx.sessions.retain=(id)=>({ready:Promise.resolve(),binding:{session:{loadOlder:async()=>{}},eventSource:{getSnapshot:()=>({hasMore:false,entries:[
- {type:'event',event:{type:'deliverables/presented',seq:2,data:{turn:1,callId:'p1',files:[{path:'D:/work/outputs/report.md',description:'任务报告 · Markdown'},{path:'D:/work/outputs/overview.png',description:'结果图表'}]}}},
- {type:'event',event:{type:'workspace/changes',seq:3,data:{turn:1}}},
- ...(id==='idle-2'?[{type:'event',event:{type:'turn/end',seq:4,data:{turn:1,reason:{kind:'error'}}}}]:[])
-]}),subscribe:()=>()=>{}}},release(){}})
-statusMap.set('idle-1',{running:false,pendingInteraction:{key:'approval',kind:'approval',toolName:'shell',reason:'需要运行检查',sessionId:'idle-1'},completionUnread:false});
+ctx.sessions.retain=id=>({ready:Promise.resolve(),binding:{eventSource:{getSnapshot:()=>({hasMore:false,entries:id==='idle-2'?[{type:'event',event:{type:'turn/end',seq:4,data:{turn:1,reason:{kind:'error'}}}}]:[]})}},release(){}});
+window.nativeFileOpens=[];let fileSession;let nativePanelId='mobile-deck';const fileListeners=new Set();
+ctx.layout.selectPanel=id=>{nativePanelId=id;fileListeners.forEach(listener=>listener())};
+ctx.uiWorkspace.openSession=id=>{fileSession=id;fileListeners.forEach(listener=>listener())};
+ctx.sidebarRight={mounted:{getSnapshot:()=>nativePanelId===null?fileSession:undefined,subscribe(listener){fileListeners.add(listener);return()=>fileListeners.delete(listener)}},openTab(kind,options){nativeFileOpens.push({kind,options,sessionId:fileSession})},openResource(){throw Error('Direct preview must not be called')}};
 window.stressSessions=()=>{
  const extra=Array.from({length:24},(_,i)=>catalogRow('stress-'+i,{running:true,displayTitle:'手机横屏长任务标题与多段说明的完整可达性检查 '+i,cwd:'D:/work/very-long-project-name/outputs'}));
  catalog={...catalog,ids:[...catalog.ids,...extra.map(row=>row.id)],byId:{...catalog.byId,...Object.fromEntries(extra.map(row=>[row.id,row]))}};
  for(let i=0;i<12;i++)statusMap.set('stress-'+i,{running:true,pendingInteraction:{key:'stress-q-'+i,kind:i%2?'approval':'question',sessionId:'stress-'+i,questions:[{question:'请核对本轮生成文件并确认接下来的处理方向，长说明必须能够完整查看。'}],reason:'检查文件交付',toolName:'shell'},completionUnread:false});
  emit(listeners.list);emit(listeners.status);
 };
-window.stressFiles=()=>{ctx.sessions.retain=()=>({ready:Promise.resolve(),binding:{session:{loadOlder:async()=>{}},eventSource:{getSnapshot:()=>({hasMore:false,entries:[{type:'event',event:{type:'deliverables/presented',seq:20,data:{turn:2,callId:'stress',files:Array.from({length:32},(_,i)=>({path:'D:/outputs/长路径与长文件名的移动预览验证报告-'+i+'.md',description:'第 '+i+' 个文件的内容说明，核对长成果列表底部的预览按钮和收起操作是否可达。'}))}}}]}),subscribe:()=>()=>{}}},release(){}})};
+statusMap.set('idle-1',{running:false,pendingInteraction:{key:'approval',kind:'approval',toolName:'shell',reason:'需要运行检查',sessionId:'idle-1'},completionUnread:false});
 window.previewRoot=ReactDOM.createRoot(document.getElementById('mount'));
 window.showPanel=()=>previewRoot.render(React.createElement(registrations.get('main:mobile-deck').component));
 window.showShortcut=()=>previewRoot.render(React.createElement(registrations.get('conversation.input.left:mobile-deck').component));
@@ -88,14 +87,12 @@ for(const dark of [false,true]){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'todo center fits viewport')
   await page.screenshot({path:`${out}/${dark?'dark':'light'}-todos-${width}.png`,fullPage:true})
   await page.locator('.mdk-filters button').filter({hasText:'全部'}).click()
-  await page.getByRole('button',{name:'成果 等待提问的会话',exact:true}).click()
-  await page.locator('.mdk-result').first().waitFor()
-  assert.equal(await page.locator('.mdk-result').count(),2)
-  await page.locator('.mdk-results').scrollIntoViewIfNeeded()
-  await workbench.evaluate(el=>{el.scrollTop=el.scrollHeight})
-  await workbench.evaluate(el=>{el.scrollTop=0})
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'results fit viewport')
-  await page.screenshot({path:`${out}/${dark?'dark':'light'}-results-${width}.png`,fullPage:true})
+  for(const card of await page.locator('.mdk-rowwrap').all())assert.equal(await card.locator('.mdk-card-files').count(),1)
+  const beforeOpen=await page.evaluate(()=>nativeFileOpens.length)
+  await page.getByRole('button',{name:'工作区文件 等待提问的会话',exact:true}).click()
+  await page.waitForFunction(before=>nativeFileOpens.length>before,beforeOpen)
+  assert.deepEqual(await page.evaluate(()=>nativeFileOpens.at(-1)),{kind:'files',options:{destination:'sidebar'},sessionId:'wait'})
+  assert.equal(await page.locator('.mdk-results').count(),0)
   await page.evaluate(()=>{document.getElementById('mount').style.overflowY='auto';showSettings()});await page.locator('.mdk-toggle').first().waitFor()
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'settings fit viewport')
   await page.screenshot({path:`${out}/${dark?'dark':'light'}-settings-${width}.png`,fullPage:true})
@@ -120,17 +117,8 @@ for(const viewport of [{width:390,height:360},{width:844,height:390}]){
  await page.locator('[data-mobile-todos] .mdk-row').last().scrollIntoViewIfNeeded()
  assert.ok(await page.locator('[data-mobile-todos] .mdk-row').last().evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight),'long pending center is reachable')
  await page.locator('.mdk-filters button').filter({hasText:'全部'}).click()
- await page.evaluate(()=>stressFiles())
- const origin=page.getByRole('button',{name:'成果 等待提问的会话',exact:true})
- await origin.click()
- await page.waitForFunction(()=>document.querySelectorAll('.mdk-result').length===32)
- await page.locator('.mdk-result').last().getByRole('button',{name:'预览',exact:true}).scrollIntoViewIfNeeded()
- assert.ok(await page.locator('.mdk-result').last().evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight),'last file preview is reachable')
- await origin.click()
- assert.equal(await page.locator('.mdk-results').evaluate(el=>document.activeElement===el),true,'reopening the same result still reveals its panel')
- await page.getByRole('button',{name:'收起成果',exact:true}).last().click()
- assert.equal(await origin.evaluate(el=>document.activeElement===el),true,'closing results returns focus to its originating card')
- assert.ok(await origin.evaluate(el=>{const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight}),'origin remains visible after close')
+ await page.locator('.mdk-card-files').last().scrollIntoViewIfNeeded()
+ assert.ok(await page.locator('.mdk-card-files').last().evaluate(el=>el.getBoundingClientRect().bottom<=innerHeight),'last workspace-files action is reachable')
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
  await page.evaluate(()=>{document.getElementById('mount').style.overflowY='auto';showSettings()})
  await page.locator('.mdk-settings').waitFor()
@@ -213,5 +201,5 @@ assert.ok(await strip.evaluate(el=>el.scrollLeft>0),'keyboard focus reveals the 
 await lastTab.click()
 await page.screenshot({path:out+'/mobile-plugin-tabs.png',fullPage:true})
 assert.deepEqual(errors,[])
-console.log('MOBILE DECK VISUAL OK: light/dark, 390/430/820/1280px, clipped fixed-height host, touch scrolling, long tasks/todos/activity, 32 files, expanded settings, short landscape, results return focus, forced split details, sound only in settings, nonoverlapping phone filters, panel/settings overflow, icons, reduced motion; screenshots: '+out)
+console.log('MOBILE DECK VISUAL OK: light/dark, 390/430/820/1280px, clipped fixed-height host, touch scrolling, long tasks/todos/activity, single native workspace-files action, expanded settings, short landscape, forced split details, sound only in settings, nonoverlapping phone filters, panel/settings overflow, icons, reduced motion; screenshots: '+out)
 }finally{await browser.close()}

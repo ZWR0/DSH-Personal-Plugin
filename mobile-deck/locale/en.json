@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Pocket deck",
-    "description": "Mobile workbench with cross-session questions, approvals and recorded failures, plus conversation takeover and deliverable previews."
+    "description": "Mobile workbench for session status, cross-session actions and takeover, with one Workspace files action using the native DSH file browser and renderer."
   }
 }
