@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Quote Relay",
-    "description": "Collect multiple excerpts, revisit loaded sources and insert all quotes together."
+    "description": "Insert selected assistant text directly into the composer as a quote."
   }
 }

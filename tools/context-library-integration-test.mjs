@@ -1,3 +1,4 @@
+import { harnessUrl } from './test-environment.mjs'
 /**
  * 知忆书阁 integration: real Cordis, real SystemPrompt/ToolsService, real
  * HostConnectionService routing, a real Session, and scoped agent contexts.
@@ -8,14 +9,14 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { Context } from 'file:///D:/deepseek-harness/vendor/cordis/lib/index.js'
-import { HostConnectionService } from 'file:///D:/deepseek-harness/packages/client/connection/lib/index.js'
-import {
+const { Context } = await import(harnessUrl('vendor/cordis/lib/index.js'))
+const { HostConnectionService } = await import(harnessUrl('packages/client/connection/lib/index.js'))
+const {
   SystemPrompt, renderPrompt, renderContextSections, joinContextSections,
-} from 'file:///D:/deepseek-harness/packages/bundle/base/node_modules/@deepseek-ai/dsh-system-prompt/lib/index.js'
-import { ToolsService } from 'file:///D:/deepseek-harness/packages/bundle/base/node_modules/@deepseek-ai/dsh-tools/lib/index.js'
-import { Session } from 'file:///D:/deepseek-harness/packages/bundle/base/node_modules/@deepseek-ai/dsh-session/lib/index.js'
-import { createScope } from 'file:///D:/deepseek-harness/packages/core/scope/lib/index.js'
+} = await import(harnessUrl('packages/core/system-prompt/lib/index.js'))
+const { ToolsService } = await import(harnessUrl('packages/core/tools/lib/index.js'))
+const { Session } = await import(harnessUrl('packages/core/session/lib/index.js'))
+const { createScope } = await import(harnessUrl('packages/core/scope/lib/index.js'))
 import * as plugin from '../context-library/index.js'
 import * as lib from '../context-library/library.js'
 

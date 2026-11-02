@@ -1,19 +1,19 @@
+import { harnessRequire } from './test-environment.mjs'
 // Client-half test for 掌上行舟: real-state grouping, takeover navigation,
 // guarded stop semantics, offline banner, layout switching, disable handling
 // and teardown. No network, no credentials, no real sessions.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
 
-const req = createRequire(new URL('../../package.json', import.meta.url))
+const req = harnessRequire
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<div id="mount"></div>', { pretendToBeVisual: true, url: 'https://dsh.test/' })
 for (const key of ['window', 'document', 'navigator']) {
   Object.defineProperty(globalThis, key, { configurable: true, value: dom.window[key] })
 }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
-const React = req('./node_modules/.pnpm/react@18.3.1/node_modules/react/index.js')
-const { createRoot } = req('./node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/client.js')
+const React = req('react')
+const { createRoot } = req('react-dom/client')
 
 // ---------------------------------------------------------------- harness state
 
@@ -29,6 +29,8 @@ let panelSelections = []
 let activePanelId = 'mobile-deck'
 let nativePanelChanged = () => {}
 let rpcCalls = []
+let rulesFailure = false
+let sharedRules = { followed: [], question: true, approval: true, ended: true, onlyFollowed: false, initialized: false }
 let refreshCount = 0
 let stopGate = null
 let refreshImpl = async () => {}
@@ -119,6 +121,12 @@ const ctx = {
     rpc: {
       async call(channel, method, payload) {
         assert.equal(channel, '/api')
+        if (method === 'mobile-deck/rules') {
+          if (rulesFailure) throw Error('offline')
+          if (payload.action === 'follow') sharedRules = { ...sharedRules, followed: payload.followed ? [...new Set([...sharedRules.followed, payload.sessionId])] : sharedRules.followed.filter(id => id !== payload.sessionId), initialized: true }
+          if (payload.action === 'save' || payload.action === 'import') sharedRules = { ...sharedRules, ...payload.rules, initialized: true }
+          return { ok: true, value: { ...sharedRules } }
+        }
         assert.equal(method, 'mobile-deck/settings')
         rpcCalls.push(payload)
         if (payload.action === 'get') return { ok: true, value: { enabled: true, layout: 'auto', idleLimit: 1 } }
@@ -373,7 +381,7 @@ for(const card of document.querySelectorAll('.mdk-rowwrap')){
 
 // Followed sessions are pinned within urgency groups and can be filtered.
 await React.act(async () => document.querySelector('.mdk-follow').click())
-assert.equal(JSON.parse(window.localStorage.getItem('dsh.mobile-deck.alert-rules.v1')).followed[0], 'wait')
+assert.equal(sharedRules.followed[0], 'wait')
 await React.act(async () => filterButton('关注').click())
 assert.deepEqual(rows(), ['等待提问的会话'])
 await React.act(async () => filterButton('全部').click())
@@ -382,7 +390,8 @@ const RulePage = registrations.get('plugins.tab:mobile-deck').component
 await React.act(async () => root.render(React.createElement(RulePage)))
 const rule = name => document.querySelector('input[aria-label="' + name + '"]')
 await React.act(async () => { rule('提问 / 审阅').click(); rule('任务结束').click(); rule('仅关注').click() })
-const savedRules = JSON.parse(window.localStorage.getItem('dsh.mobile-deck.alert-rules.v1'))
+assert.equal(window.localStorage.getItem('dsh.mobile-deck.alert-rules.v1'), null, 'shared settings are not written to device storage')
+const savedRules = sharedRules
 assert.deepEqual({question:savedRules.question,approval:savedRules.approval,ended:savedRules.ended,onlyFollowed:savedRules.onlyFollowed}, {question:false,approval:true,ended:false,onlyFollowed:true})
 await React.act(async () => document.querySelector('.mdk-sound input[role=switch]').click())
 const beforeRuleTones = tones.length
@@ -481,6 +490,25 @@ await React.act(async () => toggle.click())
 await flush()
 await React.act(async () => root.render(React.createElement(ComposerEntry)))
 assert.equal(document.querySelector('.mdk-launch'), null, 'disabled workbench hides the composer shortcut')
+
+// Host changes from another device become visible on reconnect, while audio remains device-owned.
+const localAudio = window.localStorage.getItem('dsh.mobile-deck.sound.v1')
+sharedRules = { ...sharedRules, followed: ['other-device'], onlyFollowed: true }
+await React.act(async()=>{ root.render(React.createElement(RulePage)); eventHandlers.get('connection/reset')(); await Promise.resolve() })
+await flush()
+assert.equal(rule('仅关注').checked, true)
+assert.match(document.querySelector('.mdk-rules').textContent,/1/)
+assert.equal(window.localStorage.getItem('dsh.mobile-deck.sound.v1'), localAudio)
+rulesFailure = true
+await React.act(async()=>{ eventHandlers.get('connection/reset')(); await Promise.resolve() })
+await flush()
+assert.equal(rule('仅关注').checked,true,'failed sync keeps displayed settings')
+assert.equal(rule('仅关注').disabled,true)
+assert.match(document.querySelector('.mdk-rules [role=alert]').textContent,/Host/)
+rulesFailure = false
+await React.act(async()=>{ eventHandlers.get('connection/reset')(); await Promise.resolve() })
+await flush()
+assert.equal(rule('仅关注').disabled,false)
 
 // ---------------------------------------------------------------- teardown
 

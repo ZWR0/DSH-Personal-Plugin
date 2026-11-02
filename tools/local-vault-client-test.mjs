@@ -1,16 +1,15 @@
+import { harnessRequire } from './test-environment.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-const req = createRequire(new URL('../../package.json', import.meta.url))
+const req = harnessRequire
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<!doctype html><html><head></head><body><div id="mount"></div></body></html>', { url: 'http://localhost', pretendToBeVisual: true })
 for (const key of ['window', 'document', 'MutationObserver', 'HTMLElement', 'Node', 'navigator']) Object.defineProperty(globalThis, key, { configurable: true, value: dom.window[key] })
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
-const base = './node_modules/.pnpm/'
-const React = req(base+'react@18.3.1/node_modules/react/index.js')
+const React = req('react')
 const { act } = React
-const { createRoot } = req(base+'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/client.js')
-const { Simulate } = req(base+'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/test-utils.js')
+const { createRoot } = req('react-dom/client')
+const { Simulate } = req('react-dom/test-utils')
 let module
 window.__ModuleLoader__ = { load(value) { module = value } }
 new Function(readFileSync(new URL('../local-vault/client.js', import.meta.url), 'utf8'))()

@@ -1,17 +1,17 @@
+import { fileURLToPath } from 'node:url'
+import { browserOptions, harnessRequire } from './test-environment.mjs'
 /** Browser verification of plugin styling on the native question DOM markers. */
 import assert from 'node:assert/strict'
 import { readFileSync, mkdirSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
 
-const req = createRequire(new URL('../../package.json', import.meta.url))
-const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
+const req = harnessRequire
+const { chromium } = req('playwright')
 const theme = readFileSync(new URL('../aurum-theme/client.js', import.meta.url), 'utf8')
 const tokens = [...theme.matchAll(/'(--dsw-[^']+)': \['([^']*)', '([^']*)'\]/g)]
 const source = readFileSync(new URL('../choice-pilot/client.js', import.meta.url), 'utf8')
 const out = new URL('./.test-tmp/choice-pilot/', import.meta.url)
 mkdirSync(out, { recursive: true })
-const browser = await chromium.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
+const browser = await chromium.launch(browserOptions())
 try {
   const page = await browser.newPage()
   await page.setContent(`<style>

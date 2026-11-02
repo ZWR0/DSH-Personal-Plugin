@@ -78,6 +78,30 @@ export async function scanDirectory(directory, bundles = []) {
   })) }
 }
 
+/**
+ * Check required Host methods without invoking them or reading credentials.
+ * @param name - Candidate bundle package name; unlisted bundles have no checks.
+ * @param ctx - Running Host context supplying the installed services.
+ * @returns Missing method paths; an empty list does not validate client behavior.
+ */
+export function compatibilityIssues(name, ctx) {
+  const common = ['connection.fetch.register']
+  const requirements = {
+    '@local/dsh-local-vault': [...common, 'pluginManager.listBundles', 'pluginManager.installBundle', 'pluginManager.removeBundle'],
+    '@local/dsh-mobile-deck': common,
+    '@local/dsh-remote-access': [...common, 'connection.webAuthStatus', 'connection.webAuthToken', 'connection.setWebAuthToken', 'connection.clearWebAuthToken'],
+    '@local/dsh-context-library': [...common, 'systemPrompt.context', 'systemPrompt.section', 'systemPrompt.getSectionOrder', 'tools.register', 'tools.guard', 'agents.get', 'agents.list', 'workingDirectory.get'],
+    '@local/dsh-choice-pilot': ['systemPrompt.section'],
+    '@local/dsh-session-reaper': [...common, 'sessionController.list', 'sessionPersistence.stat', 'sessionPersistence.flush', 'agents.get', 'sessions.get'],
+  }
+  return (requirements[name] || []).filter(path => {
+    const [service, ...members] = path.split('.')
+    let value = typeof ctx.get === 'function' ? ctx.get(service) : ctx[service]
+    for (const member of members) value = value?.[member]
+    return typeof value !== 'function'
+  })
+}
+
 export function apply(ctx) {
   const settingsFile = join(ctx.profileContext.dir, 'local-vault.json')
   const recoveryFile = join(ctx.profileContext.dir, 'local-vault-recovery.json')
@@ -101,7 +125,17 @@ export function apply(ctx) {
       throw new Error('读取行囊宝匣目录配置失败：' + message(error))
     }
   }
-  const scan = async directory => scanDirectory(directory, await ctx.pluginManager.listBundles())
+  const scan = async directory => {
+    const result = await scanDirectory(directory, await ctx.pluginManager.listBundles())
+    for (const item of result.candidates) {
+      const missing = compatibilityIssues(item.name, ctx)
+      if (missing.length) {
+        item.compatibility = { compatible: false, missing }
+        result.warnings.push({ path: item.path, message: '宿主接口不兼容：' + missing.join(', ') + '。请更新匹配的 DSH 宿主；远行之钥还需认证兼容补丁，重启后重新扫描。' })
+      }
+    }
+    return result
+  }
   async function handle(endpoint, payload, signal) {
     try {
       if (endpoint === 'settings') return { ok: true, value: await settings() }
@@ -130,6 +164,9 @@ export function apply(ctx) {
         const item = result.candidates.find(candidate => candidate.path === payload?.path)
         if (!item) throw new Error('插件已不在保存的目录中，请重新扫描')
         if (item.status === 'conflict') throw new Error('同名插件存在多个目录，请先解决冲突')
+        if (item.compatibility?.compatible === false) {
+          return { ok: false, error: { code: 'local-vault/incompatible-host', message: '安装未执行：宿主缺少 ' + item.compatibility.missing.join(', ') + '。请更新 DSH 或安装匹配的兼容补丁，重启后重新扫描。', details: { missing: item.compatibility.missing } } }
+        }
         if (item.status === 'installed') return { ok: true, value: { skipped: true, application: 'applied' } }
         signal?.throwIfAborted()
         const pending = await recovery()

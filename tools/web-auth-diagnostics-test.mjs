@@ -1,10 +1,11 @@
+import { dependencyPath, harnessRoot } from './test-environment.mjs'
 /** Check the optional patch against local DSH copies; never edit the running checkout. */
 import { mkdtemp, mkdir, copyFile } from 'node:fs/promises'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawnSync } from 'node:child_process'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const source = resolve(process.env.DSH_SOURCE || join(root, '..'))
+const source = harnessRoot
 await mkdir(join(root, 'tools/.test-tmp'), { recursive: true })
 const stage = await mkdtemp(join(root, 'tools/.test-tmp/web-auth-'))
 const files = [
@@ -32,7 +33,7 @@ for (const extra of [['--check'], []]) {
  const result = spawnSync('git',['apply',...extra,'--directory='+prefix,join(root,'patches/dsh-web-auth-diagnostics.patch')],{cwd:root,encoding:'utf8'})
  if(result.status !== 0) throw new Error(result.stderr || 'patch application failed')
 }
-const test = spawnSync(process.execPath,['--import',pathToFileURL(join(source,'node_modules/tsx/dist/esm/index.mjs')).href,join(stage,'check.mjs')],{cwd:root,encoding:'utf8'})
+const test = spawnSync(process.execPath,['--import',pathToFileURL(dependencyPath('tsx/esm')).href,join(stage,'check.mjs')],{cwd:root,encoding:'utf8'})
 process.stdout.write(test.stdout)
 process.stderr.write(test.stderr)
 if(test.status !== 0) process.exitCode = 1

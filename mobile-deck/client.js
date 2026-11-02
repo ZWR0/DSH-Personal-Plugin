@@ -44,7 +44,7 @@ window.__ModuleLoader__.load({
       follow: '关注', unfollow: '取消关注', clearFollowed: '清空关注', filterFollowed: '关注', rulesTitle: '提醒规则',
       ruleQuestion: '提问 / 审阅', ruleApproval: '授权', ruleEnded: '任务结束', ruleOnlyFollowed: '仅关注',
       rulesHint: '仅控制提示音与即时播报，动态和待处理列表仍显示全部。仅关注开启但未关注会话时不会提醒。',
-      rulesFailed: '此浏览器无法保存提醒设置。', followLimit: '最多关注 200 个会话。',
+      rulesFailed: '无法同步 Host 提醒设置，请检查连接后刷新重试', rulesSync: '关注与提醒规则同步到 Host；音量留在此设备', importRules: '导入此浏览器旧设置', rulesLoading: '正在同步提醒设置', followLimit: '最多关注 200 个会话。',
       todoRecheck: '重新核对失败记录', todoAll: '全部待办', todoQuestion: '待回答', todoApproval: '待授权', todoFailure: '失败任务', todoOpen: '进入处理', todoReview: '标记已查看', todoEmpty: '当前没有这类待办', todoScan: '正在核对最近失败记录…', todoPartial: '{n} 个会话记录暂不可读，请刷新重试', todoHint: '问题和授权按最新状态移除；失败可标记已查看，新一轮失败会重新出现', todoFailureHint: '最近一轮明确失败；进入会话查看详情并决定是否重试',
       pendingCenter: '待处理中心', pendingMissing: '打开会话查看请求详情', reviewNeeded: '需要审阅',
       pushUnavailable: '后台推送尚需宿主支持，关闭网页或锁屏后不保证提醒。',
@@ -146,7 +146,7 @@ window.__ModuleLoader__.load({
       follow: 'Follow', unfollow: 'Unfollow', clearFollowed: 'Clear followed', filterFollowed: 'Following', rulesTitle: 'Alert rules',
       ruleQuestion: 'Questions / reviews', ruleApproval: 'Approvals', ruleEnded: 'Task ended', ruleOnlyFollowed: 'Followed only',
       rulesHint: 'Controls sound and live announcements only; activity and pending lists still show everything. Followed-only mode is silent if no sessions are followed.',
-      rulesFailed: 'This browser could not save alert settings.', followLimit: 'You can follow up to 200 sessions.',
+      rulesFailed: 'Could not sync alert settings. Check the connection and refresh.', rulesSync: 'Follows and alerts sync through the Host; volume stays on this device.', importRules: 'Import this browser’s old settings', rulesLoading: 'Syncing alert settings', followLimit: 'You can follow up to 200 sessions.',
       todoRecheck: 'Recheck failure records', todoAll: 'All actions', todoQuestion: 'Questions', todoApproval: 'Approvals', todoFailure: 'Failed tasks', todoOpen: 'Handle request', todoReview: 'Mark reviewed', todoEmpty: 'No actions in this category', todoScan: 'Checking recent failure records…', todoPartial: '{n} session records unavailable; refresh to retry', todoHint: 'Answered questions and resolved approvals disappear. Review failures; a new failed turn appears again.', todoFailureHint: 'The latest turn failed. Open the conversation to inspect it and decide whether to retry.',
       pendingCenter: 'Needs attention', pendingMissing: 'Open the conversation for request details', reviewNeeded: 'Review needed',
       pushUnavailable: 'Background push requires host support; alerts are not reliable while locked or the page is closed.',
@@ -484,21 +484,53 @@ window.__ModuleLoader__.load({
         if (value && Array.isArray(value.followed)) initialRules.followed = [...new Set(value.followed.filter(id => typeof id === 'string' && id.length > 0 && id.length < 512))].slice(0, 200)
         for (const key of ['question', 'approval', 'ended', 'onlyFollowed']) if (value && typeof value[key] === 'boolean') initialRules[key] = value[key]
       } catch (_) { /* missing or damaged device preferences use defaults */ }
-      const alertRules = createStore(initialRules)
-      function saveRules(patch) {
-        const next = { ...alertRules.getSnapshot(), ...patch, error: '' }
-        try { const { error, ...stored } = next; window.localStorage.setItem(RULES_KEY, JSON.stringify(stored)); alertRules.publish(next) }
-        catch (_) { alertRules.publish({ ...alertRules.getSnapshot(), error: t('rulesFailed') }) }
+      const legacyRules = initialRules
+      const alertRules = createStore({ followed: [], question: true, approval: true, ended: true, onlyFollowed: false, ready: false, saving: false, initialized: false, error: '' })
+      let rulesEpoch = 0
+      let rulesQueue = Promise.resolve()
+      let rulesPending = 0
+      async function rulesCall(payload) {
+        const answer = await ctx.connection.rpc.call('/api', 'mobile-deck/rules', payload)
+        if (!answer || answer.ok !== true) throw new Error(answer?.error?.message || t('rulesFailed'))
+        if (!Array.isArray(answer.value?.followed)) throw new Error(t('rulesFailed'))
+        return answer.value
+      }
+      async function refreshRules() {
+        if (!active || alertRules.getSnapshot().saving) return
+        const epoch = ++rulesEpoch
+        try {
+          const value = await rulesCall({ action: 'get' })
+          if (active && epoch === rulesEpoch) alertRules.publish({ ...value, ready: true, saving: false, error: '' })
+        } catch (error) {
+          if (active && epoch === rulesEpoch) alertRules.publish({ ...alertRules.getSnapshot(), ready: false, error: t('rulesFailed') })
+        }
+      }
+      function saveRules(patch, action = 'save') {
+        if (!alertRules.getSnapshot().ready) return
+        ++rulesEpoch
+        rulesPending++
+        alertRules.publish({ ...alertRules.getSnapshot(), saving: true, error: '' })
+        rulesQueue = rulesQueue.then(async () => {
+          if (!active) return
+          try {
+            const value = await rulesCall({ action, ...(action === 'follow' ? patch : { rules: patch }) })
+            rulesPending--
+            if (active) alertRules.publish({ ...value, ready: true, saving: rulesPending > 0, error: '' })
+          } catch (error) {
+            rulesPending--
+            if (active) alertRules.publish({ ...alertRules.getSnapshot(), saving: rulesPending > 0, error: t('rulesFailed') })
+          }
+        })
       }
       function toggleFollow(id) {
         const value = alertRules.getSnapshot()
-        if (value.followed.includes(id)) saveRules({ followed: value.followed.filter(item => item !== id) })
-        else if (value.followed.length < 200) saveRules({ followed: [...value.followed, id] })
-        else alertRules.publish({ ...value, error: t('followLimit') })
+        if (value.saving) return
+        if (!value.followed.includes(id) && value.followed.length >= 200) { alertRules.publish({ ...value, error: t('followLimit') }); return }
+        saveRules({ sessionId: id, followed: !value.followed.includes(id) }, 'follow')
       }
       function shouldAlert(item) {
         const rules = alertRules.getSnapshot()
-        return rules[item.kind] !== false && (!rules.onlyFollowed || rules.followed.includes(item.sessionId))
+        return rules.ready && rules[item.kind] !== false && (!rules.onlyFollowed || rules.followed.includes(item.sessionId))
       }
       function pendingContext(status) {
         const pending = status && status.pendingInteraction
@@ -700,7 +732,7 @@ window.__ModuleLoader__.load({
         lastAttempt = Date.now()
         freshness.publish({ ...freshness.getSnapshot(), refreshing: true })
         try {
-          await ctx.sessions.refresh()
+          await Promise.all([ctx.sessions.refresh(), refreshRules()])
           if (!active) return
           freshness.publish({ ...freshness.getSnapshot(), refreshing: false, lastError: null })
           markSynced()
@@ -864,7 +896,7 @@ window.__ModuleLoader__.load({
           if (text) meta.push(text)
         }
         return h('div', { className: 'mdk-rowwrap', 'data-followed': followed },
-          h('button', { type: 'button', className: 'mdk-follow', 'aria-pressed': followed,
+          h('button', { type: 'button', className: 'mdk-follow', disabled: !rules.ready || rules.saving, 'aria-pressed': followed,
             'aria-label': t(followed ? 'unfollow' : 'follow') + ' ' + (row.displayTitle || row.id), title: t(followed ? 'unfollow' : 'follow'), onClick: () => toggleFollow(row.id) }, h(ActionIcon, { name: 'star' })),
           h('button', {
             type: 'button',
@@ -930,10 +962,12 @@ window.__ModuleLoader__.load({
         const rules = useStore(alertRules)
         return h('div', { className: 'mdk-field mdk-rules' },
           h('div', { className: 'mdk-fieldhead' }, h('div', { className: 'mdk-label' }, h(ActionIcon, { name: 'bell' }), t('rulesTitle')),
-            h('button', { type: 'button', className: 'mdk-btn', disabled: !rules.followed.length, onClick: () => saveRules({ followed: [] }) }, t('clearFollowed'), ' · ', rules.followed.length)),
+            h('button', { type: 'button', className: 'mdk-btn', disabled: !rules.ready || rules.saving || !rules.followed.length, onClick: () => saveRules({ followed: [] }) }, t('clearFollowed'), ' · ', rules.followed.length)),
           h('div', { className: 'mdk-rulegrid' }, [['question', 'ruleQuestion'], ['approval', 'ruleApproval'], ['ended', 'ruleEnded'], ['onlyFollowed', 'ruleOnlyFollowed']].map(([key, label]) =>
             h('label', { key, className: 'mdk-rule' }, h('span', null, t(label)), h('span', { className: 'mdk-toggle' },
-              h('input', { type: 'checkbox', role: 'switch', checked: rules[key], 'aria-label': t(label), onChange: event => saveRules({ [key]: event.target.checked }) }))))),
+              h('input', { type: 'checkbox', role: 'switch', checked: rules[key], disabled: !rules.ready, 'aria-label': t(label), onChange: event => saveRules({ [key]: event.target.checked }) }))))),
+          h('p', { className: 'mdk-hint' }, t('rulesSync')),
+          !rules.initialized && (legacyRules.followed.length || Object.keys(legacyRules).some(key => ['question','approval','ended'].includes(key) && legacyRules[key] === false) || legacyRules.onlyFollowed) ? h('button', { className: 'mdk-btn', disabled: !rules.ready || rules.saving, onClick: () => saveRules(legacyRules, 'import') }, t('importRules')) : null,
           h('details', { className: 'mdk-settingshelp' }, h('summary', null, t('settingsHelp')), h('p', null, t('rulesHint')), h('p', null, t('pushUnavailable'))),
           rules.error ? h('p', { role: 'alert', className: 'mdk-hint' }, rules.error) : null)
       }
@@ -1352,6 +1386,7 @@ window.__ModuleLoader__.load({
 
       ctx.effect(() => {
         let cancelled = false
+        void refreshRules()
         callHost({ action: 'get' })
           .then(value => {
             if (cancelled || !active) return

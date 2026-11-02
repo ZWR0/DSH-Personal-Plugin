@@ -1,14 +1,14 @@
+import { harnessRequire } from './test-environment.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-const req=createRequire(new URL('../../package.json', import.meta.url))
+const req=harnessRequire
 const {JSDOM}=req('jsdom')
 const dom=new JSDOM('<div id="mount"></div>',{pretendToBeVisual:true})
 for(const k of ['window','document','navigator'])Object.defineProperty(globalThis,k,{configurable:true,value:dom.window[k]})
 globalThis.IS_REACT_ACT_ENVIRONMENT=true
-const React=req('./node_modules/.pnpm/react@18.3.1/node_modules/react/index.js')
-const ReactDom=req('./node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/index.js')
-const {createRoot}=req('./node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/client.js')
+const React=req('react')
+const ReactDom=req('react-dom')
+const {createRoot}=req('react-dom/client')
 let Panel,batchMode=false,module,Menu,Notice,dict,cleanup,current='target',calls=[],opened=[],refreshFailure=false,reject=false,resolveCall
 let catalog={ids:['target','other'],byId:{target:{running:false}}}
 window.__ModuleLoader__={load(v){module=v}}

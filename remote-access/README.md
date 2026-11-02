@@ -79,7 +79,7 @@ Host 测试检查 HTTP/HTTPS 下的 Cookie 续期及旧 Cookie 失效，使用�
 node tools/remote-access-client-test.mjs
 ```
 
-客户端脚本默认使用 Windows Edge，可通过 `DSH_BROWSER_PATH` 指定浏览器；依赖 DSH checkout 中当前版本的 Playwright 1.61.1、React 18.3.1 与相应 pnpm 布局。测试不读取或修改真实凭据，不代表已经从远程设备验证网络连通。
+客户端脚本通过统一环境解析 DSH 的依赖，不绑定 pnpm 版本目录。优先使用本机 Edge，否则使用已安装的 Playwright Chromium，也可通过 `DSH_BROWSER_PATH` 指定浏览器。环境检查与统一回归见[套件说明](../README.md#新设备安装前检查)。测试不读取或修改真实凭据，不代表已经从远程设备验证网络连通。
 
 ## 常见问题
 

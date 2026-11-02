@@ -1,3 +1,4 @@
+import { dependencyPath, harnessRoot } from './test-environment.mjs'
 /**
  * End-to-end check of the Remote Access Host half against the real BrowserAuth.
  *
@@ -14,7 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-const REPO = process.env.DSH_SOURCE || 'D:/deepseek-harness'
+const REPO = harnessRoot
 const { BrowserAuth } = await import(pathToFileURL(`${REPO}/packages/client/connection/src/browser-auth.ts`).href)
 const plugin = await import('../remote-access/index.js')
 
@@ -255,7 +256,7 @@ try {
   const storeFile = join(directory, 'credential-store.json')
   writeFileSync(storeFile, JSON.stringify(Object.fromEntries(store.records)), 'utf8')
   const child = JSON.parse(execFileSync(process.execPath, [
-    join(REPO, 'node_modules/tsx/dist/cli.mjs'),
+    dependencyPath('tsx/cli'),
     fileURLToPath(import.meta.url),
     '--child',
     storeFile,

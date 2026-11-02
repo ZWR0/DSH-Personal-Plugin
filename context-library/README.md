@@ -201,7 +201,7 @@ node tools/context-library-client-test.mjs
 | integration | 真实 Cordis、Connection、SystemPrompt、ToolsService、Session；身份替换范围、owner 认证导入、过期预览、卸载 |
 | client | Edge/Playwright 渲染；快捷编辑、文件导入、精简浮窗、悬停属性、折叠状态、版本提醒、Escape、窄屏 |
 
-这些测试使用临时书库或模拟 Host 回复；不是完整真实模型回合。集成测试中的 Agent 为最小接口替身。浏览器脚本依赖本机 `D:/deepseek-harness` 的 React、Playwright 和 Edge，迁移设备时需适配路径。Windows 符号链接测试在无建链权限时跳过。
+这些测试使用临时书库或模拟 Host 回复；不是完整真实模型回合。集成测试中的 Agent 为最小接口替身。测试依赖与浏览器统一通过[套件环境检查](../README.md#新设备安装前检查)解析，迁移设备时设置 `DSH_SOURCE`，必要时指定 `DSH_BROWSER_PATH`。Windows 符号链接测试在无建链权限时跳过。
 
 仓库仅保留上表四个回归测试，不包含签发浏览器认证或改写运行中书库设置的本机诊断脚本。测试不能替代真实模型效果与 DSH 版本兼容性验证。
 

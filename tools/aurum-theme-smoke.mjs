@@ -1,3 +1,4 @@
+import { harnessRequire } from './test-environment.mjs'
 /**
  * Offline smoke test for the aurum-theme client half.
  *
@@ -10,15 +11,9 @@
  * Run: node tools/aurum-theme-smoke.mjs
  */
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { pathToFileURL } from 'node:url'
 
-const ROOT = new URL('../../node_modules/.pnpm', import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
-const reactEntry = `${ROOT}/react@18.3.1/node_modules/react/index.js`
-const serverEntry = `${ROOT}/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/server.node.js`
-
-const React = createRequire(import.meta.url)(reactEntry)
-const { renderToStaticMarkup } = await import(pathToFileURL(serverEntry).href)
+const React = harnessRequire('react')
+const { renderToStaticMarkup } = harnessRequire('react-dom/server')
 
 const source = readFileSync(new URL('../aurum-theme/client.js', import.meta.url), 'utf8')
 
@@ -46,7 +41,7 @@ if (!entry || typeof entry.factory !== 'function') throw new Error('module did n
 
 const mod = entry.factory(name => {
   if (name === 'react') return React
-  if (name === 'react-dom') return createRequire(import.meta.url)(`${ROOT}/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/index.js`)
+  if (name === 'react-dom') return harnessRequire('react-dom')
   throw new Error(`unexpected require: ${name}`)
 })
 if (entry.id !== '@local/dsh-aurum-theme') throw new Error(`wrong module id: ${entry.id}`)

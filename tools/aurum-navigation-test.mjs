@@ -1,7 +1,7 @@
+import { harnessRequire } from './test-environment.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-const req = createRequire('D:/deepseek-harness/package.json')
+const req = harnessRequire
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<!doctype html><html><head></head><body><main id="session"><div id="frame"><div><nav><div><button data-index="0" aria-current="true">one</button><button data-index="1">two</button></div></nav></div><div><div id="port"><div data-chat-flow><div data-chat-flow-kind="assistant-step" data-chat-turn="0"><h1>Overview</h1><p>Answer</p><h2>Evidence</h2><h3>Details</h3><div data-turn-process-inline="true"><h2>Hidden reasoning</h2></div></div></div></div></div></div><div id="dock"></div></main></body></html>', { url: 'http://localhost', pretendToBeVisual: true })
 for (const key of ['window', 'document', 'MutationObserver', 'HTMLElement', 'Node']) globalThis[key] = dom.window[key]
@@ -10,9 +10,9 @@ globalThis.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(dom.windo
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 window.matchMedia = () => ({ matches: true })
 window.HTMLElement.prototype.getClientRects = function () { return [this.getBoundingClientRect()] }
-const React = req('./node_modules/.pnpm/react@18.3.1/node_modules/react/index.js')
-const ReactDOM = req('./node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/index.js')
-const { createRoot } = req('./node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/client.js')
+const React = req('react')
+const ReactDOM = req('react-dom')
+const { createRoot } = req('react-dom/client')
 const { act } = React
 let entry
 window.__ModuleLoader__ = { load(value) { entry = value } }

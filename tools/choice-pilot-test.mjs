@@ -1,11 +1,11 @@
+import { harnessRequire } from './test-environment.mjs'
 /** Load both plugin halves and verify reversible native-card styling. */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-import { createRequire } from 'node:module'
 import { apply } from '../choice-pilot/index.js'
 
-const req = createRequire(new URL('../../package.json', import.meta.url))
+const req = harnessRequire
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>')
 const cleanups = []
@@ -24,10 +24,10 @@ runInNewContext(readFileSync(new URL('../choice-pilot/client.js', import.meta.ur
   window: { __ModuleLoader__: { load(value) { entry = value } } },
   document: dom.window.document,
 })
-entry.factory(name => name === 'react' ? req('./node_modules/.pnpm/react@18.3.1/node_modules/react/index.js') : req(name)).apply(ctx)
+entry.factory(name => name === 'react' ? req('react') : req(name)).apply(ctx)
 assert.equal(dom.window.document.querySelectorAll('style[data-dsh-plugin="choice-pilot"]').length, 1)
-const React = req('./node_modules/.pnpm/react@18.3.1/node_modules/react/index.js')
-const { createRoot } = req('./node_modules/.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/client.js')
+const React = req('react')
+const { createRoot } = req('react-dom/client')
 for (const key of ['window','document','navigator']) Object.defineProperty(globalThis,key,{ configurable:true,value:dom.window[key] })
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const mount = document.createElement('div'); document.body.append(mount)

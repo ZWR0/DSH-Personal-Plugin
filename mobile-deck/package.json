@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-mobile-deck",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "description": "Mobile workbench for DSH Web: session status overview and remote takeover entry.",

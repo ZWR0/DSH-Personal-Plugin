@@ -1,15 +1,14 @@
+import { browserOptions, dependencyPath, harnessRequire } from './test-environment.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-const req = createRequire(new URL('../../package.json', import.meta.url))
-const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
-const browser = await chromium.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
+const req = harnessRequire
+const { chromium } = req('playwright')
+const browser = await chromium.launch(browserOptions())
 try {
  const page = await browser.newPage({ viewport: { width: 1000, height: 700 } })
  await page.setContent('<body><div id="root"></div></body>')
- const base = new URL('../../node_modules/.pnpm/',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
- await page.addScriptTag({ path: base+'react@18.3.1/node_modules/react/umd/react.development.js' })
- await page.addScriptTag({ path: base+'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/umd/react-dom.development.js' })
+  await page.addScriptTag({ path: dependencyPath('react/umd/react.development.js') })
+ await page.addScriptTag({ path: dependencyPath('react-dom/umd/react-dom.development.js') })
  await page.evaluate(() => { window.__ModuleLoader__ = {load(entry){window.entry=entry}} })
  await page.addScriptTag({content:readFileSync(new URL('../aurum-theme/client.js',import.meta.url),'utf8')})
  await page.evaluate(() => {

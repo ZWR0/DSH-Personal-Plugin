@@ -1,15 +1,16 @@
+import { browserOptions, dependencyPath, harnessRequire } from './test-environment.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync, mkdirSync } from 'node:fs'
-import { createRequire } from 'node:module'
-const req = createRequire(new URL('../../package.json', import.meta.url))
-const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
-const browser = await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true})
+import { fileURLToPath } from 'node:url'
+const req = harnessRequire
+const { chromium } = req('playwright')
+const browser = await chromium.launch(browserOptions())
 const source=readFileSync(new URL('../mobile-deck/client.js',import.meta.url),'utf8')
 const test=readFileSync(new URL('./mobile-deck-client-test.mjs',import.meta.url),'utf8')
 const fixture=test.slice(test.indexOf('const listeners ='),test.indexOf('// ---------------------------------------------------------------- load module')).replace(/\s*assert.equal\(channel, '\/api'\)/,'').replace(/\s*assert.equal\(method, 'mobile-deck\/settings'\)/,'')
 const theme=readFileSync(new URL('../aurum-theme/client.js',import.meta.url),'utf8')
 const tokens=[...theme.matchAll(/'(--dsw-[^']+)': \['([^']*)', '([^']*)'\]/g)]
-const out=new URL('./.test-tmp/mobile-deck-visual/', import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
+const out=fileURLToPath(new URL('./.test-tmp/mobile-deck-visual/', import.meta.url))
 mkdirSync(out,{recursive:true})
 try{
 const page=await browser.newPage({hasTouch:true});const errors=[];page.on('pageerror',e=>errors.push(e.message))
@@ -18,9 +19,8 @@ await page.route('https://dsh.fixture.test/**', route => route.fulfill(route.req
  : {status:200,contentType:'text/html',body:'<html><body></body></html>'}))
 await page.goto('https://dsh.fixture.test/')
 await page.setContent('<style>html,body{height:100%;overflow:hidden}body{margin:0;padding:0;font:14px system-ui;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}#mount{display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden;width:100%;max-width:1400px;margin:auto}</style><div id="mount"></div>')
-const base=new URL('../../node_modules/.pnpm/',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
-await page.addScriptTag({path:base+'react@18.3.1/node_modules/react/umd/react.development.js'})
-await page.addScriptTag({path:base+'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/umd/react-dom.development.js'})
+await page.addScriptTag({path:dependencyPath('react/umd/react.development.js')})
+await page.addScriptTag({path:dependencyPath('react-dom/umd/react-dom.development.js')})
 await page.evaluate(()=>{window.__ModuleLoader__={load(v){window.entry=v}}})
 await page.addScriptTag({content:source})
 await page.evaluate(fixture+`

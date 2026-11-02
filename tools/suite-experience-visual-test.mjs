@@ -1,23 +1,22 @@
+import { fileURLToPath } from 'node:url'
+import { browserOptions, dependencyPath, harnessRequire } from './test-environment.mjs'
 /** Render real plugin components with isolated sessions; never issue a delete. */
 import assert from 'node:assert/strict'
 import { readFileSync, mkdirSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
-const req = createRequire(new URL('../../package.json', import.meta.url))
-const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
-const base = new URL('../../node_modules/.pnpm/', import.meta.url)
+const req = harnessRequire
+const { chromium } = req('playwright')
 const output = new URL('./.test-tmp/experience/', import.meta.url)
 mkdirSync(output, { recursive: true })
 const theme = readFileSync(new URL('../aurum-theme/client.js', import.meta.url), 'utf8')
 const tokens = [...theme.matchAll(/'(--dsw-[^']+)': \['([^']*)', '([^']*)'\]/g)]
-const browser = await chromium.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
+const browser = await chromium.launch(browserOptions())
 try {
   const page = await browser.newPage()
   const errors = []
   page.on('pageerror', error => errors.push(error.message))
   await page.setContent('<style>body{margin:0;font:14px system-ui;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}*{box-sizing:border-box}</style><div data-chat-flow-kind="assistant-step"><p id="quote-source">需要核对的研究结论</p></div><div id="mount"></div>')
-  await page.addScriptTag({ path: fileURLToPath(new URL('react@18.3.1/node_modules/react/umd/react.development.js', base)) })
-  await page.addScriptTag({ path: fileURLToPath(new URL('react-dom@18.3.1_react@18.3.1/node_modules/react-dom/umd/react-dom.development.js', base)) })
+  await page.addScriptTag({ path: dependencyPath('react/umd/react.development.js') })
+  await page.addScriptTag({ path: dependencyPath('react-dom/umd/react-dom.development.js') })
   await page.evaluate(() => { window.plugins = {}; window.__ModuleLoader__ = { load(entry) { plugins[entry.id] = entry } } })
   for (const plugin of ['quote-relay', 'session-reaper', 'choice-pilot']) await page.addScriptTag({ content: readFileSync(new URL(`../${plugin}/client.js`, import.meta.url), 'utf8') })
   await page.evaluate(() => {
@@ -75,8 +74,9 @@ try {
         const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range)
         document.dispatchEvent(new Event('selectionchange'))
       })
-      await page.getByRole('button', { name: '暂存引文', exact: true }).click()
-      await page.locator('.qr-tray').waitFor()
+      await page.getByRole('button', { name: /^引用 \d+ 字$/ }).waitFor()
+      assert.equal(await page.locator('.qr-btn').count(),1)
+      assert.equal(await page.locator('.qr-tray').count(),0)
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       await page.screenshot({ animations: 'disabled', path: fileURLToPath(new URL(`quotes-${dark ? 'dark' : 'light'}-${width}.png`, output)) })
       await page.evaluate(() => showHistory())

@@ -27,7 +27,7 @@ const ctx = {
 try {
   apply(ctx)
   assert.deepEqual(inject, ['connection', 'profileContext'])
-  assert.deepEqual([...routes.keys()], ['/api/mobile-deck/settings'])
+  assert.deepEqual([...routes.keys()].sort(), ['/api/mobile-deck/rules', '/api/mobile-deck/settings'])
   const route = routes.get('/api/mobile-deck/settings')
   assert.deepEqual(route.methods, ['POST'])
   assert.equal(route.requestBody, 'buffered')

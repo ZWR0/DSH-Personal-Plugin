@@ -1,18 +1,20 @@
+import { harnessUrl } from './test-environment.mjs'
 import assert from 'node:assert/strict'
-import { Context } from 'file:///D:/deepseek-harness/vendor/cordis/lib/index.js'
+const { Context } = await import(harnessUrl('vendor/cordis/lib/index.js'))
 import * as reaper from '../session-reaper/index.js'
 import { mkdtemp, rm, access } from 'node:fs/promises'
 import { resolve, join, dirname } from 'node:path'
-import { HostConnectionService } from 'file:///D:/deepseek-harness/packages/client/connection/lib/index.js'
+import { tmpdir } from 'node:os'
+const { HostConnectionService } = await import(harnessUrl('packages/client/connection/lib/index.js'))
 import { lifecycleDisposer } from '../session-reaper/index.js'
-const temporary = await mkdtemp(resolve('dsh-ui-suite/tools/.reaper-test-'))
+const temporary = await mkdtemp(join(tmpdir(), 'dsh-reaper-test-'))
 const oldHome = process.env.DSH_HOME
 process.env.DSH_HOME = temporary
 const ctx = new Context()
-const persistence = await import('file:///D:/deepseek-harness/packages/session/session-persistence-jsonl/lib/index.js')
+const persistence = await import(harnessUrl('packages/session/session-persistence-jsonl/lib/index.js'))
 await ctx.plugin(persistence, {root:join(temporary,'sessions')})
 for (const [path,config] of [ ['llm/llm',undefined], ['core/session',undefined], ['session/session-projection',undefined], ['core/system-prompt',{personaPrefix:'Test'}], ['core/tools',undefined], ['core/tool-executor-native',undefined], ['core/agent',undefined], ['core/agent-loop',{agents:[]}] ]) {
- const mod=await import('file:///D:/deepseek-harness/packages/'+path+'/lib/index.js')
+ const mod=await import(harnessUrl('packages/'+path+'/lib/index.js'))
  await ctx.plugin(mod.default ?? mod,config)
 }
 try {
@@ -60,6 +62,6 @@ try {
 } finally {
  await ctx.fiber.dispose()
  if(oldHome===undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME=oldHome
- assert(temporary.startsWith(resolve('dsh-ui-suite/tools/.reaper-test-')))
+ assert(temporary.startsWith(join(tmpdir(), 'dsh-reaper-test-')))
  await rm(temporary,{recursive:true,force:true})
 }

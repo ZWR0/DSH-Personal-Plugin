@@ -1,18 +1,16 @@
+import { resolve } from 'node:path'
+import { browserOptions, dependencyPath, harnessRequire } from './test-environment.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
-const harnessRoot = resolve(process.env.DSH_SOURCE || new URL('../../',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:'))
-const req = createRequire(resolve(harnessRoot, 'package.json'))
-const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
-const browser = await chromium.launch({ executablePath: process.env.DSH_BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
+const req = harnessRequire
+const { chromium } = req('playwright')
+const browser = await chromium.launch(browserOptions())
 try {
  const page = await browser.newPage({viewport:{width:1000,height:1000}})
  const errors=[];page.on('pageerror',e=>errors.push(e.message))
  await page.setContent('<div id="root"></div><style>body{font:14px system-ui;--dsw-alias-label-primary:#eee;--dsw-alias-label-secondary:#aaa;--dsw-alias-bg-base:#171717;--dsw-alias-bg-layer-1:#222;--dsw-alias-border-l1:#444;--dsw-alias-brand-primary:#c9a227;background:#171717}*{box-sizing:border-box}</style>')
- const base=harnessRoot+'/node_modules/.pnpm/'
- await page.addScriptTag({path:base+'react@18.3.1/node_modules/react/umd/react.development.js'})
- await page.addScriptTag({path:base+'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/umd/react-dom.development.js'})
+  await page.addScriptTag({path:dependencyPath('react/umd/react.development.js')})
+ await page.addScriptTag({path:dependencyPath('react-dom/umd/react-dom.development.js')})
  await page.evaluate(()=>{window.__ModuleLoader__={load(v){window.entry=v}}})
  await page.addScriptTag({content:readFileSync(new URL('../remote-access/client.js',import.meta.url),'utf8')})
  await page.evaluate(()=>{

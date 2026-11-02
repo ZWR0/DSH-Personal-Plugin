@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Pocket deck",
-    "description": "Mobile workbench for session status, cross-session actions and takeover, with one Workspace files action using the native DSH file browser and renderer."
+    "description": "Mobile workbench with Host-synced follows and alert rules; audio stays device-specific."
   }
 }
