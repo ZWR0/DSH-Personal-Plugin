@@ -142,14 +142,14 @@ const dictionaries = {}
 window.__ModuleLoader__ = { load(value) { module = value } }
 new Function(readFileSync(new URL('../mobile-deck/client.js', import.meta.url), 'utf8'))()
 const api = module.factory(name => (name === 'react' ? React : undefined))
-assert.deepEqual(api.inject, ['slots', 'locale', 'connection', 'sessions', 'uiSession', 'uiWorkspace', 'layout'])
+assert.deepEqual(api.inject, ['slots', 'locale', 'connection', 'sessions', 'uiSession', 'uiWorkspace', 'layout', 'sidebarRight'])
 
 // Capture the dictionaries the plugin registers so `bind` can translate.
 const originalRegister = ctx.locale.register
 ctx.locale.register = (ns, dicts) => { dictionaries[ns] = dicts; return originalRegister(ns, dicts) }
 
 const flush = async () => { await React.act(async () => { await Promise.resolve() }) }
-await React.act(async () => { api.apply(ctx); await Promise.resolve() })
+await React.act(async () => { api.apply(new Proxy(ctx,{get(target,key){if(!['effect','on'].includes(key)&&!api.inject.includes(key))throw new Error('Undeclared service: '+String(key));return target[key]}})); await Promise.resolve() })
 await flush()
 
 assert.ok(registrations.has('plugins.tab:mobile-deck'), 'the settings page is registered')
@@ -264,6 +264,10 @@ assert.deepEqual(rows(), ['等待提问的会话'])
 await React.act(async () => filterButton('未查看').click())
 assert.ok(!rows().includes('等待提问的会话'))
 await React.act(async () => filterButton('全部').click())
+assert.equal(document.querySelector('.mdk-sound'),null,'workbench has no sound controls')
+const audioSettingsMount=document.createElement('div');document.body.append(audioSettingsMount)
+const audioSettingsRoot=createRoot(audioSettingsMount)
+await React.act(async()=>audioSettingsRoot.render(React.createElement(registrations.get('plugins.tab:mobile-deck').component)))
 await React.act(async () => document.querySelector('.mdk-sound input[role=switch]').click())
 assert.match(document.querySelector('.mdk-sound [role=alert]').textContent, /无法启用提示音/, 'unsupported audio gives an actionable state')
 // Real control flow: activation immediately plays a sample and state changes play once.
@@ -311,6 +315,8 @@ await React.act(async () => resumePending())
 assert.match(document.querySelector('.mdk-soundstatus').textContent, /已静音/)
 assert.equal(tones.length, beforeLateResume)
 fakeAudio.resume = normalResume
+await React.act(async()=>audioSettingsRoot.unmount())
+audioSettingsMount.remove()
 
 
 

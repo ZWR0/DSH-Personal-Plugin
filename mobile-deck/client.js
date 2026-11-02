@@ -32,7 +32,7 @@ window.__ModuleLoader__.load({
     /** A lifecycle event may resync at most this often; repeated focus events stay free. */
     const RESYNC_MIN_MS = 15000
     /** iPad portrait stays single-column; iPad landscape and desktops get the split. */
-    const WIDE_QUERY = '(min-width: 820px)'
+    const WIDE_QUERY = '(min-width: 820px) and (min-height: 500px)'
     const LAYOUTS = ['auto', 'phone', 'pad']
 
     const zh = {
@@ -121,7 +121,7 @@ window.__ModuleLoader__.load({
       settingsEnabled: '启用移动工作台',
       settingsEnabledHint: '关闭后隐藏工作台与输入框入口，可在本页重新启用。',
       settingsLayout: '布局',
-      settingsLayoutHint: '「自动」按可用宽度选择单栏或分栏；手机与平板选项用于测试或特殊设备。',
+      settingsLayoutHint: '「自动」按可用宽度与高度选择单栏或分栏；手机与平板选项用于测试或特殊设备。',
       layoutAuto: '自动',
       layoutPhone: '手机单栏',
       layoutPad: '平板分栏',
@@ -268,7 +268,6 @@ window.__ModuleLoader__.load({
       '.mdk-banner[data-kind="error"]{border-color:var(--dsw-alias-state-error-primary,#cf5555)}',
       '.mdk-tools{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px 4px}',
       '.mdk-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--dsw-alias-border-l2,rgba(105,91,62,.16));background:var(--dsw-alias-bg-layer-1,#ffffff);color:inherit;font:inherit;font-size:13px;cursor:pointer}',
-      '.mdk-btn:hover:not(:disabled){border-color:var(--dsw-alias-label-secondary,#62645e)}',
       '.mdk-btn:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#c9a227);outline-offset:2px}',
       '.mdk-btn:disabled{opacity:.55;cursor:not-allowed}',
       '.mdk-btn[data-variant="primary"]{border-color:var(--dsw-alias-brand-primary,#c9a227)}',
@@ -349,10 +348,12 @@ window.__ModuleLoader__.load({
       '.mdk-launch{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;padding:0;border-radius:8px;border:0;background:transparent;color:var(--dsw-alias-label-secondary);box-shadow:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.mdk-launch .mdk-icon{width:16px;height:16px}.mdk-launchbadge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;border-radius:99px;background:var(--dsw-alias-link,#866719);color:var(--dsw-alias-bg-layer-1,#fff);font:600 10px/16px system-ui;padding:0 4px;box-shadow:0 0 0 2px var(--dsw-alias-bg-base,#faf9f6)}.mdk-launch:focus-visible{outline:2px solid var(--dsw-alias-link,#866719);outline-offset:3px}.mdk-launch:active{filter:brightness(.92);background:var(--dsw-alias-bg-layer-2);box-shadow:none}',
       '@media(pointer:coarse){.mdk-launch{width:44px;height:44px;border-radius:13px}}@media(hover:hover){.mdk-launch:hover{border-color:var(--dsw-alias-link,#866719);background:var(--dsw-alias-bg-layer-2);box-shadow:none}}@media(prefers-reduced-motion:no-preference){.mdk-launch{transition:transform .16s ease,box-shadow .2s ease}.mdk-launch:active{transform:scale(.94)}}@media(max-width:600px){.mdk-launch{width:44px;height:44px;border-radius:13px}.mdk-events{margin-left:16px;margin-right:16px}.mdk-filters{padding-left:16px;padding-right:16px;flex-wrap:nowrap;gap:5px}.mdk-filters .mdk-choice{flex:1;min-width:0;justify-content:center;white-space:nowrap;font-size:12px;padding:0 7px;gap:4px}.mdk-filters .mdk-count{padding:1px 4px;font-size:10px}}',
       '.mdk-results{margin:0 24px 16px;padding:16px;border:1px solid var(--mdk-line);border-radius:14px;background:var(--dsw-alias-bg-layer-1,#fff);box-shadow:var(--mdk-shadow);scroll-margin-top:110px;outline:none}.mdk-results:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:3px}.mdk-result{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-top:1px solid var(--mdk-line)}.mdk-resulttext{flex:1 1 220px;min-width:0}.mdk-results>.mdk-rowacts{margin-top:12px}.mdk-result .mdk-mono{word-break:break-word}@media(max-width:600px){.mdk-results{margin:0 16px 12px;padding:14px}.mdk-rowwrap>.mdk-rowacts{flex-wrap:wrap;gap:5px}.mdk-rowwrap>.mdk-rowacts>.mdk-btn{padding:0 8px;gap:4px}}',
-      '.mdk-soundbar{margin:0 24px 8px}.mdk-soundrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.mdk-soundtitle{display:flex;align-items:center;gap:7px;flex:1;font-size:12px;min-width:140px}.mdk-soundtitle>.mdk-icon{color:var(--mdk-accent)}.mdk-soundstatus{color:var(--dsw-alias-label-secondary,#62645e);font-size:11px}.mdk-sound .mdk-btn{min-height:44px;padding:0 12px;font-size:12px}.mdk-volume{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:12px}.mdk-volume input{min-width:0;flex:1;min-height:44px;accent-color:var(--mdk-accent);cursor:pointer}.mdk-volume output{min-width:36px;text-align:right;font-variant-numeric:tabular-nums}@media(max-width:600px){.mdk-soundbar{margin-left:16px;margin-right:16px}}',
+      '.mdk-soundrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.mdk-soundtitle{display:flex;align-items:center;gap:7px;flex:1;font-size:12px;min-width:140px}.mdk-soundtitle>.mdk-icon{color:var(--mdk-accent)}.mdk-soundstatus{color:var(--dsw-alias-label-secondary,#62645e);font-size:11px}.mdk-sound .mdk-btn{min-height:44px;padding:0 12px;font-size:12px}.mdk-volume{display:flex;align-items:center;gap:12px;margin-top:12px;font-size:12px}.mdk-volume input{min-width:0;flex:1;min-height:44px;accent-color:var(--mdk-accent);cursor:pointer}.mdk-volume output{min-width:36px;text-align:right;font-variant-numeric:tabular-nums}',
       '.mdk-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:960px;align-items:start}.mdk-settings>.mdk-preferences,.mdk-settings>.mdk-note{grid-column:1/-1}.mdk-preferences{padding:0;overflow:hidden}.mdk-switchgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}.mdk-switchcell{min-width:0;padding:14px 16px;align-content:center}.mdk-switchcell+.mdk-switchcell{border-left:1px solid var(--mdk-line)}.mdk-switchcell .mdk-fieldhead{gap:8px}.mdk-switchcell .mdk-label{font-size:13px;line-height:1.4;gap:6px}.mdk-switchcell .mdk-toggle{flex:none}.mdk-soundcompact .mdk-soundrow{flex-wrap:nowrap;gap:8px}.mdk-soundcompact .mdk-soundtitle{min-width:0;flex-wrap:wrap;font-size:13px;font-weight:600;gap:5px}.mdk-soundcompact .mdk-soundstatus{font-weight:400}.mdk-tuning{padding:0 16px;border-top:1px solid var(--mdk-line)}.mdk-tuning .mdk-volume{margin:0;gap:12px;min-height:58px}.mdk-tuning .mdk-volume>span{white-space:nowrap}.mdk-settingshelp{padding:0 16px;color:var(--dsw-alias-label-secondary,#62645e);font-size:12px;border-top:1px solid var(--mdk-line)}.mdk-settingshelp summary{cursor:pointer;min-height:44px;align-content:center}.mdk-settingshelp summary:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:2px}.mdk-settingshelp p{line-height:1.6;margin:0 0 10px}@media(max-width:600px){.mdk-settings{grid-template-columns:minmax(0,1fr)}.mdk-switchgrid{grid-template-columns:repeat(3,minmax(0,1fr))}.mdk-switchcell{padding:10px 6px}.mdk-switchcell .mdk-fieldhead,.mdk-soundcompact .mdk-soundrow{flex-direction:column;gap:4px}.mdk-switchcell .mdk-label{font-size:12px;min-height:38px;justify-content:center;text-align:center}.mdk-switchcell .mdk-label .mdk-icon{width:15px;height:15px}.mdk-soundcompact .mdk-soundtitle{justify-content:center;align-content:center;min-height:38px;flex:none;font-size:12px;gap:3px}.mdk-soundcompact .mdk-soundstatus{flex-basis:100%;text-align:center;font-size:10px}.mdk-tuning{padding:0 12px}.mdk-tuning .mdk-volume{gap:7px;flex-wrap:wrap;padding:8px 0}.mdk-tuning .mdk-volume input{flex-basis:80px}.mdk-tuning .mdk-volume .mdk-btn{padding:0 9px}.mdk-settingshelp{padding:0 12px}}',
-      '.mdk-rowwrap{position:relative}.mdk-rowtop{padding-right:34px}.mdk-follow{position:absolute;right:5px;top:5px;z-index:1;width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:var(--dsw-alias-label-secondary,#62645e);display:grid;place-items:center;cursor:pointer;touch-action:manipulation}.mdk-follow[aria-pressed=true]{color:var(--mdk-accent);background:color-mix(in srgb,var(--mdk-accent) 8%,transparent)}.mdk-follow[aria-pressed=true] .mdk-icon{fill:color-mix(in srgb,var(--mdk-accent) 22%,transparent)}.mdk-follow:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:-3px}.mdk-follow:active{filter:brightness(.8)}.mdk-pending{font-size:12px;line-height:1.6;color:var(--dsw-alias-label-secondary,#62645e);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.mdk-rules{grid-column:1/-1;padding:12px 16px}.mdk-rulegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:6px}.mdk-rule{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 8px;font-size:12px;min-height:44px}.mdk-rule+.mdk-rule{border-left:1px solid var(--mdk-line)}.mdk-rules .mdk-settingshelp{padding:0;border-top:0}@media(max-width:600px){.mdk-rulegrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-rule:nth-child(3){border-left:0}.mdk-rule:nth-child(n+3){border-top:1px solid var(--mdk-line)}.mdk-filters{overflow-x:auto}.mdk-filters .mdk-choice{flex:1;min-width:0;font-size:11px;padding:0 4px;gap:3px}.mdk-filters .mdk-count{padding:1px 3px;font-size:9px}}@media(max-width:360px){.mdk-filters .mdk-count{display:none}}',
+      '.mdk-rowwrap{position:relative}.mdk-rowtop{padding-right:34px}.mdk-follow{position:absolute;right:5px;top:5px;z-index:1;width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:var(--dsw-alias-label-secondary,#62645e);display:grid;place-items:center;cursor:pointer;touch-action:manipulation}.mdk-follow[aria-pressed=true]{color:var(--mdk-accent);background:color-mix(in srgb,var(--mdk-accent) 8%,transparent)}.mdk-follow[aria-pressed=true] .mdk-icon{fill:color-mix(in srgb,var(--mdk-accent) 22%,transparent)}.mdk-follow:focus-visible{outline:2px solid var(--mdk-accent);outline-offset:-3px}.mdk-follow:active{filter:brightness(.8)}.mdk-pending{font-size:12px;line-height:1.6;color:var(--dsw-alias-label-secondary,#62645e);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.mdk-rules{grid-column:1/-1;padding:12px 16px}.mdk-rulegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:6px}.mdk-rule{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 8px;font-size:12px;min-height:44px}.mdk-rule+.mdk-rule{border-left:1px solid var(--mdk-line)}.mdk-rules .mdk-settingshelp{padding:0;border-top:0}@media(max-width:600px){.mdk-rulegrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-rule:nth-child(3){border-left:0}.mdk-rule:nth-child(n+3){border-top:1px solid var(--mdk-line)}}',
       '.mdk-rulegrid{gap:10px;margin-top:12px}.mdk-rule,.mdk-rule+.mdk-rule{padding:8px 12px;border:1px solid var(--dsw-alias-border-l3,rgba(105,91,62,.25));border-radius:11px;background:var(--dsw-alias-bg-layer-2,#f2f1ed);justify-content:flex-start;gap:12px;box-shadow:inset 0 1px rgba(255,255,255,.08)}.mdk-rule>span:first-child{flex:1;line-height:1.5}.mdk-rule .mdk-toggle{flex:none}.mdk-rule:has(input:checked){border-color:color-mix(in srgb,var(--mdk-accent) 46%,var(--mdk-line));background:color-mix(in srgb,var(--mdk-accent) 6%,var(--dsw-alias-bg-layer-1,#fff))}.mdk-rule:focus-within,.mdk-switchcell:focus-within{outline:2px solid var(--mdk-accent);outline-offset:2px}.mdk-rule:last-child{border-style:dashed}.mdk-switchgrid{gap:10px;padding:12px;background:var(--dsw-alias-bg-base,#faf9f6)}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:10px 12px;border:1px solid var(--dsw-alias-border-l3,rgba(105,91,62,.25));border-radius:11px;background:var(--dsw-alias-bg-layer-1,#fff)}.mdk-switchcell:has(input:checked){border-color:color-mix(in srgb,var(--mdk-accent) 46%,var(--mdk-line));background:color-mix(in srgb,var(--mdk-accent) 6%,var(--dsw-alias-bg-layer-1,#fff))}.mdk-tuning{background:var(--dsw-alias-bg-layer-1,#fff)}@media(max-width:600px){.mdk-rule:nth-child(3),.mdk-rule:nth-child(n+3){border:1px solid var(--dsw-alias-border-l3,rgba(105,91,62,.25))}.mdk-rule:last-child{border-style:dashed}.mdk-rule{gap:6px;padding:6px 9px}.mdk-rulegrid{gap:8px}.mdk-switchgrid{gap:6px;padding:8px}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:8px 4px}.mdk-switchcell .mdk-label{font-size:11px;gap:3px}.mdk-soundcompact .mdk-soundtitle{font-size:11px}}',
+      '.mdk-workbench{flex:1 1 0;min-height:0;height:100%;overflow-y:auto;overscroll-behavior-y:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}.mdk-workbench>*{flex-shrink:0}.mdk-workbench>.mdk-body{flex:0 0 auto}.mdk-workbench .mdk-detail{min-width:0;overflow:visible}.mdk-workbench{scroll-padding-bottom:max(16px,env(safe-area-inset-bottom))}.mdk-results>.mdk-fieldhead{flex-wrap:wrap}.mdk-root{min-width:0}.mdk-title,.mdk-grouptitle,.mdk-rowtitle{font-weight:500}.mdk-rowtop,.mdk-rowtitle{min-width:0}',
+      '@media(max-width:600px){.mdk-head{position:static;padding:16px;gap:12px}.mdk-title{font-size:18px}.mdk-sub{font-size:12px;line-height:1.6}.mdk-conn{font-size:12px;padding:7px 10px}.mdk-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:12px 16px}.mdk-searchbox{grid-column:1/-1;width:100%;min-height:48px}.mdk-search{font-size:16px;min-height:48px}.mdk-tools>.mdk-btn{min-width:0;min-height:44px;padding:6px;font-size:13px;line-height:1.4;white-space:normal}.mdk-filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:0 16px 12px;overflow:visible}.mdk-filters .mdk-choice{grid-column:span 2;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:44px;padding:8px;font-size:13px;line-height:1.4;white-space:normal}.mdk-filters .mdk-choice:nth-child(n+4){grid-column:span 3}.mdk-filters .mdk-count{display:inline-block;font-size:12px;padding:1px 5px}.mdk-row{padding:14px;gap:10px}.mdk-rowtop{flex-wrap:wrap;gap:8px;padding-right:44px}.mdk-rowtitle{flex:1 1 100%;font-size:16px;line-height:1.5}.mdk-chip{font-size:12px;max-width:100%;white-space:normal;overflow-wrap:anywhere}.mdk-rowmeta,.mdk-pending,.mdk-hint{font-size:13px;line-height:1.6}.mdk-rowwrap>.mdk-rowacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 14px;padding:10px 0 12px}.mdk-rowwrap>.mdk-rowacts:has(>.mdk-btn:nth-of-type(4)){grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-rowwrap>.mdk-rowacts>.mdk-btn{min-width:0;min-height:44px;font-size:13px;padding:6px;white-space:normal}.mdk-rowwrap>.mdk-rowacts>.mdk-stopnote{grid-column:1/-1}.mdk-switchgrid{grid-template-columns:minmax(0,1fr);gap:8px;padding:10px}.mdk-switchcell,.mdk-switchcell+.mdk-switchcell{padding:10px 12px}.mdk-switchcell .mdk-fieldhead,.mdk-soundcompact .mdk-soundrow{flex-direction:row;gap:12px}.mdk-switchcell .mdk-label{font-size:13px;min-height:44px;justify-content:flex-start;text-align:left}.mdk-soundcompact .mdk-soundtitle{justify-content:flex-start;min-height:44px;font-size:13px}.mdk-soundcompact .mdk-soundstatus{flex-basis:auto;font-size:12px;text-align:left}.mdk-switchcell .mdk-toggle{flex:none}}',
     ].join('')
 
     function ActionIcon({ name }) {
@@ -636,8 +637,7 @@ window.__ModuleLoader__.load({
       function openFiles(id, address, params) {
         if (cancelFileOpen) cancelFileOpen()
         fileNotice.publish('')
-        let sidebar
-        try { sidebar = ctx.sidebarRight || (typeof ctx.get === 'function' ? ctx.get('sidebarRight') : null) } catch (_) { /* optional host capability */ }
+        const sidebar = ctx.sidebarRight
         if (!sidebar || !sidebar.mounted || (address ? typeof sidebar.openResource !== 'function' : typeof sidebar.openTab !== 'function')) {
           fileNotice.publish(t('filesUnsupported')); return
         }
@@ -897,7 +897,7 @@ window.__ModuleLoader__.load({
               'aria-label': t('open') + ' ' + (row.displayTitle || row.id),
               onClick: () => onOpen(row.id),
             }, h(ActionIcon, { name: 'open' }), t('open')),
-            h('button', { type: 'button', className: 'mdk-btn', 'aria-label': t('results') + ' ' + (row.displayTitle || row.id), onClick: () => onResults(row.id) }, h(ActionIcon, { name: 'results' }), t('results')),
+            h('button', { type: 'button', className: 'mdk-btn', 'aria-label': t('results') + ' ' + (row.displayTitle || row.id), onClick: event => onResults(row.id, event.currentTarget) }, h(ActionIcon, { name: 'results' }), t('results')),
             h('button', { type: 'button', className: 'mdk-btn', 'aria-label': t('files') + ' ' + (row.displayTitle || row.id), onClick: () => openFiles(row.id) }, h(ActionIcon, { name: 'files' }), t('files')),
             running
               ? h('button', {
@@ -1080,7 +1080,7 @@ window.__ModuleLoader__.load({
         return h('section', { className: 'mdk-results', ref: anchor, tabIndex: -1, 'aria-label': t('resultsTitle') },
           h('div', { className: 'mdk-fieldhead' },
             h('div', null, h('h2', { className: 'mdk-grouptitle' }, t('resultsTitle')), h('div', { className: 'mdk-hint' }, row && (row.displayTitle || row.title) || id)),
-            h('button', { type: 'button', className: 'mdk-btn', onClick: onClose }, t('resultsClose'))),
+            h('div', { className: 'mdk-rowacts' }, h('button', { type: 'button', className: 'mdk-btn', onClick: () => openFiles(id) }, h(ActionIcon, { name: 'files' }), t('files')), h('button', { type: 'button', className: 'mdk-btn', onClick: onClose }, t('resultsClose')))),
           state.summary ? h('div', { className: 'mdk-card', 'data-mobile-summary': '' },
             h('h3', { className: 'mdk-grouptitle' }, t('summaryTitle')),
             resultStatus?.pendingInteraction ? h('button', { className: 'mdk-btn', type: 'button', onClick: () => openSession(id) }, pendingLabel(resultStatus)) : null,
@@ -1102,6 +1102,7 @@ window.__ModuleLoader__.load({
               item.review ? h('button', { type: 'button', className: 'mdk-btn', onClick: () => openFiles(id, 'dsh-resource://changes-review/session/' + encodeURIComponent(id) + '/' + item.review.seq + '/' + item.review.turn, { index: item.review.index }) }, t('resultsReview')) : null))),
           h('div', { className: 'mdk-rowacts' },
             h('button', { type: 'button', className: 'mdk-btn', disabled: state.loading, onClick: () => setAttempt(value => value + 1) }, h(ActionIcon, { name: 'refresh' }), t('resultsRetry')),
+            h('button', { type: 'button', className: 'mdk-btn', onClick: onClose }, t('resultsClose')),
             state.hasMore ? h('button', { type: 'button', className: 'mdk-btn', disabled: state.loading, onClick: () => { void older() } }, t('resultsOlder')) : null))
       }
 
@@ -1233,6 +1234,22 @@ window.__ModuleLoader__.load({
         const wide = useWideEnough()
         const [selectedId, setSelectedId] = React.useState(null)
         const [resultsId, setResultsId] = React.useState(null)
+        const resultsOrigin = React.useRef(null)
+        const openResults = (id, origin) => {
+          resultsOrigin.current = origin
+          if (resultsId === id) {
+            const pane = origin?.closest('.mdk-workbench')?.querySelector('.mdk-results')
+            if (pane) { pane.focus({ preventScroll: true }); pane.scrollIntoView({ block: 'nearest' }) }
+          }
+          setResultsId(id)
+        }
+        React.useEffect(() => {
+          if (resultsId !== null || !resultsOrigin.current?.isConnected) return
+          const origin = resultsOrigin.current
+          resultsOrigin.current = null
+          origin.focus({ preventScroll: true })
+          if (typeof origin.scrollIntoView === 'function') origin.scrollIntoView({ block: 'nearest' })
+        }, [resultsId])
         const [query, setQuery] = React.useState('')
         const [filter, setFilter] = React.useState('all')
         const knownFailures = useStore(failureRecords)
@@ -1286,7 +1303,7 @@ window.__ModuleLoader__.load({
               twoPane,
               onSelect: setSelectedId,
               onOpen: openSession,
-              onResults: setResultsId,
+              onResults: openResults,
             })))
         }
 
@@ -1298,7 +1315,7 @@ window.__ModuleLoader__.load({
         } else if (rows.length === 0) {
           body = h(EmptyState, { title: t('emptyTitle'), body: t('emptyBody') })
         } else if (filter === 'waiting') {
-          body = h(AttentionCenter, { rows, keyword, selectedId, onSelect: setSelectedId, onResults: setResultsId, twoPane })
+          body = h(AttentionCenter, { rows, keyword, selectedId, onSelect: setSelectedId, onResults: openResults, twoPane })
         } else if (filtered.length === 0) {
           body = h(EmptyState, { title: t('searchEmpty'), body: t('searchEmptyHint') })
         } else {
@@ -1329,7 +1346,7 @@ window.__ModuleLoader__.load({
               }, h(ActionIcon, { name: 'refresh' }), t('refresh'))))
         }
 
-        return h('div', { className: 'mdk-root mdk-pad', 'data-layout': twoPane ? 'pad' : 'phone' },
+        return h('div', { className: 'mdk-root mdk-pad mdk-workbench', 'data-layout': twoPane ? 'pad' : 'phone' },
           h('style', null, CSS),
           h('header', { className: 'mdk-head' },
             h('div', { className: 'mdk-headtext' },
@@ -1359,7 +1376,6 @@ window.__ModuleLoader__.load({
               h('button', { key: value, type: 'button', className: 'mdk-choice', 'aria-pressed': filter === value, onClick: () => setFilter(value) }, t(key), h('span', { className: 'mdk-count' }, count)))),
           h('div', { className: 'mdk-activity', role: 'status', 'aria-live': 'polite', 'aria-atomic': true }, events.announcement || ''),
           fileError || rules.error ? h('div', { className: 'mdk-banner', role: 'alert' }, fileError || rules.error) : null,
-          h('div', { className: 'mdk-soundbar' }, h(SoundControls)),
           h('details', { className: 'mdk-events' },
             h('summary', null, h(ActionIcon, { name: 'bell' }), t('alerts'), ' · ', events.items.length),
 
@@ -1613,7 +1629,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'connection', 'sessions', 'uiSession', 'uiWorkspace', 'layout'],
+      inject: ['slots', 'locale', 'connection', 'sessions', 'uiSession', 'uiWorkspace', 'layout', 'sidebarRight'],
       apply,
     }
   },
