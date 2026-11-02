@@ -868,6 +868,7 @@ window.__ModuleLoader__.load({
     const NS = 'remoteAccess'
 
     const zh = {
+      probePending: '正在检查地址、认证和会话同步…', diagnose: '连接自检', diagnoseCancel: '取消自检', diagnosisHint: '地址探测不携带凭据；认证与会话检查针对当前网页连接，其他设备请在该设备上检查', probeAddress: '远程地址', probeAuth: '当前连接认证', probeSessions: '会话同步', probeOk: '检查通过', probeReachable: '浏览器可访问该地址（未验证 DSH 身份）', probeFailed: '检查失败：{message}', probeAddressHint: '请检查地址、网络或浏览器跨域限制', probeAuthHint: '请从启动终端的登录链接重新登录', probeSessionHint: '请重试同步或检查服务日志', probeMissing: '请先保存远程地址',
       tab: '远行之钥',
       title: '远行之钥',
       subtitle: '管理 DSH Web 的启动 Token 与固定访问地址，避免重启后已收藏的登录链接失效。',
@@ -931,6 +932,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
+      probePending: 'Checking address, authentication and session sync…', diagnose: 'Check connection', diagnoseCancel: 'Cancel check', diagnosisHint: 'Address probe sends no credentials. Authentication and session checks use this page connection; check other devices on those devices.', probeAddress: 'Remote address', probeAuth: 'Current connection authentication', probeSessions: 'Session sync', probeOk: 'Check passed', probeReachable: 'Browser reached the address (DSH identity unverified)', probeFailed: 'Check failed: {message}', probeAddressHint: 'Check the address, network or browser cross-origin restrictions', probeAuthHint: 'Sign in again using the launch terminal login link', probeSessionHint: 'Retry syncing or check the service logs', probeMissing: 'Save a remote address first',
       tab: 'Wayfarer Key',
       title: 'Wayfarer Key',
       subtitle: 'Manage the DSH Web launch token and a stable public URL so bookmarked sign-in links survive restarts.',
@@ -1099,6 +1101,25 @@ window.__ModuleLoader__.load({
       const [busy, setBusy] = useState(false)
       const [notice, setNotice] = useState('')
       const [confirmRevoke, setConfirmRevoke] = useState(false)
+      const [diagnosis, setDiagnosis] = useState(null)
+      const [diagnosing, setDiagnosing] = useState(false)
+      const diagnostic = useRef(null)
+      useEffect(() => () => { if (diagnostic.current) diagnostic.current.abort() }, [])
+      useEffect(() => { if (diagnostic.current) diagnostic.current.abort(); diagnostic.current = null; setDiagnosing(false); setDiagnosis(null) }, [baseDraft])
+      async function diagnose() {
+        if (diagnostic.current) { diagnostic.current.abort(); diagnostic.current = null; setDiagnosing(false); return }
+        const controller = new AbortController()
+        diagnostic.current = controller; setDiagnosing(true); setDiagnosis(null)
+        const base = state.data?.baseUrl || ''
+        const results = await Promise.allSettled([
+          (async () => { if (!base) throw new Error(t('probeMissing')); const response = await fetch(base, { mode: 'no-cors', credentials: 'omit', redirect: 'error', cache: 'no-store', signal: controller.signal }); if (response.type !== 'opaque' && !response.ok) throw new Error('HTTP ' + response.status); return t('probeReachable') })(),
+          call('status').then(() => t('probeOk')),
+          Promise.resolve().then(() => faceRef.current.refreshSessions()).then(() => t('probeOk')),
+        ])
+        if (controller.signal.aborted || diagnostic.current !== controller) return
+        diagnostic.current = null; setDiagnosing(false)
+        setDiagnosis(results.map((result, index) => ({ key: ['probeAddress','probeAuth','probeSessions'][index], hint: ['probeAddressHint','probeAuthHint','probeSessionHint'][index], ok: result.status === 'fulfilled', text: result.status === 'fulfilled' ? result.value : t('probeFailed', { message: errorText(result.reason) }) })))
+      }
       const timer = useRef(null)
 
       const faceRef = useRef(props)
@@ -1348,6 +1369,10 @@ window.__ModuleLoader__.load({
 
           h('div', { className: 'ra-card' },
             h('h3', { className: 'ra-cardTitle' }, t('statusTitle')),
+            h('button', { className: 'ra-btn', type: 'button', onClick: () => { void diagnose() } }, t(diagnosing ? 'diagnoseCancel' : 'diagnose')),
+            h('p', { className: 'ra-warnLine' }, t('diagnosisHint')),
+            diagnosing ? h('p', { role: 'status' }, t('probePending')) : null,
+            diagnosis ? h('dl', { className: 'ra-grid', 'data-connection-diagnosis': '' }, diagnosis.map(item => h('div', { key: item.key }, h('dt', null, t(item.key)), h('dd', { role: item.ok ? 'status' : 'alert' }, item.text, !item.ok ? h('p', null, t(item.hint)) : null)))) : null,
             h('dl', { className: 'ra-grid' },
               stat(t('statusMode'), modeLabel),
               stat(t('statusToken'), data.configured ? t('tokenConfigured') : t('tokenMissing')),
@@ -1378,6 +1403,7 @@ window.__ModuleLoader__.load({
         throw new Error(failure ? (failure.message || failure.code) : 'remote-access call failed')
       }
       const face = {
+        refreshSessions: () => ctx.sessions.refresh(),
         remoteAccessCall: function (endpoint, payload) {
           return ctx.connection.rpc.call('/api', 'remote-access/' + endpoint, payload || {}).then(unwrap)
         },
@@ -1394,6 +1420,6 @@ window.__ModuleLoader__.load({
       })
     }
 
-    return { inject: ['slots', 'locale', 'connection'], apply: apply }
+    return { inject: ['slots', 'locale', 'connection', 'sessions'], apply: apply }
   },
 })

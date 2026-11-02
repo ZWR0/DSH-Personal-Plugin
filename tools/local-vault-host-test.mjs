@@ -36,6 +36,9 @@ try {
   assert(first.warnings.some(item => item.path.endsWith('bad-json')))
   await assert.rejects(scanDirectory('relative/path'))
   assert.equal((await scanDirectory(join(root, 'new'))).candidates.length, 1)
+  const changedVersion = (await scanDirectory(join(root,'new'),[{name:'@local/new',installed:true,version:'0.9.0'}])).candidates[0]
+  assert.equal(changedVersion.installedVersion,'0.9.0')
+  assert.equal(changedVersion.versionChanged,true)
   const routes = new Map()
   let disposeCount = 0
   const installs = []

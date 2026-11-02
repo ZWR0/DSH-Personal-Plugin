@@ -352,6 +352,8 @@ let resultWindow = { hasMore: true, entries: [
   { type: 'event', event: { type: 'assistant/message', seq: 1, data: { text: 'created imaginary.txt' } } },
   { type: 'event', event: { type: 'deliverables/presented', seq: 2, data: { turn: 1, callId: 'p1', files: [{ path: 'D:/work/report #1?.md', description: '交付报告' }, { path: '' }] } } },
   { type: 'event', event: { type: 'workspace/changes', seq: 3, data: { turn: 1 } } },
+  { type: 'event', event: { type: 'assistant/message', seq: 4, data: { turn: 1, message: { content: [{ type: 'text', text: '记录中的回答摘要' }] } } } },
+  { type: 'event', event: { type: 'turn/end', seq: 5, data: { turn: 1, reason: { kind: 'aborted' } } } },
 ] }
 ctx.sessions.retain = () => ({ ready: Promise.resolve(), binding: {
   eventSource: { getSnapshot: () => resultWindow, subscribe(fn) { resultListeners.add(fn); return () => resultListeners.delete(fn) } },
@@ -370,6 +372,9 @@ await React.act(async () => [...document.querySelectorAll('.mdk-rowacts button')
 await flush()
 assert.equal(document.querySelectorAll('.mdk-result').length, 2, 'paths deduplicate across presented and changes')
 assert.ok(!document.querySelector('.mdk-results').textContent.includes('imaginary.txt'), 'prose is not a file source')
+assert.match(document.querySelector('[data-mobile-summary]').textContent,/本轮已停止/)
+assert.match(document.querySelector('[data-mobile-summary]').textContent,/记录中的回答摘要/)
+assert.match(document.querySelector('[data-mobile-summary]').textContent,/交付 1 个文件/)
 assert.equal(summaryCalls.length, 1)
 assert.equal(summaryCalls[0].options.credentials, 'same-origin')
 assert.ok(summaryCalls[0].url.includes('sessionId=wait'))
@@ -462,6 +467,48 @@ assert.match(document.querySelector('.mdk-pending').textContent, /请审阅部�
 await React.act(async () => filterButton('待处理').click())
 assert.equal(document.querySelector('.mdk-grouptitle').textContent, '待处理中心')
 assert.equal(document.querySelectorAll('.mdk-rowwrap').length, 2, 'silent requests are never hidden')
+// Cross-session actions use live interaction state and only explicit latest-turn failures.
+const todoRetain = ctx.sessions.retain
+let todoSeq = 10, todoReason = 'error', todoRetained = 0, todoReleased = 0
+ctx.sessions.retain = id => {
+  todoRetained++
+  return { ready: Promise.resolve(), binding: { eventSource: { getSnapshot: () => ({ entries: id === 'idle-2' ? [{type:'event',event:{type:'turn/end',seq:todoSeq,data:{turn:1,reason:{kind:todoReason}}}}] : [] }) } }, release() { todoReleased++ } }
+}
+const todoFilter = text => [...document.querySelectorAll('.mdk-todofilters button')].find(button => button.textContent.startsWith(text))
+await React.act(async()=>filterButton('全部').click())
+await React.act(async()=>filterButton('待处理').click())
+await flush()
+assert.equal(document.querySelectorAll('[data-todo-kind=failure]').length,1)
+assert.equal(todoRetained,todoReleased,'failure scan releases every session reference')
+await React.act(async()=>todoFilter('待授权').click())
+assert.equal(document.querySelectorAll('.mdk-rowwrap').length,1)
+await React.act(async()=>todoFilter('待回答').click())
+assert.equal(document.querySelectorAll('.mdk-rowwrap').length,1,'plan review is an answer action')
+statusMap = new Map(statusMap).set('wait',{running:true,completionUnread:false})
+await React.act(async()=>emit(listeners.status))
+assert.equal(document.querySelectorAll('.mdk-rowwrap').length,0,'resolved interaction disappears without manual refresh')
+await React.act(async()=>todoFilter('失败任务').click())
+await React.act(async()=>[...document.querySelectorAll('[data-todo-kind=failure] button')].find(button=>button.textContent==='进入处理').click())
+assert.equal(opened.at(-1),'idle-2')
+await React.act(async()=>[...document.querySelectorAll('[data-todo-kind=failure] button')].find(button=>button.textContent==='标记已查看').click())
+assert.equal(document.querySelectorAll('[data-todo-kind=failure]').length,0)
+todoSeq++
+catalog = {...catalog,byId:{...catalog.byId,'idle-2':{...catalog.byId['idle-2'],updatedAt:Date.now()}}}
+await React.act(async()=>emit(listeners.list));await flush()
+assert.equal(document.querySelectorAll('[data-todo-kind=failure]').length,1,'new failed turn is not suppressed by earlier acknowledgement')
+todoReason='completed'
+catalog = {...catalog,byId:{...catalog.byId,'idle-2':{...catalog.byId['idle-2'],updatedAt:Date.now()+1}}}
+await React.act(async()=>emit(listeners.list));await flush()
+assert.equal(document.querySelectorAll('[data-todo-kind=failure]').length,0,'latest successful turn clears prior failure')
+await React.act(async()=>filterButton('全部').click())
+let finishTodoReady, cancelledTodoRelease=0
+ctx.sessions.retain = () => ({ready:new Promise(resolve=>{finishTodoReady=resolve}),binding:{eventSource:{getSnapshot:()=>({entries:[]})}},release(){cancelledTodoRelease++}})
+await React.act(async()=>filterButton('待处理').click())
+await React.act(async()=>filterButton('全部').click())
+assert.equal(cancelledTodoRelease,1,'closing the center releases the in-flight history reference')
+await React.act(async()=>finishTodoReady());await flush()
+assert.equal(cancelledTodoRelease,1,'late readiness does not double-release or publish stale results')
+ctx.sessions.retain = todoRetain
 await React.act(async () => root.render(React.createElement(RulePage)))
 await React.act(async () => { rule('提问 / 审阅').click(); rule('任务结束').click(); rule('仅关注').click(); document.querySelector('.mdk-sound input[role=switch]').click() })
 statusMap = originalStatuses

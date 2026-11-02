@@ -62,6 +62,7 @@ window.__ModuleLoader__.load({
       thirdParty: '第三方',
       disabled: '已停用',
       enabled: '已启用',
+      sourceVersion: '源码 {version}', managerVersion: '管理器登记 {version}', runtimeUnknown: '运行版本未由宿主提供；源码更新后客户端需刷新，Host 逻辑需重启', versionChanged: '版本不同，请检查更新与生效状态', appliedRefresh: '管理器已应用；刷新本页加载最新客户端',
       version: '版本',
       spec: '来源',
       rows: '{count} 个插件项',
@@ -129,6 +130,7 @@ window.__ModuleLoader__.load({
       thirdParty: 'Third-party',
       disabled: 'Disabled',
       enabled: 'Enabled',
+      sourceVersion: 'Source {version}', managerVersion: 'Manager reports {version}', runtimeUnknown: 'Host does not report the running version. Refresh client changes; restart for Host changes.', versionChanged: 'Version differs; check update activation', appliedRefresh: 'Manager applied the change; reload to load the latest client',
       version: 'Version',
       spec: 'Source',
       rows: '{count} rows',
@@ -334,7 +336,7 @@ window.__ModuleLoader__.load({
               }
               if (result.skipped) totals.skipped++; else totals.success++
               if (result.application === 'restart-required') totals.restart = true
-              update(item.path, result.skipped ? 'installed' : 'installedNow', result.application === 'restart-required' ? t('changeRestart') : result.application === 'overridden' ? t('changeOverridden') : '')
+              update(item.path, result.skipped ? 'installed' : 'installedNow', result.application === 'restart-required' ? t('changeRestart') : result.application === 'overridden' ? t('changeOverridden') : t('appliedRefresh'))
               if (alive.current) setSelected(function (old) { const next = new Set(old); next.delete(item.path); return next })
             } catch (cause) { totals.failed++; update(item.path, 'installFailed', errorText(cause).slice(0, 1800)) }
             if (alive.current) setProgress({ done: index + 1, total: queue.length, current: item.name })
@@ -348,6 +350,7 @@ window.__ModuleLoader__.load({
       const selectable = plan ? plan.candidates.filter(function (item) { return ['ready', 'repair', 'installFailed'].includes(item.status) }) : []
       return h('section', { className: 'lv-install', 'aria-label': t('directoryTitle'), 'aria-busy': busy },
         h('style', null, INSTALL_STYLE), h('h3', null, t('directoryTitle')),
+        h('p', { className: 'lv-hint' }, t('runtimeUnknown')),
 
         h('div', { className: 'lv-directory' },
           h('input', { className: 'lv-directory-path', 'aria-label': t('directoryPath'), value: directory, placeholder: t('directoryPath'), disabled: blocked, onChange: function (event) { setDirectory(event.target.value) } }),
@@ -365,7 +368,9 @@ window.__ModuleLoader__.load({
           return h('div', { className: 'lv-install-row', key: item.path },
             h('label', null, h('input', { type: 'checkbox', checked: selected.has(item.path), disabled: blocked || !canSelect,
               onChange: function (event) { const checked = event.target.checked; setSelected(function (old) { const next = new Set(old); if (checked) next.add(item.path); else next.delete(item.path); return next }) } }),
-            h('span', { className: 'lv-body' }, h('span', { className: 'lv-name' }, item.name + (item.version ? ' · ' + item.version : '')),
+            h('span', { className: 'lv-body' }, h('span', { className: 'lv-name' }, item.name),
+              h('span', { className: 'lv-hint' }, t('sourceVersion', { version: item.version || '—' }) + ' · ' + t('managerVersion', { version: item.installedVersion || '—' })),
+              item.versionChanged ? h('span', { className: 'lv-tag gold' }, t('versionChanged')) : null,
               h('small', { className: 'lv-tag', 'data-state': item.status }, t(item.status)), h('details', null, h('summary', null, t('spec')), h('small', { className: 'lv-path' }, item.path)),
               item.detail ? h('span', { className: item.status === 'installFailed' ? 'lv-error' : 'lv-hint' }, item.detail) : null)))
         })) : !busy ? h('p', { className: 'lv-hint' }, t(plan?.directory ? 'scanEmpty' : 'scanFirst')) : null,

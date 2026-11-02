@@ -36,6 +36,7 @@ window.__ModuleLoader__.load({
     const LAYOUTS = ['auto', 'phone', 'pad']
 
     const zh = {
+      summaryTitle: '本轮结果', summaryEmpty: '暂无已记录的回答摘要', summaryCompleted: '本轮正常结束', summaryFailed: '本轮失败', summaryStopped: '本轮已停止', summaryOther: '本轮结束（{reason}）', summaryUnknown: '尚无本轮结束记录', summaryFiles: '本轮交付 {n} 个文件', summaryExcerpt: '最后回答摘录',
       nav: '掌上行舟',
       pageTitle: '掌上行舟',
       pageHint: '任务在电脑上运行；这里只显示状态与接管入口。',
@@ -45,6 +46,7 @@ window.__ModuleLoader__.load({
       ruleQuestion: '提问 / 审阅', ruleApproval: '授权', ruleEnded: '任务结束', ruleOnlyFollowed: '仅关注',
       rulesHint: '仅控制提示音与即时播报，动态和待处理列表仍显示全部。仅关注开启但未关注会话时不会提醒。',
       rulesFailed: '此浏览器无法保存提醒设置。', followLimit: '最多关注 200 个会话。',
+      todoRecheck: '重新核对失败记录', todoAll: '全部待办', todoQuestion: '待回答', todoApproval: '待授权', todoFailure: '失败任务', todoOpen: '进入处理', todoReview: '标记已查看', todoEmpty: '当前没有这类待办', todoScan: '正在核对最近失败记录…', todoPartial: '{n} 个会话记录暂不可读，请刷新重试', todoHint: '问题和授权按最新状态移除；失败可标记已查看，新一轮失败会重新出现', todoFailureHint: '最近一轮明确失败；进入会话查看详情并决定是否重试',
       pendingCenter: '待处理中心', pendingMissing: '打开会话查看请求详情', reviewNeeded: '需要审阅',
       pushUnavailable: '后台推送尚需宿主支持，关闭网页或锁屏后不保证提醒。',
 
@@ -142,6 +144,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
+      summaryTitle: 'Turn result', summaryEmpty: 'No recorded answer excerpt', summaryCompleted: 'Turn ended normally', summaryFailed: 'Turn failed', summaryStopped: 'Turn stopped', summaryOther: 'Turn ended ({reason})', summaryUnknown: 'No turn-end record yet', summaryFiles: '{n} files delivered this turn', summaryExcerpt: 'Last answer excerpt',
       nav: 'Pocket deck',
       pageTitle: 'Pocket deck',
       pageHint: 'Tasks keep running on the computer; this page only shows status and the way in.',
@@ -151,6 +154,7 @@ window.__ModuleLoader__.load({
       ruleQuestion: 'Questions / reviews', ruleApproval: 'Approvals', ruleEnded: 'Task ended', ruleOnlyFollowed: 'Followed only',
       rulesHint: 'Controls sound and live announcements only; activity and pending lists still show everything. Followed-only mode is silent if no sessions are followed.',
       rulesFailed: 'This browser could not save alert settings.', followLimit: 'You can follow up to 200 sessions.',
+      todoRecheck: 'Recheck failure records', todoAll: 'All actions', todoQuestion: 'Questions', todoApproval: 'Approvals', todoFailure: 'Failed tasks', todoOpen: 'Handle request', todoReview: 'Mark reviewed', todoEmpty: 'No actions in this category', todoScan: 'Checking recent failure records…', todoPartial: '{n} session records unavailable; refresh to retry', todoHint: 'Answered questions and resolved approvals disappear. Review failures; a new failed turn appears again.', todoFailureHint: 'The latest turn failed. Open the conversation to inspect it and decide whether to retry.',
       pendingCenter: 'Needs attention', pendingMissing: 'Open the conversation for request details', reviewNeeded: 'Review needed',
       pushUnavailable: 'Background push requires host support; alerts are not reliable while locked or the page is closed.',
 
@@ -249,6 +253,7 @@ window.__ModuleLoader__.load({
 
     /** Every rule is scoped to `mdk-` class names so no style leaks into the app. */
     const CSS = [
+      '.mdk-todos>p{margin:8px 0 12px}.mdk-todofilters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}.mdk-todofilters .mdk-choice{min-height:36px}.mdk-todofailure{padding:14px;margin-bottom:10px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1)}.mdk-chip[data-state=failed]{color:var(--dsw-alias-state-error-primary);border-color:var(--dsw-alias-state-error-primary)}@media(pointer:coarse),(max-width:600px){.mdk-todofilters .mdk-choice{min-height:44px}}@media(max-width:600px){.mdk-todofilters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-todofilters .mdk-choice{justify-content:center}}',
       '.mdk-root{display:flex;flex-direction:column;min-height:100%;box-sizing:border-box;color:var(--dsw-alias-label-primary,#252622);font:inherit}',
       '.mdk-head{position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--dsw-alias-bg-base,#faf9f6);border-bottom:1px solid var(--dsw-alias-border-l2,rgba(105,91,62,.16))}',
       '.mdk-headtext{min-width:0;flex:1 1 180px}',
@@ -513,6 +518,8 @@ window.__ModuleLoader__.load({
         if (Array.isArray(pending.questions)) return pending.questions.map(item => trim(item && item.question)).filter(Boolean).join(' · ').slice(0, 180) || t('pendingMissing')
         return t('pendingMissing')
       }
+      const reviewedFailures = createStore({})
+      const failureRecords = createStore({})
       const observed = new Map()
       let activitySeq = 0
 
@@ -952,6 +959,8 @@ window.__ModuleLoader__.load({
 
       function ResultsPane({ id, onClose }) {
         const epoch = useStore(resultsEpoch)
+        const resultCatalog = useStore(ctx.sessions.list)
+        const resultStatuses = useStore(ctx.uiSession.sessionStatus)
         const [attempt, setAttempt] = React.useState(0)
         const [state, setState] = React.useState({ loading: true, items: [], error: '', partial: 0, hasMore: false })
         const current = React.useRef(null)
@@ -984,6 +993,14 @@ window.__ModuleLoader__.load({
           async function sync(binding) {
             const serial = ++revision
             const window = binding.eventSource.getSnapshot()
+            const allEvents = window.entries.filter(entry => entry.type === 'event').map(entry => entry.event).filter(Boolean)
+            const turn = allEvents.reduce((latest, event) => Number.isSafeInteger(event.data?.turn) ? Math.max(latest, event.data.turn) : latest, 0)
+            const recent = allEvents.filter(event => event.data?.turn === turn).sort((a,b) => a.seq - b.seq)
+            const end = recent.findLast(event => event.type === 'turn/end')
+            const answer = recent.findLast(event => event.type === 'assistant/message')
+            const excerpt = (answer?.data?.message?.content || []).filter(block => block.type === 'text').map(block => block.text).join(' ').replace(/\s+/g, ' ').trim().slice(0, 320)
+            const delivered = new Set(recent.filter(event => event.type === 'deliverables/presented').flatMap(event => (event.data.files || []).filter(file => typeof file.path === 'string' && file.path.trim()).map(file => file.path))).size
+            const summary = { reason: end?.data?.reason?.kind || '', excerpt, delivered }
             const records = window.entries.filter(entry => entry.type === 'event' && entry.event &&
               Number.isSafeInteger(entry.event.seq) && entry.event.seq >= 0 && ['deliverables/presented', 'workspace/changes'].includes(entry.event.type))
               .map(entry => entry.event).sort((a, b) => b.seq - a.seq)
@@ -1016,7 +1033,7 @@ window.__ModuleLoader__.load({
                 } catch (_) { partial++ }
               }
             }
-            if (!disposed && serial === revision) setState({ loading: false, items: [...files.values()], error: '', partial, hasMore: window.hasMore === true || hiddenRecords, hiddenRecords })
+            if (!disposed && serial === revision) setState({ loading: false, items: [...files.values()], error: '', partial, hasMore: window.hasMore === true || hiddenRecords, hiddenRecords, summary })
           }
           ;(async () => {
             try {
@@ -1058,11 +1075,18 @@ window.__ModuleLoader__.load({
           }
           catch (error) { if (current.current === operation) setState(before => ({ ...before, loading: false, error: String(error.message || error) })) }
         }
-        const row = ctx.sessions.list.getSnapshot().byId[id]
+        const row = resultCatalog.byId[id]
+        const resultStatus = resultStatuses.get ? resultStatuses.get(id) : resultStatuses[id]
         return h('section', { className: 'mdk-results', ref: anchor, tabIndex: -1, 'aria-label': t('resultsTitle') },
           h('div', { className: 'mdk-fieldhead' },
             h('div', null, h('h2', { className: 'mdk-grouptitle' }, t('resultsTitle')), h('div', { className: 'mdk-hint' }, row && (row.displayTitle || row.title) || id)),
             h('button', { type: 'button', className: 'mdk-btn', onClick: onClose }, t('resultsClose'))),
+          state.summary ? h('div', { className: 'mdk-card', 'data-mobile-summary': '' },
+            h('h3', { className: 'mdk-grouptitle' }, t('summaryTitle')),
+            resultStatus?.pendingInteraction ? h('button', { className: 'mdk-btn', type: 'button', onClick: () => openSession(id) }, pendingLabel(resultStatus)) : null,
+            h('p', { className: 'mdk-v' }, t(state.summary.reason === 'completed' ? 'summaryCompleted' : state.summary.reason === 'error' ? 'summaryFailed' : state.summary.reason === 'aborted' ? 'summaryStopped' : state.summary.reason ? 'summaryOther' : 'summaryUnknown', { reason: state.summary.reason })),
+            h('div', { className: 'mdk-hint' }, t('summaryFiles', { n: state.summary.delivered })),
+            h('details', null, h('summary', null, t('summaryExcerpt')), h('p', { className: 'mdk-v' }, state.summary.excerpt || t('summaryEmpty')))) : null,
           h('p', { className: 'mdk-hint' }, t('resultsHint')),
           state.loading ? h('p', { role: 'status' }, t('resultsLoading')) : null,
           state.error ? h('p', { role: 'alert' }, t('resultsFailure', { message: state.error })) : null,
@@ -1119,6 +1143,80 @@ window.__ModuleLoader__.load({
             }, h(ActionIcon, { name: 'open' }), t('open'))))
       }
 
+      /** Pending interactions stay live; failure history is inspected only while this center is open. */
+      function AttentionCenter({ rows, keyword, onSelect, onResults, twoPane, selectedId }) {
+        const epoch = useStore(resultsEpoch)
+        const reviewed = useStore(reviewedFailures)
+        const [category, setCategory] = React.useState('all')
+        const [attempt, setAttempt] = React.useState(0)
+        const failures = useStore(failureRecords)
+        const setFailures = update => failureRecords.publish(update(failureRecords.getSnapshot()))
+        const [scan, setScan] = React.useState({ loading: true, unavailable: 0 })
+        const signature = JSON.stringify(rows.map(({row,status}) => [row.id, row.updatedAt, row.running === true || status?.running === true]))
+        React.useEffect(() => {
+          let disposed = false, release = null
+          const candidates = JSON.parse(signature).filter(([, , running]) => !running)
+          setScan({ loading: true, unavailable: 0 })
+          let unavailable = 0
+          ;(async () => {
+            for (const [id] of candidates) {
+              if (disposed) return
+              try {
+                if (typeof ctx.sessions.retain !== 'function') throw new Error('Session history unavailable')
+                const reference = ctx.sessions.retain(id, { source: 'mobileDeck' })
+                let released = false
+                const disposeReference = () => { if (!released) { released = true; reference.release() } }
+                release = disposeReference
+                try {
+                  await reference.ready
+                  if (disposed) return
+                  const current = reference.binding.session?.getSnapshot?.()
+                  if (current?.openState === 'error') throw new Error('Session history unavailable')
+                  const source = reference.binding.eventSource
+                  if (!source) throw new Error('Session history unavailable')
+                  const entries = source.getSnapshot().entries.filter(entry => entry.type === 'event').map(entry => entry.event)
+                  const latestTurn = entries.reduce((turn, event) => Number.isSafeInteger(event?.data?.turn) ? Math.max(turn, event.data.turn) : turn, 0)
+                  const latest = entries.filter(event => event && (event.type === 'turn/start' || event.type === 'turn/end')).sort((a,b) => b.seq - a.seq)[0]
+                  setFailures(previous => {
+                    const next = { ...previous }
+                    if (latest?.type === 'turn/end' && latest.data?.turn === latestTurn && latest.data?.reason?.kind === 'error') next[id] = { key: String(latest.seq), turn: latest.data.turn }
+                    else delete next[id]
+                    return next
+                  })
+                } finally { disposeReference(); release = null }
+              } catch (error) { if (!disposed) unavailable++ }
+            }
+            if (!disposed) setScan({ loading: false, unavailable })
+          })()
+          return () => { disposed = true; if (release) release() }
+        }, [signature, epoch, attempt])
+        const actions = []
+        for (const item of rows) {
+          const pending = item.status?.pendingInteraction
+          const running = item.row.running === true || item.status?.running === true
+          const failure = failures[item.row.id]
+          if (pending) actions.push({ ...item, kind: pending.kind === 'approval' ? 'approval' : 'question', key: pending.key })
+          else if (!running && failure && reviewed[item.row.id] !== failure.key) actions.push({ ...item, kind: 'failure', key: failure.key })
+        }
+        const matching = actions.filter(item => (!keyword || [item.row.displayTitle,item.row.title,item.row.cwd].some(value => typeof value === 'string' && value.toLocaleLowerCase().includes(keyword))) && (category === 'all' || item.kind === category))
+        return h('section', { className: 'mdk-group mdk-todos', 'data-mobile-todos': '' },
+          h('div', { className: 'mdk-grouphead' }, h('h2', { className: 'mdk-grouptitle' }, t('pendingCenter')), h('span', { className: 'mdk-count' }, String(actions.length))),
+          h('p', { className: 'mdk-hint' }, t('todoHint')),
+          h('div', { className: 'mdk-todofilters', role: 'group', 'aria-label': t('pendingCenter') },
+            [['all','todoAll'],['question','todoQuestion'],['approval','todoApproval'],['failure','todoFailure']].map(([value,label]) => h('button', { type: 'button', className: 'mdk-choice', key: value, 'aria-pressed': category === value, onClick: () => setCategory(value) }, t(label), h('span', { className: 'mdk-count' }, String(value === 'all' ? actions.length : actions.filter(item => item.kind === value).length))))),
+          scan.loading ? h('p', { className: 'mdk-hint', role: 'status' }, t('todoScan')) : null,
+          scan.unavailable ? h('p', { className: 'mdk-hint', role: 'status' }, t('todoPartial', { n: scan.unavailable })) : null,
+          !matching.length && !scan.loading ? h('p', { className: 'mdk-hint' }, t('todoEmpty')) : null,
+          matching.map(item => item.kind === 'failure'
+            ? h('div', { className: 'mdk-todofailure', key: item.row.id, 'data-todo-kind': 'failure' },
+              h('div', { className: 'mdk-rowtop' }, h('span', { className: 'mdk-rowtitle' }, item.row.displayTitle || item.row.title || item.row.id), h('span', { className: 'mdk-chip', 'data-state': 'failed' }, t('todoFailure'))),
+              h('p', { className: 'mdk-hint' }, t('todoFailureHint')),
+              h('div', { className: 'mdk-rowacts' }, h('button', { className: 'mdk-btn', type: 'button', onClick: () => openSession(item.row.id) }, t('todoOpen')),
+                h('button', { className: 'mdk-btn', type: 'button', onClick: () => reviewedFailures.publish({ ...reviewedFailures.getSnapshot(), [item.row.id]: item.key }) }, t('todoReview'))))
+            : h(SessionCard, { key: item.row.id, row: item.row, status: item.status, selected: selectedId === item.row.id, twoPane, onSelect, onOpen: openSession, onResults })),
+          h('button', { className: 'mdk-btn', type: 'button', disabled: scan.loading, onClick: () => setAttempt(value => value + 1) }, h(ActionIcon, { name: 'refresh' }), t('todoRecheck')))
+      }
+
       function EmptyState(props) {
         return h('div', { className: 'mdk-empty' },
           h(ActionIcon, { name: 'deck' }),
@@ -1137,6 +1235,8 @@ window.__ModuleLoader__.load({
         const [resultsId, setResultsId] = React.useState(null)
         const [query, setQuery] = React.useState('')
         const [filter, setFilter] = React.useState('all')
+        const knownFailures = useStore(failureRecords)
+        const reviewed = useStore(reviewedFailures)
         const events = useStore(activity)
         const fileError = useStore(fileNotice)
         const rules = useStore(alertRules)
@@ -1160,6 +1260,7 @@ window.__ModuleLoader__.load({
 
         const isRunning = item => item.row.running === true || Boolean(item.status && item.status.running === true)
         const isWaiting = item => Boolean(item.status && item.status.pendingInteraction)
+        const isTodo = item => isWaiting(item) || !isRunning(item) && knownFailures[item.row.id] && reviewed[item.row.id] !== knownFailures[item.row.id].key
         const keyword = query.trim().toLocaleLowerCase()
         const searched = keyword ? rows.filter(({ row }) =>
           [row.displayTitle, row.title, row.cwd].some(value => typeof value === 'string' && value.toLocaleLowerCase().includes(keyword))) : rows
@@ -1196,6 +1297,8 @@ window.__ModuleLoader__.load({
           body = h(EmptyState, { title: t('loadingTitle') })
         } else if (rows.length === 0) {
           body = h(EmptyState, { title: t('emptyTitle'), body: t('emptyBody') })
+        } else if (filter === 'waiting') {
+          body = h(AttentionCenter, { rows, keyword, selectedId, onSelect: setSelectedId, onResults: setResultsId, twoPane })
         } else if (filtered.length === 0) {
           body = h(EmptyState, { title: t('searchEmpty'), body: t('searchEmptyHint') })
         } else {
@@ -1252,7 +1355,7 @@ window.__ModuleLoader__.load({
             'data-busy': fresh.refreshing,
             }, h(ActionIcon, { name: 'refresh' }), fresh.refreshing ? t('refreshing') : t('refresh'))),
           h('div', { className: 'mdk-filters', role: 'group', 'aria-label': t('filterAll') },
-            [['all', 'filterAll', rows.length], ['followed', 'filterFollowed', rows.filter(item => rules.followed.includes(item.row.id)).length], ['waiting', 'filterWaiting', rows.filter(isWaiting).length], ['running', 'filterRunning', rows.filter(item => !isWaiting(item) && isRunning(item)).length], ['unread', 'filterUnread', rows.filter(item => item.status && item.status.completionUnread).length]].map(([value, key, count]) =>
+            [['all', 'filterAll', rows.length], ['followed', 'filterFollowed', rows.filter(item => rules.followed.includes(item.row.id)).length], ['waiting', 'filterWaiting', rows.filter(isTodo).length], ['running', 'filterRunning', rows.filter(item => !isWaiting(item) && isRunning(item)).length], ['unread', 'filterUnread', rows.filter(item => item.status && item.status.completionUnread).length]].map(([value, key, count]) =>
               h('button', { key: value, type: 'button', className: 'mdk-choice', 'aria-pressed': filter === value, onClick: () => setFilter(value) }, t(key), h('span', { className: 'mdk-count' }, count)))),
           h('div', { className: 'mdk-activity', role: 'status', 'aria-live': 'polite', 'aria-atomic': true }, events.announcement || ''),
           fileError || rules.error ? h('div', { className: 'mdk-banner', role: 'alert' }, fileError || rules.error) : null,
@@ -1498,6 +1601,8 @@ window.__ModuleLoader__.load({
         freshness.dispose()
         stops.dispose()
         activity.dispose()
+        failureRecords.dispose()
+        reviewedFailures.dispose()
         fileNotice.dispose()
         devicePreferences.dispose()
         resultsEpoch.dispose()

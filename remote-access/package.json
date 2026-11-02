@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-remote-access",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Manage persistent DSH Web launch tokens and the public remote access URL.",
@@ -29,7 +29,8 @@
         "@deepseek-ai/dsh-client-ui-plugin-manager",
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-ui-workspace"
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-session"
       ]
     }
   }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
-const harnessRoot = resolve(process.env.DSH_SOURCE || 'D:/deepseek-harness')
+const harnessRoot = resolve(process.env.DSH_SOURCE || new URL('../../',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:'))
 const req = createRequire(resolve(harnessRoot, 'package.json'))
 const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
 const browser = await chromium.launch({ executablePath: process.env.DSH_BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
@@ -19,16 +19,26 @@ try {
  let dict;let component;let face
  window.calls=[];window.model={mode:'ephemeral',configured:false,baseUrl:'',webRunning:true}
  const t=k=>dict.zh[k]||k
- window.entry.factory(()=>React).apply({effect:f=>f(),locale:{register:(_,d)=>{dict=d},bind:()=>t},slots:{inject:(_,f)=>f(),register:(o,c)=>{component=c;face=o.inject()}},connection:{rpc:{call:async(_,e,p)=>{window.calls.push({e,p});if(e.endsWith('/qr'))throw new Error('transport failure: HTTP 404');if(e.endsWith('/link'))return {ok:true,value:{url:window.model.baseUrl+'?token=fixture-token'}};if(e.endsWith('/save')){if(p.mode){window.model.mode=p.mode;window.model.configured=p.mode==='persistent'}if(p.baseUrl!==undefined)window.model.baseUrl=p.baseUrl.replace(/\/?$/,'/')}return {ok:true,value:{...window.model}}}}}})
+ window.entry.factory(()=>React).apply({effect:f=>f(),locale:{register:(_,d)=>{dict=d},bind:()=>t},sessions:{refresh:async()=>{window.refreshed=true}},slots:{inject:(_,f)=>f(),register:(o,c)=>{component=c;face=o.inject()}},connection:{rpc:{call:async(_,e,p)=>{window.calls.push({e,p});if(e.endsWith('/qr'))throw new Error('transport failure: HTTP 404');if(e.endsWith('/link'))return {ok:true,value:{url:window.model.baseUrl+'?token=fixture-token'}};if(e.endsWith('/save')){if(p.mode){window.model.mode=p.mode;window.model.configured=p.mode==='persistent'}if(p.baseUrl!==undefined)window.model.baseUrl=p.baseUrl.replace(/\/?$/,'/')}return {ok:true,value:{...window.model}}}}}})
  ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(component,{...face,t}))
  })
+ await page.evaluate(()=>{window.fetch=async(url,options)=>{window.lastProbe={url,credentials:options.credentials};return {type:'opaque',ok:false}}})
  await page.getByText('三步连接手机 / 平板',{exact:true}).waitFor()
  await page.getByRole('radio').nth(1).check()
  await page.getByRole('button',{name:'保存地址',exact:true}).waitFor()
+ await page.getByRole('button',{name:'连接自检',exact:true}).click()
+ await page.locator('[data-connection-diagnosis]').waitFor()
+ assert.equal(await page.evaluate(()=>window.refreshed),true)
+ assert.equal(await page.locator('[data-connection-diagnosis] [role=alert]').count(),1)
  const field=page.getByRole('textbox',{name:'远程访问地址',exact:true})
  await field.fill('http://100.64.0.1:3080')
  await page.getByRole('button',{name:'保存地址',exact:true}).click()
  await page.waitForFunction(()=>window.model.baseUrl.endsWith('3080/'))
+ await page.getByRole('button',{name:'连接自检',exact:true}).click()
+ await page.locator('[data-connection-diagnosis]').waitFor()
+ assert.equal(await page.locator('[data-connection-diagnosis] [role=alert]').count(),0)
+ assert.equal(await page.evaluate(()=>window.lastProbe.credentials),'omit')
+ assert.equal(await page.evaluate(()=>window.lastProbe.url.includes('token=')),false)
  assert.equal(await page.getByRole('button',{name:'显示登录二维码',exact:true}).isEnabled(),true)
  assert.equal(await page.evaluate(()=>window.calls.filter(x=>x.e.endsWith('/save')).at(-1).p.mode),undefined)
  assert.equal(await page.getByRole('button',{name:'复制基础地址',exact:true}).count(),0)
@@ -52,7 +62,7 @@ try {
  for(const width of [1000,390]){
   await page.setViewportSize({width,height:1000})
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
-  assert.equal(await page.locator('.ra-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),width===1000?4:2)
+  assert.equal(await page.locator('.ra-grid:not([data-connection-diagnosis])').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),width===1000?4:2)
   if(process.env.DSH_SCREENSHOT_DIR)await page.locator('.ra-card').filter({has:page.getByRole('heading',{name:'连接状态',exact:true})}).screenshot({path:resolve(process.env.DSH_SCREENSHOT_DIR,`remote-access-status-${width}.png`)})
  }
  assert.deepEqual(errors,[])

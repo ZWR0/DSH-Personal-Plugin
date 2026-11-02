@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Choice Pilot",
-    "description": "Guides the agent to use native ask_user_question cards for missing information and decisions, with choices, free text, and required waits. Encourages verification, avoids repeated questions, distinguishes pending or skipped replies from consent, and resumes the task after answers."
+    "description": "Native choice cards, compatible multi-select recommendations and recent submitted-choice history."
   }
 }

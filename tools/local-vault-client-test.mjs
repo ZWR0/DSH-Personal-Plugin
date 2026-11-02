@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-const req = createRequire('D:/deepseek-harness/package.json')
+const req = createRequire(new URL('../../package.json', import.meta.url))
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<!doctype html><html><head></head><body><div id="mount"></div></body></html>', { url: 'http://localhost', pretendToBeVisual: true })
 for (const key of ['window', 'document', 'MutationObserver', 'HTMLElement', 'Node', 'navigator']) Object.defineProperty(globalThis, key, { configurable: true, value: dom.window[key] })
@@ -19,7 +19,7 @@ let Component, face, dictionaries
 const t = (key, values = {}) => (dictionaries.zh[key] || key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '')
 const path = 'D:\\插件目录 with spaces'
 const candidates = [
- {name:'@local/a',path:path+'\\a',version:'1',status:'ready'},
+ {name:'@local/a',path:path+'\\a',version:'1',installedVersion:'0.9',versionChanged:true,status:'ready'},
  {name:'@local/b',path:path+'\\b',version:'2',status:'ready'},
  {name:'@local/old',path:path+'\\old',status:'installed'},
  {name:'@local/conflict',path:path+'\\conflict',status:'conflict'},

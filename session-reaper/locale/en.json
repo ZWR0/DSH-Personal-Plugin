@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Session Reaper",
-    "description": "Permanently delete directly from the session menu, without trash or confirmation. Supports the idle current session; protects running sessions and refreshes navigation after deletion."
+    "description": "Preview, filter and confirm permanent deletion of stopped sessions, individually or in batches."
   }
 }

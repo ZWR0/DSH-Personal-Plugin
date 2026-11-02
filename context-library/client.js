@@ -37,6 +37,7 @@ window.__ModuleLoader__.load({
       modeHelp: '补充模式保留原身份；自定义模式只替换 harness:identity，其余系统约束、工具、环境与历史保留。',
       strategyHelp: '自动加载相关内容并启用 Agent 建议，建议需批准后保存；仅目录按需读取；关闭停止加载和主动建议。',
       historyHelp: '已保存条目的历史版本，可恢复。Agent 建议先进入待审修订，批准后才保存。',
+      changeCount: '新增 {add} 行 · 删除 {del} 行', editedDiff: '本次手动修改',
       nav: '知忆书阁',
       label: '知忆书阁',
       title: '知忆书阁',
@@ -268,6 +269,7 @@ window.__ModuleLoader__.load({
       modeHelp: 'Supplement keeps the original identity. Custom replaces only harness:identity; other constraints, tools, environment, and history remain.',
       strategyHelp: 'Automatic loads relevant entries and enables agent proposals, which require approval before saving. Catalog reads on demand. Off stops loading and proposals.',
       historyHelp: 'Saved entry versions available for restore. Agent proposals appear in Pending first and are saved only after approval.',
+      changeCount: '{add} lines added · {del} removed', editedDiff: 'Your edits',
       nav: 'Context Library',
       label: 'Context Library',
       title: 'Context Library',
@@ -868,6 +870,8 @@ window.__ModuleLoader__.load({
       const [conflict, setConflict] = useState(null)
       const expired = proposal.expired === true || (proposal.expiresAt && Date.parse(proposal.expiresAt) < Date.now())
       const editable = proposal.kind === 'create' || proposal.kind === 'update'
+      const changes = useMemo(() => lineDiff(proposal.before || '', proposal.after || ''), [proposal.before, proposal.after])
+      const counts = changes.truncated ? null : { add: changes.rows.filter(row => row.type === 'add').length, del: changes.rows.filter(row => row.type === 'del').length }
 
       const act = function (action, withEdits) {
         if (busy !== '' || expired) return
@@ -927,9 +931,11 @@ window.__ModuleLoader__.load({
         editable && editing
           ? h(React.Fragment, null,
             h('label', { className: 'cl-field' }, t('editTitle'), h('input', { value: title, onChange: function (e) { setTitle(e.target.value) } })),
-            h('label', { className: 'cl-field' }, t('entryBody'), h('textarea', { value: body, onChange: function (e) { setBody(e.target.value) } })))
+            h('label', { className: 'cl-field' }, t('entryBody'), h('textarea', { value: body, onChange: function (e) { setBody(e.target.value) } })),
+            h('h4', null, t('editedDiff')), h(Diff, { before: proposal.afterBody || '', after: body }))
           : null,
-        h('details', { className: 'cl-details' },
+        counts ? h('p', { className: 'cl-chip gold' }, t('changeCount', counts)) : null,
+        h('details', { className: 'cl-details', open: editing || conflict !== null ? true : undefined },
           h('summary', null, t('diffTitle')),
           h(Diff, { before: proposal.before || '', after: proposal.after || '' })),
         expired ? h('p', { className: 'cl-error' }, t('expired')) : null,
@@ -950,7 +956,7 @@ window.__ModuleLoader__.load({
             onClick: function () { setEditing(function (value) { return !value }) },
           }, t('editBeforeApprove')) : null,
           h('button', {
-            type: 'button', className: 'cl-btn primary', disabled: busy !== '' || expired,
+            type: 'button', className: 'cl-btn primary', disabled: busy !== '' || expired || conflict !== null,
             onClick: function () { act('approve', editing) },
           }, busy === 'approve' ? t('busy') : (editing ? t('approveEdited') : t('approve'))),
           h('button', {

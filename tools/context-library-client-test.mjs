@@ -219,6 +219,19 @@ try {
   assert.equal(await page.getByRole('listitem').filter({ hasText: '缺少元数据块' }).count(), 1)
 
   // Composer preview
+  await page.getByRole('button', { name: /^待审修订/ }).click()
+  const reviewCard = page.locator('.cl-pending-card').first()
+  await reviewCard.waitFor()
+  assert.match(await reviewCard.textContent(), /新增 1 行 · 删除 1 行/)
+  await reviewCard.getByRole('button', { name: '编辑提案内容', exact: true }).click()
+  await reviewCard.locator('textarea').fill('用户手动修订的记忆')
+  assert.match(await reviewCard.textContent(), /本次手动修改/)
+  assert.match(await reviewCard.locator('.cl-diff').first().textContent(), /用户手动修订的记忆/)
+  await page.evaluate(() => { window.__mock.decide = () => ({ok:true,value:{conflict:true,currentVersion:'changed'}}) })
+  await reviewCard.getByRole('button', { name: '编辑后同意', exact: true }).click()
+  await reviewCard.getByText('文件已在审批期间被修改', { exact: true }).waitFor()
+  assert.equal(await reviewCard.getByRole('button', { name: '编辑后同意', exact: true }).isDisabled(), true)
+
   await page.evaluate(() => {
     window.__root.unmount()
     console.log('BODY?', !!document.body, document.body && document.body.tagName)

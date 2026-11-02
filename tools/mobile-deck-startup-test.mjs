@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-const req = createRequire('D:/deepseek-harness/package.json')
+const req = createRequire(new URL('../../package.json', import.meta.url))
 const { JSDOM } = req('jsdom')
 const source = readFileSync(new URL('../mobile-deck/client.js', import.meta.url), 'utf8')
 async function run({ home = true, mobile = true, url = 'https://dsh.test/', enabled = true, navigate = false, panel = null, blocked = false, pending = false } = {}) {

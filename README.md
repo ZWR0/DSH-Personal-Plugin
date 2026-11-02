@@ -10,14 +10,14 @@
 
 | 插件 | 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
-| 行囊宝匣 | 0.5.3 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 扫描本机插件目录，批量安装选中项 |
-| 会话清道 | 0.3.1 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 立即永久删除已停止的会话 |
-| 暗金主题 | 0.3.1 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
-| 引文速递 | 0.2.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
-| 选项领航 | 0.2.1 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 引导模型使用 DSH 原生提问工具澄清关键需求 |
-| 知忆书阁 | 0.4.4 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 远行之钥 | 0.3.3 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
-| 掌上行舟 | 0.4.2 | `@local/dsh-mobile-deck` · [mobile-deck](mobile-deck/README.md) | 手机 / iPad 移动工作台：会话状态概览与远程接管入口 |
+| 行囊宝匣 | 0.6.0 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 扫描本机插件目录，批量安装选中项 |
+| 会话清道 | 0.4.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 预览确认并批量清理已停止会话 |
+| 暗金主题 | 0.4.0 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
+| 引文速递 | 0.3.0 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
+| 选项领航 | 0.4.1 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 原生可点击选择卡片、可组合建议多选与主题化选中反馈 |
+| 知忆书阁 | 0.5.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
+| 远行之钥 | 0.4.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
+| 掌上行舟 | 0.6.0 | `@local/dsh-mobile-deck` · [mobile-deck](mobile-deck/README.md) | 手机 / iPad 移动工作台：会话状态概览与远程接管入口 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
 
@@ -25,13 +25,16 @@
 
 ## 本次更新（2026-11-02）
 
-- **设置入口统一**：行囊宝匣、远行之钥、暗金主题、知忆书阁、掌上行舟均在「插件」页顶部与「已安装」并排显示；暗金主题、知忆书阁从原设置入口迁入，工作台仍可从输入框按钮打开。
+- **掌上行舟 0.6.0**：跨会话待办中心与本轮结果摘要。待办中心区分待回答、待授权和明确失败任务，已处理事项按最新状态移除，失败可标记已查看，新失败重新提示。成果面板顶部展示当前已加载轮次的结束原因、交付文件数量和最后回答摘录。区分正常结束、失败与停止；没有结束记录时明确提示，回答文字不作为文件或检查通过的证据。点击会话的「成果」查看，较早记录仍按需加载。
+- **知忆书阁 0.5.0**：记忆差异审核。待审卡片显示新增与删除行数，编辑提案时同时展示手动修改的实时差异。版本冲突时禁用批准，重新对比后再确认；原有逐条批准、编辑后批准、拒绝与暂缓保持可用。
+- **暗金主题 0.4.0**：运行阶段详情。点击运行阶段展开仪表详情，查看本页观察的阶段持续时间、最近状态更新时间和运行中工具名称。只有宿主标记已启动的工具计为执行中；正在准备参数时仍属于模型生成。时间不会解释为预计完成时间或卡死判定。
+- **行囊宝匣 0.6.0**：更新与生效信息。目录扫描分别显示源码版本与管理器登记版本，并标出版本差异。安装结果保留宿主的重启要求；已应用时提示刷新网页加载客户端。宿主未提供真实运行版本，因此界面明确标注未提供，不将登记版本当作运行版本。
+- **引文速递 0.3.0**：多段引文暂存。划选助手正文后可直接引用或暂存，跨回复收集多段后一次插入。暂存面板可移除单段或回到仍已加载的原文；原文不在页面时给出提示。暂存仅保留在当前会话的本页内存中，切换会话清空；合并插入总量仍限制为 8000 个 Unicode 字符，超限不截断。
+- **选项领航 0.4.1**：原生选择卡片支持可组合建议多选，并提供主题化选中反馈。选择结果回顾使用简短标签展示选中项，补充文字单独换行。输入框上方提供默认折叠的「选择回顾」，读取当前已加载聊天中的最近五组已提交问题与答案，展示多选和补充要求，可定位原问题与回答。没有记录时不显示，不将草稿、预选或跳过解释为授权。
+- **会话清道 0.4.0**：清理预览与批量确认。插件页可按项目、最近更新时间和名称筛选，勾选已停止会话后预览名称与数量，再明确确认永久删除。会话菜单的单项删除也先预览确认。批量逐项处理，遇到失败停止并保留剩余项；运行状态会在每项执行前重新检查，Host 仍负责最终保护。没有回收站或撤回功能。
+- **远行之钥 0.4.0**：手动连接自检。连接状态区增加手动自检与取消入口，分别展示远程地址、当前网页认证及会话同步结果和故障建议。地址探测不携带凭据，浏览器可达不等于确认该地址是 DSH；认证和同步仅检查当前网页连接，其他设备需在对应设备验证。修改地址会清除旧诊断结果，不在后台轮询。
 
-- **掌上行舟 0.4.2**：新增移动工作台，支持会话状态分组、关注与分类提醒、待处理中心、文件成果预览和变更对比。手机插件标签栏支持横向滑动；手机默认入口、提示音和关注规则保存在当前浏览器。审批与回答仍使用原生会话卡片，不提供锁屏系统推送。
-- **知忆书阁 0.4.4**：聊天框入口与掌上行舟统一放在输入框左侧，采用透明底、无边框和无阴影的工具按钮；桌面按钮为 28 px、图标为 16 px，手机与触屏点击区为 44 px，保留待审角标；浮窗集中刷新与关闭操作，显示预算用量和条目详情，刷新后保留展开状态。
-- **暗金主题 0.3.1**：仪表详情显示最近三轮有采样的速度记录，按轮次分色并提供图例和渐变填充；横轴排除轮间空闲时间，空档连线仅供视觉衔接。回答结束或切换会话后保留本页采样，刷新页面后清空。
-- **远行之钥 0.3.3**：修复启用、轮换或撤销固定 Token 后当前浏览器后续保存返回 HTTP 401 的问题；执行修改的浏览器续发登录 Cookie，其他设备需要重新登录。更新后需重启 DSH，已经失效的浏览器需从终端登录链接重新进入。详见 [远行之钥说明](remote-access/README.md)。
-- **更新方式**：暗金主题本次改动刷新网页即可生效；若尚未同步此前的知忆书阁 Host 策略调整，更新源码后，停止原 DSH 进程并以原环境重新启动，再刷新网页；不要仅根据版本号判断是否需要重启。
+本轮包含 Host 与客户端更新。使用原 profile 停止并重启 DSH，然后刷新网页；若为复制安装，先同步更新到所安装的目录。个人记忆、凭据与真实会话不随源码迁移。
 
 ## 获取源码
 
@@ -91,7 +94,7 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 ### 会话清道
 
-在会话菜单中点击“删除会话”立即永久删除，无需确认，也没有撤回或回收站。运行中的会话禁止删除；已停止的当前会话可删除，随后刷新列表并切换会话。删除失败时显示原因。0.3.1 统一显示名称，保留现有删除行为。
+在会话菜单中点击“删除会话”先预览并确认；插件页支持按项目、更新时间和名称筛选后批量清理。删除永久生效，没有撤回或回收站。运行中的会话禁止删除；已停止的当前会话可删除，随后刷新列表并切换会话。批量操作遇到失败会停止并保留剩余项。
 
 当前实现适配 DSH 的 Agent 生命周期和 JSONL 会话目录，仅支持匹配 `DSH_HOME/sessions` 的存储布局。上游内部结构变化或路径校验失败时拒绝删除。验证脚本只操作临时会话。
 
@@ -172,9 +175,12 @@ DSH-Personal-Plugin/
 | 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
 | 暗金主题 | `aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
+| 选项领航 | `choice-pilot-test.mjs`、`choice-pilot-visual-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
 | 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局、保存流程、旧主机接口兼容、二维码显示与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |
 | 掌上行舟 | `mobile-deck-host-test.mjs`（临时 profile 目录下的配置校验与持久化）、`mobile-deck-client-test.mjs`（状态、接管、成果和提醒）、`mobile-deck-startup-test.mjs`（默认入口与深链接）、`mobile-deck-visual-test.mjs`（Edge 窄屏、主题与标签滚动） |
+
+`suite-experience-visual-test.mjs` 联合检查会话清理、引文暂存与选择回顾组件的浅色 / 深色及窄屏布局；使用模拟数据，不删除真实会话。
 
 例如：
 

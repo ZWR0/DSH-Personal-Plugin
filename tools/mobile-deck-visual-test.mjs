@@ -27,10 +27,12 @@ await page.evaluate(fixture+`
 const dictionaries={};const original=ctx.locale.register;
 ctx.locale.register=(ns,d)=>{dictionaries[ns]=d;return original(ns,d)};
 window.entry.factory(()=>React).apply(ctx);
-ctx.sessions.retain=()=>({ready:Promise.resolve(),binding:{session:{loadOlder:async()=>{}},eventSource:{getSnapshot:()=>({hasMore:false,entries:[
+ctx.sessions.retain=(id)=>({ready:Promise.resolve(),binding:{session:{loadOlder:async()=>{}},eventSource:{getSnapshot:()=>({hasMore:false,entries:[
  {type:'event',event:{type:'deliverables/presented',seq:2,data:{turn:1,callId:'p1',files:[{path:'D:/work/outputs/report.md',description:'任务报告 · Markdown'},{path:'D:/work/outputs/overview.png',description:'结果图表'}]}}},
- {type:'event',event:{type:'workspace/changes',seq:3,data:{turn:1}}}
+ {type:'event',event:{type:'workspace/changes',seq:3,data:{turn:1}}},
+ ...(id==='idle-2'?[{type:'event',event:{type:'turn/end',seq:4,data:{turn:1,reason:{kind:'error'}}}}]:[])
 ]}),subscribe:()=>()=>{}}},release(){}})
+statusMap.set('idle-1',{running:false,pendingInteraction:{key:'approval',kind:'approval',toolName:'shell',reason:'需要运行检查',sessionId:'idle-1'},completionUnread:false});
 window.previewRoot=ReactDOM.createRoot(document.getElementById('mount'));
 window.showPanel=()=>previewRoot.render(React.createElement(registrations.get('main:mobile-deck').component));
 window.showShortcut=()=>previewRoot.render(React.createElement(registrations.get('conversation.input.left:mobile-deck').component));
@@ -49,6 +51,11 @@ for(const dark of [false,true]){
   }
   assert.equal(await page.locator('.mdk-tools>.mdk-btn .mdk-icon').count(),3)
   await page.screenshot({path:`${out}/${dark?'dark':'light'}-${width}.png`,fullPage:true})
+  await page.locator('.mdk-filters button').filter({hasText:'待处理'}).click()
+  await page.locator('[data-todo-kind=failure]').waitFor()
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'todo center fits viewport')
+  await page.screenshot({path:`${out}/${dark?'dark':'light'}-todos-${width}.png`,fullPage:true})
+  await page.locator('.mdk-filters button').filter({hasText:'全部'}).click()
   await page.getByRole('button',{name:'成果 等待提问的会话',exact:true}).click()
   await page.locator('.mdk-result').first().waitFor()
   assert.equal(await page.locator('.mdk-result').count(),2)

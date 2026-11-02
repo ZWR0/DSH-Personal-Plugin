@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 
-const ROOT = 'D:/deepseek-harness/node_modules/.pnpm'
+const ROOT = new URL('../../node_modules/.pnpm', import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
 const reactEntry = `${ROOT}/react@18.3.1/node_modules/react/index.js`
 const serverEntry = `${ROOT}/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/server.node.js`
 
@@ -151,6 +151,7 @@ const projections = {
 const chatSnapshot = {
   legacy: {
     nodes: [{ kind: 'assistant', blocks: [{ kind: 'text', text: 'x'.repeat(4000) }] }],
+    runningCalls: [],
     partial: { turn: 3, step: 9, blocks: [{ kind: 'text', text: 'y'.repeat(400) }] },
   },
 }
@@ -167,11 +168,30 @@ if (!html.includes('19%')) throw new Error(`context reading missing: ${html.slic
 if (!html.includes('--au-ratio')) throw new Error('rail does not publish its context ratio')
 if (!html.includes('5.0')) throw new Error('session average speed missing from the rail')
 
+// Stage labels follow live chat facts, with tool execution taking priority.
+for (const [running, partial, calls, expected] of [
+  [true, null, [], 'phaseWaiting'],
+  [true, { blocks: [] }, [], 'phaseWaiting'],
+  [true, { blocks: [{ kind: 'text', text: 'hello' }] }, [], 'phaseGenerating'],
+  [true, { blocks: [{ kind: 'reasoning', text: 'thinking' }] }, [], 'phaseGenerating'],
+  [true, { blocks: [{ kind: 'text', text: 'hello' }] }, [{ phase: 'start', name: 'search' }], 'phaseTools'],
+  [true, null, [{ phase: 'start', name: 'search' }, { phase: 'start', name: 'read' }], 'phaseTools'],
+  [false, { blocks: [{ kind: 'text', text: 'old' }] }, [{ phase: 'start', name: 'search' }], 'idle'],
+]) {
+  const markup = renderToStaticMarkup(React.createElement(dock.Component, {
+    ...props,
+    useSession: selector => selector({ running }),
+    useChat: selector => selector({ legacy: { nodes: [], partial, runningCalls: calls } }),
+  }))
+  if (!markup.includes('data-aurum-phase="' + expected + '"')) throw new Error('stage mismatch: ' + expected)
+  if (!markup.includes('role="status"')) throw new Error('stage has no accessible status')
+}
+
 const emptyHtml = renderToStaticMarkup(React.createElement(dock.Component, {
   ...props,
   useProjection: () => undefined,
   useSession: selector => selector({ running: false }),
-  useChat: selector => selector({ legacy: { nodes: [], partial: null } }),
+  useChat: selector => selector({ legacy: { nodes: [], partial: null, runningCalls: [] } }),
 }))
 // A landing draft has no reading and no turn in flight: the rail stays out of
 // the way until the first token or turn arrives.

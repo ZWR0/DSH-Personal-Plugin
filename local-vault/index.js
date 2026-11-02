@@ -74,7 +74,7 @@ export async function scanDirectory(directory, bundles = []) {
         warnings.push({ path: previous, message: message(error) })
       }
     }
-    return { ...item, status: counts.get(item.name) > 1 ? 'conflict' : existing ? 'installed' : 'ready' }
+    return { ...item, installedVersion: existing?.version || '', versionChanged: Boolean(existing?.version && item.version !== existing.version), status: counts.get(item.name) > 1 ? 'conflict' : existing ? 'installed' : 'ready' }
   })) }
 }
 

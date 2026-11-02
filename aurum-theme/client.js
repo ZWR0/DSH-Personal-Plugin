@@ -37,6 +37,10 @@ window.__ModuleLoader__.load({
 
     const zh = {
       title: '暗金仪表',
+      phaseDuration: '当前阶段（本页观察）', phaseActivity: '最近状态更新', phaseToolNames: '运行中工具',
+      phaseWaiting: '等待模型',
+      phaseGenerating: '生成中',
+      phaseTools: '执行工具',
       context: '上下文',
       tokens: 'Token',
       speed: '速度',
@@ -77,6 +81,10 @@ window.__ModuleLoader__.load({
 
     const en = {
       title: 'Aurum telemetry',
+      phaseDuration: 'Stage duration (this page)', phaseActivity: 'Last state update', phaseToolNames: 'Running tools',
+      phaseWaiting: 'Waiting for model',
+      phaseGenerating: 'Generating',
+      phaseTools: 'Running tools',
       context: 'Context',
       tokens: 'Tokens',
       speed: 'Speed',
@@ -396,6 +404,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
   min-width: 0;
   padding: 6px 12px 7px;
 }
+.au-stage { border: 0; background: transparent; color: inherit; padding: 0; font: inherit; cursor: pointer; white-space: nowrap; font-size: 12px; font-weight: 500; letter-spacing: normal; text-transform: none; }
 .au-brand {
   display: flex;
   align-items: center;
@@ -611,6 +620,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
   .au-metrics { gap: 12px; }
 }
 @media (max-width: 560px) {
+  .au-row { flex-wrap: wrap; }
   .au-expand { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 `
@@ -1067,7 +1077,24 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
       const running = props.useSession(function (snapshot) { return snapshot.running === true })
       const nodes = props.useChat(function (snapshot) { return snapshot.legacy.nodes })
       const partial = props.useChat(function (snapshot) { return snapshot.legacy.partial })
+      const runningCalls = props.useChat(function (snapshot) { return snapshot.legacy.runningCalls })
+      const activeTools = runningCalls.filter(call => call.phase === 'start')
+      const phase = !running ? null : activeTools.length > 0 ? 'phaseTools'
+        : partial && partial.blocks.length > 0 ? 'phaseGenerating' : 'phaseWaiting'
       const [expanded, setExpanded] = useState(false)
+      const [stageClock, setStageClock] = useState(() => ({ phase, sessionId: props.sessionId, start: Date.now(), activity: Date.now() }))
+      const [stageNow, setStageNow] = useState(Date.now)
+      useEffect(() => {
+        const now = Date.now()
+        setStageClock(previous => ({ phase, sessionId: props.sessionId,
+          start: previous.phase === phase && previous.sessionId === props.sessionId ? previous.start : now, activity: now }))
+        setStageNow(now)
+      }, [phase, partial, runningCalls, props.sessionId])
+      useEffect(() => {
+        if (!phase) return undefined
+        const timer = setInterval(() => setStageNow(Date.now()), 1000)
+        return () => clearInterval(timer)
+      }, [phase])
       const live = useLiveRate(partial, props.sessionId, running, partial && typeof partial.turn === 'number' ? partial.turn : (stats ? Math.max(0, stats.turns - 1) : 0))
 
       const inputTokens = usage
@@ -1138,7 +1165,7 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
       h('div', { className: 'au-row' },
         h('span', { className: 'au-brand' },
           h('span', { className: running ? 'au-dot live' : 'au-dot' }),
-          h('span', { className: 'au-word' }, t('title'))),
+          h('span', { role: 'status', 'aria-atomic': true }, phase ? h('button', { type: 'button', className: 'au-stage', 'data-aurum-phase': phase, 'aria-expanded': expanded, onClick: () => setExpanded(value => !value) }, t(phase)) : h('span', { className: 'au-word', 'data-aurum-phase': 'idle' }, t('title')))),
         h(Ring, {
           ratio: ratio,
           label: contextWindow > 0 ? Math.round(ratio * 100) + '%' : '—',
@@ -1169,6 +1196,9 @@ body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dial
           : null),
       expanded
         ? h('div', { className: 'au-expand' },
+          phase ? h('div', { className: 'au-cell' }, h('b', null, formatDuration(Math.max(0, stageNow - stageClock.start))), h('small', null, t('phaseDuration'))) : null,
+          phase ? h('div', { className: 'au-cell' }, h('b', null, new Date(stageClock.activity).toLocaleTimeString()), h('small', null, t('phaseActivity'))) : null,
+          phase === 'phaseTools' ? h('div', { className: 'au-cell', style: { overflowWrap: 'anywhere' } }, h('b', null, activeTools.map(call => call.name).join(' · ')), h('small', null, t('phaseToolNames'))) : null,
           h('div', { className: 'au-cell' },
             h('b', null, formatTokens(inputTokens)),
             h('small', null, t('input') + ' · ' + t('tokens'))),

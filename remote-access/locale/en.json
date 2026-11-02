@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Wayfarer Key",
-    "description": "Manage a persistent DSH Web launch token and a stable remote access URL that survive restarts."
+    "description": "Remote login and manual diagnostics for address reachability, current authentication and session sync."
   }
 }
