@@ -16,7 +16,7 @@
 | 引文速递 | 0.3.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
 | 选项领航 | 0.4.1 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 原生可点击选择卡片、可组合建议多选与主题化选中反馈 |
 | 知忆书阁 | 0.5.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 文脉护航 | 0.1.3 | `@local/dsh-context-guard` · [context-guard](context-guard/README.md) | 复用会话原生压缩，实际请求预算不足时停止请求 |
+| 文脉护航 | 0.1.4 | `@local/dsh-context-guard` · [context-guard](context-guard/README.md) | 复用会话原生压缩，实际请求预算不足时停止请求 |
 | 远行之钥 | 0.4.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
 | 掌上行舟 | 0.9.0 | `@local/dsh-mobile-deck` · [mobile-deck](mobile-deck/README.md) | 手机 / iPad 移动工作台：会话状态概览与远程接管入口 |
 
@@ -47,9 +47,9 @@
 
 暗金主题 0.4.2 将速度曲线采样按会话保存到当前浏览器，刷新后恢复；最多保留八个会话，每会话最多 1200 点，长曲线降采样保留时间跨度。旧版未保存的数据无法补回。
 
-暗金主题 0.4.2 在开启时让助手回复底部只保留复制按钮。新增的文脉护航 0.1.3 独立于主题，复用每个会话预设的原生 80% 压缩策略，在原生压缩后检查实际请求预算，不足时停止本次模型请求；不覆盖预设配置，也不创建第二个压缩器。详细设置、限制与错误恢复见[文脉护航说明](context-guard/README.md)。
+暗金主题 0.4.2 在开启时让助手回复底部只保留复制按钮。新增的文脉护航 0.1.4 独立于主题，复用每个会话预设的原生 80% 压缩策略，在原生压缩后检查包含待发送消息的请求预算，不足时通过同一服务强制压缩一次历史并重新计量，仍不足才停止本次模型请求；不覆盖预设配置，也不创建第二个压缩器。详细设置、限制与错误恢复见[文脉护航说明](context-guard/README.md)。
 
-文脉护航 0.1.3 需要 Host 的 `compaction/token-budget` 接口；更新配套宿主源码并运行 `pnpm run build` 后重启原 Host。插件限制额外输入余量和摘要输出预算，实际触发仍受模型窗口与输出预留约束。安装文脉护航后需重启原 Host；暗金主题样式更新后强制刷新网页。单次输出 token 上限仍需按输出设置处理，不能靠压缩历史保证消除。
+文脉护航 0.1.4 需要 Host 的 `compaction/token-budget` 接口；更新配套宿主源码并运行 `pnpm run build` 后重启原 Host。插件限制额外输入余量和摘要输出预算，实际触发仍受模型窗口与输出预留约束。安装文脉护航后需重启原 Host；暗金主题样式更新后强制刷新网页。单次输出 token 上限仍需按输出设置处理，不能靠压缩历史保证消除。
 
 ## 获取源码
 

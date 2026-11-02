@@ -4,12 +4,12 @@ import { harnessUrl } from './test-environment.mjs'
 import * as plugin from '../context-guard/index.js'
 const { apply, resolveConfig } = plugin
 let listener, registration, headroomListener, available = true
-let pressure = 32789, queued = 0, capacity = 131072, output = 32768, directCalls = 0
+let pressure = 32789, queued = 0, capacity = 131072, output = 32768, directCalls = 0, recoveryPressure, recoveryFailure, cancelRecovery
 const controller = new AbortController()
 const payload = { agent: {session: {requestHeader:()=>({config:{provider:'test',model:'test',maxTokens:output}})}}, signal:controller.signal, messages:[], modelSelection:{provider:'test',model:'test'} }
 const decision = {kind:'enter',messages:[],startsRequestSeries:true}
 const services = {
-  agentPresets:{serviceFor(agent,name){assert.equal(agent,payload.agent);assert.equal(name,'compaction');if(!available)return undefined;return {async compactIfNeeded(){directCalls++;throw Error('must not run compaction twice')}}}},
+  agentPresets:{serviceFor(agent,name){assert.equal(agent,payload.agent);assert.equal(name,'compaction');if(!available)return undefined;return {async compactIfNeeded(agent,trigger,signal){assert.equal(agent,payload.agent);assert.equal(trigger,'context-overflow');signal.throwIfAborted();directCalls++;if(cancelRecovery)cancelRecovery();if(recoveryFailure)throw recoveryFailure;if(recoveryPressure!==undefined)pressure=recoveryPressure;return null}}}},
   tokenMeter:{measure:()=>({totalTokens:pressure}),estimateMessage:()=>queued},
   llm:{async resolveModelInfo(){return {context:{contextWindow:capacity},defaultMaxTokens:8192}}},
 }
@@ -22,8 +22,27 @@ assert.equal(directCalls,0,'guard must not invoke a second compaction pass')
 pressure=120000
 assert.equal(await listener(payload,async()=>{pressure=32789;return decision}),decision,'measurement follows native compaction')
 await assert.rejects(listener(payload,async()=>{throw Error('native failure')}),/native failure/,'uncontained downstream failures propagate')
+pressure=91326;recoveryPressure=40000
+assert.equal(await listener(payload,async()=>decision),decision,'automatically reduces history before rejecting the screenshot request')
+assert.equal(directCalls,1)
+pressure=50000;queued=41000;decision.messages=[{role:'user',content:[]}]
+recoveryPressure=30000
+assert.equal(await listener(payload,async()=>decision),decision,'queued messages crossing the ceiling trigger recovery')
+assert.equal(directCalls,2)
+recoveryPressure=undefined;queued=0;decision.messages=[]
+pressure=91326;recoveryFailure=Error('summary failed')
+await assert.rejects(listener(payload,async()=>decision),/summary failed/,'summary failure stops the request')
+recoveryFailure=undefined
+const duringRecovery=new AbortController()
+cancelRecovery=()=>duringRecovery.abort()
+await assert.rejects(listener({...payload,signal:duringRecovery.signal},async()=>decision),{name:'AbortError'})
+cancelRecovery=undefined
 pressure=90112
 await assert.rejects(listener(payload,async()=>decision),error=>error.code==='CONTEXT_BUDGET_EXCEEDED')
+pressure=50000;queued=90112;decision.messages=[{role:'user',content:[]}]
+const beforeOversized=directCalls
+await assert.rejects(listener(payload,async()=>decision),error=>error.code==='CONTEXT_BUDGET_EXCEEDED')
+assert.equal(directCalls,beforeOversized,'oversized pending message cannot be repaired by history compaction')
 pressure=50000;queued=41000;decision.messages=[{role:'user',content:[]}]
 await assert.rejects(listener(payload,async()=>decision),error=>error.code==='CONTEXT_BUDGET_EXCEEDED','includes final admitted messages even when the payload batch is empty')
 pressure=50000;queued=0;output=80000
@@ -66,10 +85,11 @@ try {
  const next=async()=>{fallbackCalls++;return decision}
  pressure=32789
  assert.equal(await ctx.waterfall('agent/pre-step',request,next),decision)
- assert.equal(nativeCalls,1);assert.equal(recordedWarnings,1);assert.equal(fallbackCalls,1);assert.equal(directCalls,0)
+ assert.equal(nativeCalls,1);assert.equal(recordedWarnings,1);assert.equal(fallbackCalls,1);const callsBeforeUnsafe=directCalls
  pressure=120000
  await assert.rejects(ctx.waterfall('agent/pre-step',request,next),error=>error.code==='CONTEXT_BUDGET_EXCEEDED')
- assert.equal(nativeCalls,2);assert.equal(fallbackCalls,2,'pre-step terminal assembles a decision, never sends a model request')
+ assert.equal(nativeCalls,2);assert.equal(directCalls,callsBeforeUnsafe+1,'one bounded recovery for unsafe requests')
+ assert.equal(fallbackCalls,2,'pre-step terminal assembles a decision, never sends a model request')
  await fiber.dispose()
  assert.deepEqual(ctx.waterfall('compaction/token-budget',{agent:payload.agent},()=>({headroomTokens:65536,maxTokens:65536})),{headroomTokens:65536,maxTokens:65536},'unload restores native budgets')
  assert.equal(await ctx.waterfall('agent/pre-step',request,next),decision)

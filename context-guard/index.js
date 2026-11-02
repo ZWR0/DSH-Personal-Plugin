@@ -39,8 +39,7 @@ export function apply(ctx, config = {}) {
       error.code = 'CONTEXT_COMPACTION_UNAVAILABLE'
       throw error
     }
-    // The native listener owns compaction and its retry budget. A pressure target
-    // can remain unmet while the actual request still has sufficient space.
+    // Native pressure compaction runs before admission includes the final message batch.
     const decision = await next()
     signal.throwIfAborted()
     if (decision.kind === 'reject') return decision
@@ -55,10 +54,17 @@ export function apply(ctx, config = {}) {
     const sameRoute = header?.config.provider === modelSelection.provider && header?.config.model === modelSelection.model
     const output = (sameRoute ? header.config.maxTokens : undefined) ?? info.defaultMaxTokens ?? 0
     const queued = decision.messages.reduce((sum, message) => sum + ctx.tokenMeter.estimateMessage(message), 0)
-    const pressure = ctx.tokenMeter.measure(agent.session).totalTokens + queued
+    let pressure = ctx.tokenMeter.measure(agent.session).totalTokens + queued
     const ceiling = Math.floor(Math.min(capacity * policy.maxPressureRatio, capacity - output - policy.reserveTokens))
+    if (ceiling > 0 && pressure >= ceiling && queued < ceiling) {
+      // Pending input is not in native pressure metering. The forced trigger
+      // uses the existing current-turn compactor without idle-only maintenance.
+      await compaction.compactIfNeeded(agent, 'context-overflow', signal)
+      signal.throwIfAborted()
+      pressure = ctx.tokenMeter.measure(agent.session).totalTokens + queued
+    }
     if (ceiling <= 0 || pressure >= ceiling) {
-      const error = new Error(`上下文剩余空间不足，未发送本次模型请求（估算输入 ${pressure}，安全上限 ${Math.max(0, ceiling)}）。请运行 /compact，拆分过大的输入，或检查模型输出预算；历史压缩不能降低当前消息与固定提示的大小。`)
+      const error = new Error(`上下文剩余空间不足，未发送本次模型请求（估算输入 ${pressure}，安全上限 ${Math.max(0, ceiling)}）。自动历史压缩后仍无足够空间，或当前消息本身已超过预算；请拆分过大的输入，或检查模型输出预算与压缩配置。`)
       error.code = 'CONTEXT_BUDGET_EXCEEDED'
       throw error
     }

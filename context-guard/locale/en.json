@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Context guard",
-    "description": "Check the request budget after native Host compaction and stop requests with insufficient context space."
+    "description": "Check request space after native compaction, retry history compaction once when needed, and stop requests that still exceed the budget."
   }
 }
