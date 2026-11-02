@@ -12,6 +12,7 @@ const cleanups = []
 let History
 let section
 const ctx = {
+  on() {},
   locale: { register() { return () => {} } },
   slots: { inject(name, register) { register() }, register(options, component) { History = component; return () => {} } },
   effect(start) { cleanups.push(start()) },

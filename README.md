@@ -14,7 +14,7 @@
 | 会话清道 | 0.4.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 预览确认并批量清理已停止会话 |
 | 暗金主题 | 0.4.2 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
 | 引文速递 | 0.3.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
-| 选项领航 | 0.4.1 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 原生可点击选择卡片、可组合建议多选与主题化选中反馈 |
+| 选项领航 | 0.5.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 原生可点击选择卡片、可组合建议多选与主题化选中反馈 |
 | 知忆书阁 | 0.5.0 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
 | 文脉护航 | 0.1.4 | `@local/dsh-context-guard` · [context-guard](context-guard/README.md) | 复用会话原生压缩，实际请求预算不足时停止请求 |
 | 远行之钥 | 0.4.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
@@ -31,7 +31,7 @@
 - **暗金主题 0.4.2**：运行阶段详情。点击运行阶段展开仪表详情，查看本页观察的阶段持续时间、最近状态更新时间和运行中工具名称。只有宿主标记已启动的工具计为执行中；正在准备参数时仍属于模型生成。时间不会解释为预计完成时间或卡死判定。
 - **行囊宝匣 0.6.1**：安装前检查所需 Host 方法，缺失时提示并阻止安装；提供新设备环境自检与统一回归命令。更新与生效信息：目录扫描分别显示源码版本与管理器登记版本，并标出版本差异。安装结果保留宿主的重启要求；已应用时提示刷新网页加载客户端。宿主未提供真实运行版本，因此界面明确标注未提供，不将登记版本当作运行版本。
 - **引文速递 0.3.1**：划选助手正文后直接引用到输入框，保留草稿和 8000 个 Unicode 字符限制。
-- **选项领航 0.4.1**：原生选择卡片支持可组合建议多选，并提供主题化选中反馈。选择结果回顾使用简短标签展示选中项，补充文字单独换行。输入框上方提供默认折叠的「选择回顾」，读取当前已加载聊天中的最近五组已提交问题与答案，展示多选和补充要求，可定位原问题与回答。没有记录时不显示，不将草稿、预选或跳过解释为授权。
+- **选项领航 0.5.0**：普通问题标记自动继续后，默认等待 120 秒，超时采用明确推荐项或跳过缺失信息，并记录自动处理说明；授权和审批仍等待真实确认。时间可配置。保留原生多选、主题化选中反馈和输入框上方的「选择回顾」，展示最近五组已处理问题、所选项及补充说明，可定位原记录。
 - **会话清道 0.4.0**：清理预览与批量确认。插件页可按项目、最近更新时间和名称筛选，勾选已停止会话后预览名称与数量，再明确确认永久删除。会话菜单的单项删除也先预览确认。批量逐项处理，遇到失败停止并保留剩余项；运行状态会在每项执行前重新检查，Host 仍负责最终保护。没有回收站或撤回功能。
 - **远行之钥 0.4.0**：手动连接自检。连接状态区增加手动自检与取消入口，分别展示远程地址、当前网页认证及会话同步结果和故障建议。地址探测不携带凭据，浏览器可达不等于确认该地址是 DSH；认证和同步仅检查当前网页连接，其他设备需在对应设备验证。修改地址会清除旧诊断结果，不在后台轮询。
 
@@ -214,7 +214,7 @@ node tools/check.mjs
 | 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
 | 暗金主题 | `aurum-actions-browser-test.mjs`、`aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 引文速递 | `quote-relay-test.mjs` |
-| 选项领航 | `choice-pilot-test.mjs`、`choice-pilot-visual-test.mjs` |
+| 选项领航 | `choice-pilot-test.mjs`、`choice-pilot-timeout-test.mjs`、`choice-pilot-visual-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
 | 文脉护航 | `context-guard-test.mjs` |
 | 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局、保存流程、旧主机接口兼容、二维码显示与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |

@@ -3,9 +3,10 @@
  *
  * Reuses DSH's ask_user_question tool and native QuestionComposer card.
  * This plugin supplies questioning policy; the client styles the native answer UI.
- * Tool availability and blocking/timed behavior remain owned by the deployment.
+ * Explicitly unattended-safe questions use a bounded Host-side wait.
  */
-export const inject = ['systemPrompt']
+import { registerTimeout, resolveTimeout } from './timeout.js'
+export const inject = ['systemPrompt', 'tools']
 
 const SECTION = [
   '## 选项领航：任务中的澄清与信息补充',
@@ -32,11 +33,13 @@ const SECTION = [
   '原生界面已有自定义输入入口，不另外添加「其他」选项。不要要求用户在卡片中提交密码、API Key 等秘密，应引导其使用对应设置入口。',
   '',
   '### 等待、回答与继续任务',
-  '答案是必要前提时，必须等待真实答案后才继续依赖它的工作。仅当当前工具 schema 明确支持 `timeout` 时，可为此使用 `timeout: -1`；不支持该字段的阻塞式工具直接正常调用，不传入未知参数。',
+  '普通偏好、可逆方案选择及信息补充使用有限等待：在每个问题的 header 开头加入 `[自动继续]`，并在 question 末尾说明等待期限、超时采用推荐项或跳过缺失信息。该标记声明此问题不承担授权或审批。必须确认的删除、付款、对外发送、发布、权限批准、计划审批，以及用户明确要求等待的问题不得加该标记；保持等待真实答案，不得自动批准。混合批次拆分普通问题与必须确认的问题。',
+  '自动继续问题中，选择题只采用明确标记（推荐）或 (Recommended) 的选项；单选有多个推荐或没有推荐时跳过，多选只采用推荐项。自由输入超时不编造信息，跳过问题及依赖缺失信息的工作，继续独立部分。未标记的问题不参与插件自动处理。',
   '对于非阻塞的偏好补充，遵循工具自身等待策略。工具返回 `pending` 表示尚未收到回答；继续不依赖答案的有用工作，保留待确认事项，不把超时当成默认选项被接受，也不要重复创建相同问题卡片。',
   '按 `id` 对应解析 `answers`，同时读取 `selected` 与 `custom`。补充文字可能包含限制或修正；与所选项冲突且无法消解时，针对冲突澄清，不忽略补充文字。',
   '空 `selected` 且无有效 `custom` 表示跳过；跳过、取消、关闭卡片或无响应都不代表授权。不要重复追问已跳过的问题；继续可独立完成的部分，必要前提仍缺失时说明受阻的具体部分。',
   '收到答案后将其用于当前任务，简短说明采用的选择并接着执行，不要求用户重新发送原始任务。尊重用户在当前对话中后续的明确修正，不跨会话套用偏好。',
+  '带有「选项领航自动处理，非用户回答」的结果是事先配置的超时策略，不能描述成用户选择或授权。不要重复询问超时问题。完成任务时集中列出超时采用的推荐项、未提供的信息、因此跳过的工作及影响；后续真实回复优先，必要时调整尚未执行的工作。',
   '',
   '### 能力边界',
   '只调用当前工具列表中真实存在的 `ask_user_question`。工具不可用或报告无可用交互通道时，明确说明无法展示原生卡片，在普通回复中一次性提出必要问题与选项；不要伪造已弹窗、已收到答案或工具成功，也不要循环重试同一失败请求。',
@@ -44,10 +47,12 @@ const SECTION = [
 ].join('\n')
 
 /** Register the policy; Cordis disposes the section when this plugin stops. */
-export function apply(ctx) {
+export function apply(ctx, config = {}) {
+  const seconds = resolveTimeout(config)
+  registerTimeout(ctx, seconds)
   ctx.effect(() => ctx.systemPrompt.section({
     name: 'choice-pilot',
     order: 60,
-    text: SECTION,
+    text: SECTION + (seconds === -1 ? '\n自动继续已关闭，不添加 [自动继续] 标记，沿用原生等待策略。' : `\n当前自动继续等待上限为 ${seconds} 秒。`),
   }), 'choice-pilot: clarification and option-first section')
 }
