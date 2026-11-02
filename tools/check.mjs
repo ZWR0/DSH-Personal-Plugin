@@ -31,6 +31,10 @@ for (const file of ['vendor/cordis/lib/index.js', 'packages/client/connection/li
   if (!existsSync(join(env.harnessRoot, file))) throw new Error('缺少构建产物；请在 DSH 源码目录运行 pnpm run build:artifacts，再运行 pnpm run build:check。')
   return '存在'
 })
+for (const file of ['packages/compaction/compaction-basic/src/index.ts', 'packages/compaction/compaction-basic/lib/index.js']) check('文脉护航余量接口 ' + file, () => {
+  if (!existsSync(join(env.harnessRoot, file)) || !readFileSync(join(env.harnessRoot, file), 'utf8').includes('compaction/token-budget')) throw new Error('缺少配套余量接口；请更新 DSH 源码并运行 pnpm run build，再重启原 Host。')
+  return '存在；运行中的 Host 仍需重启'
+})
 // This is source evidence, not a claim that an existing Host process loaded it.
 check('固定 Token 源码接口', () => {
   const source = ['index.ts', 'rpc-host.ts'].map(file => {

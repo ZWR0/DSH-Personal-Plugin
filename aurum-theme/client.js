@@ -32,8 +32,43 @@ window.__ModuleLoader__.load({
     const SAMPLE_WINDOW_MS = 2400
     const SAMPLE_FLOOR_MS = 300
     const HISTORY_LIMIT = 1200
-    // Numeric samples only; retain up to eight recently viewed sessions per page.
+    // Numeric samples only; bounded browser storage, isolated by session id.
+    const HISTORY_KEY = 'dsh.aurum.speed-history.v1'
     const speedHistories = new Map()
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(HISTORY_KEY) || 'null')
+      if (stored && stored.version === 1 && Array.isArray(stored.sessions)) {
+        for (const entry of stored.sessions.slice(-8)) {
+          if (!Array.isArray(entry) || typeof entry[0] !== 'string' || !Array.isArray(entry[1])) continue
+          let previousAt = -1
+          const rows = entry[1].slice(-HISTORY_LIMIT).filter(function (row) {
+            if (!row || !Number.isFinite(row.at) || row.at < 0 || row.at < previousAt ||
+                !Number.isFinite(row.value) || row.value < 0 || !Number.isSafeInteger(row.turn) || row.turn < 0) return false
+            previousAt = row.at
+            return true
+          })
+          speedHistories.set(entry[0], rows)
+        }
+      }
+    } catch (error) {
+      console.warn('[Aurum] Speed history could not be restored; new samples remain available in this page.', error)
+    }
+
+    let historyWriteReported = false
+    function saveSpeedHistory(sessionId, rows) {
+      if (!sessionId) return
+      speedHistories.delete(sessionId)
+      speedHistories.set(sessionId, rows)
+      if (speedHistories.size > 8) speedHistories.delete(speedHistories.keys().next().value)
+      try {
+        window.localStorage.setItem(HISTORY_KEY, JSON.stringify({ version: 1, sessions: Array.from(speedHistories) }))
+      } catch (error) {
+        if (!historyWriteReported) {
+          historyWriteReported = true
+          console.warn('[Aurum] Speed history could not be saved; keep this page open to retain its samples. Check browser storage permissions or available space.', error)
+        }
+      }
+    }
 
     const zh = {
       title: '暗金仪表',
@@ -58,7 +93,7 @@ window.__ModuleLoader__.load({
       recorded: '已保留 · 估算',
       timeAxis: '累计运行时间',
       turnLabel: '轮次',
-      interpolated: '最近三轮 · 估算 · 空档连线',
+      interpolated: '已记录轮次 · 估算 · 空档连线',
       perSecond: 'tok/s',
       estimated: '估算',
       waitingSpeed: '等待速度采样',
@@ -102,7 +137,7 @@ window.__ModuleLoader__.load({
       recorded: 'Retained · estimated',
       timeAxis: 'Cumulative run time',
       turnLabel: 'Turn',
-      interpolated: 'Last three turns · estimated · gaps connected',
+      interpolated: 'Recorded turns · estimated · gaps connected',
       perSecond: 'tok/s',
       estimated: 'est.',
       waitingSpeed: 'Waiting for speed samples',
@@ -967,16 +1002,11 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
           const activeAt = clock.elapsed + (clock.started === null ? 0 : Math.max(0, now - clock.started))
           setHistory(function (previous) {
             const all = previous.concat([{ at: activeAt, value: value, turn: turn }])
-            const turns = Array.from(new Set(all.map(row => row.turn))).slice(-3)
-            const next = all.filter(row => turns.includes(row.turn))
+            const next = all
             // Compact older samples while retaining the full time span.
             const kept = next.length > HISTORY_LIMIT
               ? next.filter(function (_, index) { return index % 2 === 0 || index === next.length - 1 }) : next
-            if (sessionId) {
-              speedHistories.delete(sessionId)
-              speedHistories.set(sessionId, kept)
-              if (speedHistories.size > 8) speedHistories.delete(speedHistories.keys().next().value)
-            }
+            saveSpeedHistory(sessionId, kept)
             return kept
           })
         }

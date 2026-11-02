@@ -3,29 +3,35 @@
 export const inject = ['agentPresets', 'tokenMeter', 'llm']
 
 /**
- * Validate the emergency request ceiling and unmeasured-input margin.
+ * Validate the request ceiling, extra input margin, and summary output cap.
  * @param config - Plugin settings supplied by cordis.yml.
  * @returns Validated request safety settings; throws for invalid values.
  */
 export function resolveConfig(config = {}) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('context-guard: config 必须是对象')
-  for (const key of Object.keys(config)) if (!['maxPressureRatio', 'reserveTokens'].includes(key)) throw new Error('context-guard: 未知配置字段 ' + key)
+  for (const key of Object.keys(config)) if (!['maxPressureRatio', 'reserveTokens', 'summaryMaxTokens'].includes(key)) throw new Error('context-guard: 未知配置字段 ' + key)
   const maxPressureRatio = config.maxPressureRatio ?? 0.9
   const reserveTokens = config.reserveTokens ?? 8192
+  const summaryMaxTokens = config.summaryMaxTokens ?? 8192
   if (!Number.isFinite(maxPressureRatio) || maxPressureRatio <= 0 || maxPressureRatio >= 1) throw new Error('context-guard: maxPressureRatio 必须大于 0 且小于 1')
   if (!Number.isSafeInteger(reserveTokens) || reserveTokens < 0) throw new Error('context-guard: reserveTokens 必须是非负整数')
-  return { maxPressureRatio, reserveTokens }
+  if (!Number.isSafeInteger(summaryMaxTokens) || summaryMaxTokens <= 0) throw new Error('context-guard: summaryMaxTokens 必须是正整数')
+  return { maxPressureRatio, reserveTokens, summaryMaxTokens }
 }
 
 /**
- * Compact before the ordinary pressure listener can swallow a failure.
+ * Validate remaining request space after the native pre-step compaction listeners finish.
  * No synthetic summary, pruning, or model-visible message is created here.
  * @param ctx - Web Host context supplying preset services, metering and model metadata.
- * @param config - Emergency ceiling and request margin; trigger policy stays with compaction-basic.
+ * @param config - Request safety settings and compaction budget caps.
  */
 export function apply(ctx, config = {}) {
   const policy = resolveConfig(config)
-  ctx.on('agent/pre-step', async ({ agent, signal, messages, modelSelection }, next) => {
+  ctx.on('compaction/token-budget', (_payload, next) => {
+    const budget = next()
+    return { headroomTokens: Math.min(budget.headroomTokens, policy.reserveTokens), maxTokens: Math.min(budget.maxTokens, policy.summaryMaxTokens) }
+  })
+  ctx.on('agent/pre-step', async ({ agent, signal, modelSelection }, next) => {
     signal.throwIfAborted()
     const compaction = ctx.agentPresets.serviceFor(agent, 'compaction')
     if (!compaction) {
@@ -33,15 +39,11 @@ export function apply(ctx, config = {}) {
       error.code = 'CONTEXT_COMPACTION_UNAVAILABLE'
       throw error
     }
-    try {
-      await compaction.compactIfNeeded(agent, 'pressure', signal)
-    } catch (cause) {
-      if (signal.aborted) throw cause
-      const error = new Error('自动压缩未完成，已停止本次模型请求。请查看压缩错误，使用 /compact 重试，或调整摘要模型与压缩预算后继续。', { cause })
-      error.code = 'CONTEXT_COMPACTION_FAILED'
-      throw error
-    }
+    // The native listener owns compaction and its retry budget. A pressure target
+    // can remain unmet while the actual request still has sufficient space.
+    const decision = await next()
     signal.throwIfAborted()
+    if (decision.kind === 'reject') return decision
     const info = await ctx.llm.resolveModelInfo(modelSelection.provider, modelSelection.model, signal)
     const capacity = info.context?.contextWindow
     if (!Number.isSafeInteger(capacity) || capacity <= 0) {
@@ -52,7 +54,7 @@ export function apply(ctx, config = {}) {
     const header = agent.session.requestHeader()
     const sameRoute = header?.config.provider === modelSelection.provider && header?.config.model === modelSelection.model
     const output = (sameRoute ? header.config.maxTokens : undefined) ?? info.defaultMaxTokens ?? 0
-    const queued = messages.reduce((sum, message) => sum + ctx.tokenMeter.estimateMessage(message), 0)
+    const queued = decision.messages.reduce((sum, message) => sum + ctx.tokenMeter.estimateMessage(message), 0)
     const pressure = ctx.tokenMeter.measure(agent.session).totalTokens + queued
     const ceiling = Math.floor(Math.min(capacity * policy.maxPressureRatio, capacity - output - policy.reserveTokens))
     if (ceiling <= 0 || pressure >= ceiling) {
@@ -60,6 +62,6 @@ export function apply(ctx, config = {}) {
       error.code = 'CONTEXT_BUDGET_EXCEEDED'
       throw error
     }
-    return next()
+    return decision
   }, { prepend: true })
 }
