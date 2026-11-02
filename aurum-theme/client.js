@@ -358,6 +358,11 @@ body[data-ds-aurum-theme] [data-composer-dock] > span:has(> button[aria-haspopup
 body[data-ds-aurum-theme] [data-turn-tail] span:has(> button[aria-haspopup="dialog"]) {
   display: none !important;
 }
+/* Native assistant-tail actions put copy first; user-message actions are outside this scope. */
+body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:first-of-type) {
+  display: none !important;
+}
+
 `
 
     const RAIL_CSS = `

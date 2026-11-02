@@ -89,6 +89,7 @@ export function compatibilityIssues(name, ctx) {
   const requirements = {
     '@local/dsh-local-vault': [...common, 'pluginManager.listBundles', 'pluginManager.installBundle', 'pluginManager.removeBundle'],
     '@local/dsh-mobile-deck': common,
+    '@local/dsh-context-guard': ['agentPresets.serviceFor', 'tokenMeter.measure', 'tokenMeter.estimateMessage', 'llm.resolveModelInfo'],
     '@local/dsh-remote-access': [...common, 'connection.webAuthStatus', 'connection.webAuthToken', 'connection.setWebAuthToken', 'connection.clearWebAuthToken'],
     '@local/dsh-context-library': [...common, 'systemPrompt.context', 'systemPrompt.section', 'systemPrompt.getSectionOrder', 'tools.register', 'tools.guard', 'agents.get', 'agents.list', 'workingDirectory.get'],
     '@local/dsh-choice-pilot': ['systemPrompt.section'],

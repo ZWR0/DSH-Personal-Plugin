@@ -1,0 +1,7 @@
+# Web compaction belongs to each Agent preset; leave those providers and their policies intact.
+- insert:
+    - id: local-context-guard
+      name: '@local/dsh-context-guard'
+      config:
+        maxPressureRatio: 0.9
+        reserveTokens: 8192
