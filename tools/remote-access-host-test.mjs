@@ -57,9 +57,17 @@ if (process.argv[2] === '--child') {
 }
 
 /** Mount the plugin over a fake Context and return its RPC dispatcher. */
-async function mountPlugin({ store, directory }) {
+async function mountPlugin({ store, directory, secure = false }) {
   const routes = new Map()
+  const host = 'localhost:3080'
+  const indexRequest = { method: 'GET', url: '/?token=' + currentAuth.token(), headers: { host } }
+  let cookie
+  currentAuth.authorizeIndex(indexRequest, {
+    writeHead(_status, headers) { cookie = headers['set-cookie'].split(';', 1)[0] },
+    end() {},
+  }, secure)
   const connection = {
+    authorizeIndex: (request, response) => currentAuth.authorizeIndex(request, response, secure),
     webAuthStatus: () => currentAuth.status(),
     webAuthToken: () => currentAuth.token(),
     setWebAuthToken: token => currentAuth.setPersistentToken(token),
@@ -84,12 +92,29 @@ async function mountPlugin({ store, directory }) {
   const route = routes.get('/api/remote-access/status')
   if ((await route.fetch(new Request('http://localhost/api/remote-access/status', { method: 'POST', body: '{}' }))).status !== 400) throw new Error('invalid envelope accepted')
   return async (endpoint, payload) => {
+    const previousCookie = cookie
+    const previousToken = currentAuth.token()
+    if (!currentAuth.isAuthenticated({ headers: { host, cookie } }, secure)) {
+      throw new Error('HTTP 401: browser cookie was not renewed')
+    }
     const route = routes.get(`/api/${plugin.ENDPOINT_PREFIX}${endpoint}`)
     if (!route || route.methods.join() !== 'POST' || route.requestBody !== 'buffered') throw new Error('invalid route registration')
     const response = await route.fetch(new Request(`http://localhost${route.path}`, {
-      method: 'POST', headers: { 'content-type': 'application/json' },
+      method: 'POST', headers: { 'content-type': 'application/json', host, cookie },
       body: JSON.stringify({ type: 'client-request', rpcId: 'test', method: plugin.ENDPOINT_PREFIX + endpoint, payload }),
     }))
+    const renewed = response.headers.get('set-cookie')
+    if (response.headers.get('cache-control') !== 'no-store') throw new Error('credential response is cacheable')
+    if (renewed !== null) cookie = renewed.split(';', 1)[0]
+    if (currentAuth.token() !== previousToken) {
+      check('rotation renews the initiating browser cookie', renewed !== null)
+      check('renewed cookie authenticates the next request', currentAuth.isAuthenticated({ headers: { host, cookie } }, secure))
+      check('another browser with the previous cookie is rejected', !currentAuth.isAuthenticated({ headers: { host, cookie: previousCookie } }, secure))
+      check('renewed cookie keeps HttpOnly and SameSite', renewed?.includes('HttpOnly') && renewed?.includes('SameSite=Strict'))
+      check('renewed cookie follows listener TLS', renewed?.includes('; Secure') === secure)
+    } else if (renewed !== null) {
+      throw new Error('unchanged authentication unexpectedly renewed a cookie')
+    }
     const envelope = await response.json()
     if (envelope.type !== 'server-response' || envelope.rpcId !== 'test') throw new Error('invalid response envelope')
     const result = envelope.result
@@ -161,10 +186,14 @@ try {
   check('restart reuses the stored base URL', status.baseUrl === 'https://msd.example.ts.net/')
   check('restart keeps the same token', currentAuth.token() === firstToken)
   check('restart keeps the same sign-in URL', (await call('link')).url === link.url)
-  check('bookmarked URL still authenticates', currentAuth.authorizeIndex(
+  let bookmarkedCookie
+  let bookmarkedStatus
+  currentAuth.authorizeIndex(
     { method: 'GET', url: `/?token=${firstToken}`, headers: { host: 'msd.example.ts.net' } },
-    { writeHead() {}, end() {} },
-  ) === false && currentAuth.isAuthenticated({ headers: { host: 'msd.example.ts.net', cookie: '' } }) === false)
+    { writeHead(status, headers) { bookmarkedStatus = status; bookmarkedCookie = headers?.['set-cookie']?.split(';', 1)[0] }, end() {} },
+  )
+  check('bookmarked URL still authenticates', bookmarkedStatus === 303
+    && currentAuth.isAuthenticated({ headers: { host: 'msd.example.ts.net', cookie: bookmarkedCookie } }))
 
   console.log('a wrong token fails authentication')
   let denied = { status: undefined }
@@ -237,6 +266,14 @@ try {
     child.url === `https://msd.example.ts.net/?token=${carried}`,
     child.url,
   )
+
+  console.log('TLS listener keeps the initiating browser authenticated')
+  call = await mountPlugin({ store, directory, secure: true })
+  await call('save', { mode: 'persistent', token: 't'.repeat(43) })
+  await call('save', { baseUrl: 'https://msd.example.ts.net/' })
+  await call('save', { mode: 'persistent', token: 't'.repeat(43) })
+  await call('revoke')
+  check('TLS browser can save after revocation', (await call('save', { baseUrl: 'https://msd.example.ts.net/' })).mode === 'ephemeral')
 } finally {
   if (original === undefined) delete process.env.DSH_WEB_TOKEN
   else process.env.DSH_WEB_TOKEN = original

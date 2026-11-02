@@ -191,6 +191,23 @@ export function apply(ctx) {
     }
   }
 
+  /** Renew only the admitted caller's cookie using Connection's own token exchange and TLS policy. */
+  function renewedCookie(request) {
+    let cookie
+    auth().authorizeIndex({
+      method: 'GET',
+      url: '/?token=' + encodeURIComponent(auth().webAuthToken()),
+      headers: Object.fromEntries(request.headers),
+    }, {
+      writeHead(status, headers) {
+        if (status === 303) cookie = headers?.['set-cookie']
+      },
+      end() {},
+    })
+    if (!cookie) throw new Error('认证已变更，但当前浏览器登录续期失败，请从 DSH 启动终端重新打开登录链接')
+    return cookie
+  }
+
   for (const endpoint of ENDPOINTS) {
     ctx.effect(() => ctx.connection.fetch.register({
       path: '/api/' + ENDPOINT_PREFIX + endpoint,
@@ -207,11 +224,23 @@ export function apply(ctx) {
           return new Response('Invalid RPC envelope', { status: 400 })
         }
         let result
-        try { result = { ok: true, value: await handle(endpoint, body.payload) } }
+        const headers = { 'cache-control': 'no-store' }
+        const mutatesAuth = endpoint === 'save' || endpoint === 'revoke'
+        let previousToken
+        try {
+          if (mutatesAuth) previousToken = auth().webAuthToken()
+          result = { ok: true, value: await handle(endpoint, body.payload) }
+        }
         catch (error) {
           result = { ok: false, error: { code: 'remote-access/failed', message: message(error), details: {} } }
         }
-        return Response.json({ type: 'server-response', rpcId: body.rpcId, result })
+        if (previousToken !== undefined && auth().webAuthToken() !== previousToken) {
+          try { headers['set-cookie'] = renewedCookie(request) }
+          catch (error) {
+            result = { ok: false, error: { code: 'remote-access/failed', message: message(error), details: {} } }
+          }
+        }
+        return Response.json({ type: 'server-response', rpcId: body.rpcId, result }, { headers })
       },
     }), 'remote-access: ' + endpoint + ' authenticated route')
   }

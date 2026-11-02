@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
-const req = createRequire('D:/deepseek-harness/package.json')
+const req = createRequire(new URL('../../package.json', import.meta.url))
 const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
 const browser = await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true})
 const source=readFileSync(new URL('../mobile-deck/client.js',import.meta.url),'utf8')
@@ -18,7 +18,7 @@ await page.route('https://dsh.fixture.test/**', route => route.fulfill(route.req
  : {status:200,contentType:'text/html',body:'<html><body></body></html>'}))
 await page.goto('https://dsh.fixture.test/')
 await page.setContent('<style>body{margin:0;padding:24px;font:14px system-ui;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}#mount{max-width:1400px;margin:auto}</style><div id="mount"></div>')
-const base='D:/deepseek-harness/node_modules/.pnpm/'
+const base=new URL('../../node_modules/.pnpm/',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
 await page.addScriptTag({path:base+'react@18.3.1/node_modules/react/umd/react.development.js'})
 await page.addScriptTag({path:base+'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/umd/react-dom.development.js'})
 await page.evaluate(()=>{window.__ModuleLoader__={load(v){window.entry=v}}})
@@ -33,7 +33,7 @@ ctx.sessions.retain=()=>({ready:Promise.resolve(),binding:{session:{loadOlder:as
 ]}),subscribe:()=>()=>{}}},release(){}})
 window.previewRoot=ReactDOM.createRoot(document.getElementById('mount'));
 window.showPanel=()=>previewRoot.render(React.createElement(registrations.get('main:mobile-deck').component));
-window.showShortcut=()=>previewRoot.render(React.createElement(registrations.get('conversation.input.right:mobile-deck').component));
+window.showShortcut=()=>previewRoot.render(React.createElement(registrations.get('conversation.input.left:mobile-deck').component));
 window.showSettings=()=>previewRoot.render(React.createElement(registrations.get('plugins.tab:mobile-deck').component));
 `)
 for(const dark of [false,true]){

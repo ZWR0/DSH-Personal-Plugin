@@ -5,7 +5,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
-const req = createRequire('D:/deepseek-harness/package.json')
+const req = createRequire(new URL('../../package.json', import.meta.url))
 const { chromium } = req('./node_modules/.pnpm/playwright@1.61.1/node_modules/playwright/index.js')
 const browser = await chromium.launch({ executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true })
 const importFolder = await mkdtemp(join(tmpdir(),'context-folder-import-'))
@@ -45,7 +45,7 @@ try {
   page.on('pageerror', error => { errors.push(error.message); console.error('PAGEERROR:', error.stack || error.message) })
   page.on('console', message => { if (message.type() === 'error') console.error('CONSOLE:', message.text()) })
   await page.setContent(`<html><head><style>*{box-sizing:border-box}body{margin:0;padding:28px max(20px,calc((100vw - 1020px)/2));font:14px system-ui;background:#151617;color:#f3f2ee;--dsw-alias-label-primary:#f3f2ee;--dsw-alias-label-secondary:#cccac3;--dsw-alias-bg-base:#151617;--dsw-alias-bg-layer-1:#1d1e20;--dsw-alias-bg-layer-2:#252629;--dsw-alias-border-l1:#353639;--dsw-alias-border-l2:#424347;--dsw-alias-border-l3:#505155;--dsw-alias-state-error-primary:#ee9c8c;--dsw-alias-state-business-primary:#e3c45f}input{accent-color:#c9a227}button{white-space:nowrap}</style></head><body><div id="root"></div></body></html>`)
-  const base = 'D:/deepseek-harness/node_modules/.pnpm/'
+  const base = new URL('../../node_modules/.pnpm/',import.meta.url).pathname.replace(/^\/(?:([A-Za-z]):)/, '$1:')
   await page.addScriptTag({ path: base + 'react@18.3.1/node_modules/react/umd/react.development.js' })
   await page.addScriptTag({ path: base + 'react-dom@18.3.1_react@18.3.1/node_modules/react-dom/umd/react-dom.development.js' })
   await page.evaluate(() => { window.__ModuleLoader__ = { load(value) { window.entry = value } } })
@@ -119,7 +119,7 @@ try {
       component.face.call = window.__call
     }
     window.__settings = window.__components['plugins.tab']
-    window.__composer = window.__components['conversation.input.right']
+    window.__composer = window.__components['conversation.input.left']
   }, { settings, entries, proposal, replacement, now })
 
   // Settings page

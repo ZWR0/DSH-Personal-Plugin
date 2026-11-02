@@ -1,6 +1,6 @@
 # 远行之钥
 
-`@local/dsh-remote-access` · **0.3.2** · Host + Web 客户端
+`@local/dsh-remote-access` · **0.3.3** · Host + Web 客户端
 
 在 DSH 插件页管理固定登录 Token 和远程基础地址，让重启后的收藏链接继续可用。Token 属于 DSH 登录凭据，与 Tailscale auth key、模型 API Key 不同。
 
@@ -25,6 +25,10 @@
 
 DSH 必须保持运行，设备的网络路径也必须可用。固定域名和固定 Token 是两项设置；修改域名、切换 DSH_HOME、轮换 Token 后需重新核对链接。
 
+## 0.3.3 更新
+
+修复启用、轮换或撤销 Token 后，当前浏览器 Cookie 失效导致后续保存返回 HTTP 401。已通过认证的修改请求会通过 Connection 原有登录交换续发当前浏览器 Cookie，沿用监听器的 TLS、HttpOnly 和 SameSite 策略；其他设备的旧 Cookie 与旧链接仍失效。接口响应禁止缓存。更新 Host 脚本后需重启 DSH，再刷新页面；已经失效的浏览器需从重启时终端输出的登录链接重新进入，单纯刷新不能恢复登录。
+
 ## 0.3.2 更新
 
 连接状态使用无嵌套卡片的信息栏：桌面四列、手机两列，远程地址独占一行。移除重启要求项和固定 Token 安全提示卡片，保留二维码旁的简短提示。
@@ -37,7 +41,7 @@ DSH 必须保持运行，设备的网络路径也必须可用。固定域名和�
 
 自动生成的 Token 使用 32 字节密码学随机数。自定义 Token 为 32–256 个字符，只允许英文字母、数字、`-`、`_`；建议使用自动生成值。默认状态仍为 DSH 原有的临时 Token。
 
-固定 Token 保存在 DSH_HOME 的凭据库；非敏感的基础地址保存在当前 profile 的 `remote-access.json`。插件源码不保存凭据。切换或撤销 Token 会使旧链接及旧认证 Cookie 失效，其他设备需要重新登录。
+固定 Token 保存在 DSH_HOME 的凭据库；非敏感的基础地址保存在当前 profile 的 `remote-access.json`。插件源码不保存凭据。切换或撤销 Token 会使旧链接及旧认证 Cookie 失效；执行修改的浏览器自动取得新 Cookie，其他设备需要重新登录。
 
 启动环境设置 `DSH_WEB_TOKEN` 时，由环境变量接管，界面不能轮换或撤销它；如果希望界面管理，应在原启动环境移除该变量并重启。沿用原来的 DSH_HOME，不同数据目录不会自动共享凭据。
 
@@ -67,6 +71,8 @@ $env:DSH_SOURCE = (Get-Location).Path
 node --import tsx/esm "<插件仓库绝对路径>/tools/remote-access-host-test.mjs"
 ```
 
+Host 测试检查 HTTP/HTTPS 下的 Cookie 续期及旧 Cookie 失效，使用临时目录和隔离凭据，不连接现有 DSH 服务。真实浏览器中的连续保存与刷新需另行验证。
+
 客户端测试从插件仓库根目录执行，设置相同的 `DSH_SOURCE`：
 
 ```powershell
@@ -80,6 +86,7 @@ node tools/remote-access-client-test.mjs
 | 现象 | 检查 |
 | --- | --- |
 | 不支持固定 Token | 检查补丁版本、四个接口及是否重载了正确构建产物 |
+| 保存提示 HTTP 401 | 更新至 0.3.3 并重启原 DSH 实例，从终端新输出的登录链接重新进入；旧 Cookie 已失效时仅刷新无效 |
 | 首页可打开但会话无法加载 | 核对实际域名与可信 Host；不要覆盖内置 remote-access 权限服务 |
 | 重启后链接失效 | 检查 DSH_HOME 是否相同、固定 Token 是否启用、环境变量是否覆盖 |
 | 复制按钮禁用 | 先保存地址；有未保存修改时不能按新地址生成链接 |

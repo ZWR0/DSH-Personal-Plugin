@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 
-const req = createRequire('D:/deepseek-harness/package.json')
+const req = createRequire(new URL('../../package.json', import.meta.url))
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<div id="mount"></div>', { pretendToBeVisual: true, url: 'https://dsh.test/' })
 for (const key of ['window', 'document', 'navigator']) {
@@ -338,7 +338,7 @@ assert.deepEqual(fileTabs, [{ kind: 'files', session: 'wait' }])
 assert.equal(fileListeners.size, 0, 'native file navigation releases its subscription')
 
 // Composer shortcut works without opening the sidebar and shows an attention badge.
-const ComposerEntry = registrations.get('conversation.input.right:mobile-deck').component
+const ComposerEntry = registrations.get('conversation.input.left:mobile-deck').component
 await React.act(async () => root.render(React.createElement(ComposerEntry)))
 assert.ok(document.querySelector('.mdk-launchbadge'))
 await React.act(async () => document.querySelector('.mdk-launch').click())
