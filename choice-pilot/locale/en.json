@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Choice Pilot",
-    "description": "Native choice cards, multi-select recommendations, timed continuation for marked questions and choice history."
+    "description": "In-task questions and timed continuation, with next-step suggestions that fill a draft for manual review and sending."
   }
 }

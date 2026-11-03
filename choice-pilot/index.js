@@ -6,6 +6,7 @@
  * Explicitly unattended-safe questions use a bounded Host-side wait.
  */
 import { registerTimeout, resolveTimeout } from './timeout.js'
+import { registerFollowups } from './followups.js'
 export const inject = ['systemPrompt', 'tools']
 
 const SECTION = [
@@ -18,10 +19,9 @@ const SECTION = [
   '把问题放在相关行动之前：缺失信息会影响正确性、范围、交付对象或不可逆操作时，不得先执行依赖该信息的部分再询问。',
   '',
   '### 可点击的后续方向',
-  '即使当前信息整理已经完成，只要你主动提出两个或以上后续行动，并邀请用户决定接下来做什么，就应调用 `ask_user_question` 提供可点击选项；不得仅在最终回复中列出编号或项目符号后要求用户手打、回复序号或复制选项。先简短交付已有结果，再调用工具收集选择。',
-  '例如「追踪后续公告 / 整理为笔记」和「追踪具体 bug / 审计一致性」可以组合，应合并为一个 `multi_select: true` 问题，在问题中写明「可多选，选好后提交」，并分别提供清晰标签与说明。不要把它们拆成多个互斥单选题。',
-  '「只阅读、不继续」与执行后续行动互斥，不要混进可组合的行动选项；用户可跳过卡片，或在自由输入中说明只阅读。真正互斥的架构、目标或运行模式仍用单选，不为满足多选而允许矛盾组合。',
-  '如果本来不需要用户选择，直接完成任务，不为展示卡片而编造后续工作。已有普通文本选项被用户要求改为可选时，复用原选项含义并立即调用工具，无需让用户重新描述。',
+  '任务已经完成或已经交付当前可支持的答案，结尾提出可选的后续行动时，先交付结果，再调用实际可用的 `suggest_followups`，不要调用 `ask_user_question` 或添加 [自动继续]。该工具结束当前轮，不等待、自动选择或执行建议；用户点击后只填入下一轮草稿，审查并手动发送后才开始新任务。',
+  '提供 1–4 项 suggestions，每项包含简短 label 和完整、自包含的 prompt。prompt 写成用户可直接发送的请求，保留必要范围与限制，不写成模型宣布已经执行。例：label「检查本地模型配置」，prompt「请检查 deepseek-harness 和 DSH 项目中的本地模型配置，核实模型架构，并解释速度差异；不要修改配置或读取密钥内容」。需要用户提供文本的建议应邀请其补充，不编造配置或路径。',
+  '只有完成当前任务确实缺少信息或需要决策时才调用 ask_user_question；不得把已获授权的必要步骤降级成下一轮建议。没有有用的后续方向时直接结束，不为展示按钮而编造工作。suggest_followups 不可用时可给简短文字建议，但不得声称已有按钮。',
   '',
   '### 如何构造问题',
   '一次优先只问 1 个关键问题，最多合并 3 个相互独立的问题。后续问题依赖前一个答案时，先取得答案再问；不要预设用户选择。',
@@ -50,6 +50,7 @@ const SECTION = [
 export function apply(ctx, config = {}) {
   const seconds = resolveTimeout(config)
   registerTimeout(ctx, seconds)
+  registerFollowups(ctx)
   ctx.effect(() => ctx.systemPrompt.section({
     name: 'choice-pilot',
     order: 60,

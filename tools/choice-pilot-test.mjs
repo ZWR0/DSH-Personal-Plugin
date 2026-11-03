@@ -10,11 +10,13 @@ const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>')
 const cleanups = []
 let History
+let Followups
 let section
 const ctx = {
   on() {},
+  tools: { register() {} },
   locale: { register() { return () => {} } },
-  slots: { inject(name, register) { register() }, register(options, component) { History = component; return () => {} } },
+  slots: { inject(name, register) { register() }, register(options, component) { if (options.id === 'choice-pilot-history') History = component; else Followups = component; return () => {} } },
   effect(start) { cleanups.push(start()) },
   systemPrompt: { section(value) { section = value; return () => { section = undefined } } },
 }
@@ -41,6 +43,53 @@ assert.match(document.querySelector('[role=status]').textContent,/unavailable/)
 chat = {order:[],nodes:{get(){}}}
 await React.act(async () => root.render(React.createElement(History,{sessionId:'other',t:key=>key,useChat:selector=>selector(chat)})))
 assert.equal(document.querySelector('.cp-history'),null)
+
+const suggestions = [{ label: '检查本地模型配置', prompt: '请检查本地模型架构并解释速度差异，不修改配置。' }, { label: '解读配置片段', prompt: '我会补充配置文本，请根据我提供的内容解读模型架构。' }]
+const followup = { key: 'f', kind: 'tool-call', anchorSeq: 8, data: { root: { kind: 'tool-result', name: 'suggest_followups', seq: 8, callId: 'followups', isError: false, meta: { choicePilotFollowups: suggestions }, subCalls: [] } } }
+chat = { order: ['f'], nodes: new Map([['f', followup]]) }
+let draft = '已有草稿'
+let revision = 1
+let insertions = 0
+let persists = 0
+let refuseInsertion = false
+const props = { sessionId: 's', t: key => key, useChat: selector => selector(chat), useInput: selector => selector({ phase: 'plain' }), inputActions: {
+  captureInsertion: () => ({ start: 0, end: 2, draftRev: revision }),
+  insertText(text, span) { if (refuseInsertion) return false; assert.equal(span.start, span.end, 'never replace selected draft text'); assert.equal(span.draftRev, revision); draft = draft.slice(0, span.start) + text + draft.slice(span.end); revision++; insertions++; return true },
+  persistDraft() { persists++ },
+  submit() { assert.fail('a followup must never send a message') },
+  setDraft() { assert.fail('a followup must never overwrite the draft') },
+} }
+await React.act(async () => root.render(React.createElement(Followups, props)))
+assert.equal(document.querySelectorAll('.cp-followups button').length, 2)
+assert.equal(insertions, 0, 'rendering suggestions does not choose or insert one')
+await React.act(async () => document.querySelector('.cp-followups button').click())
+assert.match(draft, /已有.*请检查本地模型架构.*草稿/s)
+assert.equal(persists, 1)
+assert.equal(document.querySelector('.cp-followups button').disabled, true)
+await React.act(async () => document.querySelector('.cp-followups button').click())
+assert.equal(insertions, 1, 'repeat clicks do not duplicate text')
+refuseInsertion = true
+await React.act(async () => document.querySelectorAll('.cp-followups button')[1].click())
+assert.equal(document.querySelector('.cp-followups [role=alert]').textContent, 'insertFailed')
+refuseInsertion = false
+props.inputActions.persistDraft = () => { throw new Error('storage unavailable') }
+await React.act(async () => document.querySelectorAll('.cp-followups button')[1].click())
+assert.equal(document.querySelector('.cp-followups [role=alert]').textContent, 'saveFailed')
+assert.equal(document.querySelectorAll('.cp-followups button')[1].disabled, true, 'a save failure must not duplicate an inserted prompt')
+const child = { ...followup.data.root, meta: undefined, callId: 'ptc-child', call: { argsRaw: JSON.stringify({ suggestions }) } }
+chat = { order: ['p'], nodes: new Map([['p', { kind: 'tool-call', data: { root: { kind: 'tool-result', name: 'run_code', subCalls: [child] } } }]]) }
+await React.act(async () => root.render(React.createElement(Followups, props)))
+assert.equal(document.querySelectorAll('.cp-followups button').length, 2, 'successful PTC children expose the same suggestions')
+chat = { order: ['p'], nodes: new Map([['p', { kind: 'tool-call', data: { root: { ...child, isError: true } } }]]) }
+await React.act(async () => root.render(React.createElement(Followups, props)))
+assert.equal(document.querySelector('.cp-followups'), null, 'failed tools never offer suggested prompts')
+const newerUser = { kind: 'user', anchorSeq: 10 }
+chat = { order: ['f', 'u'], nodes: new Map([['f', followup], ['u', newerUser]]) }
+await React.act(async () => root.render(React.createElement(Followups, props)))
+assert.equal(document.querySelector('.cp-followups'), null, 'old suggestions disappear after the next user message')
+chat = { order: [], nodes: new Map() }
+await React.act(async () => root.render(React.createElement(Followups, { ...props, sessionId: 'other' })))
+assert.equal(document.querySelector('.cp-followups'), null, 'suggestions do not leak to another session')
 await React.act(async()=>root.unmount())
 for (const dispose of cleanups.reverse()) dispose()
 assert.equal(section, undefined)

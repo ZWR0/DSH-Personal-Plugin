@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mock } from 'node:test'
 import { automaticResult, registerTimeout, resolveTimeout } from '../choice-pilot/timeout.js'
 import { harnessUrl } from './test-environment.mjs'
+import { registerFollowups } from '../choice-pilot/followups.js'
 
 const questions = [
   { id: 'one', header: '[自动继续]方案', options: [{ label: 'A（推荐）' }, { label: 'B' }] },
@@ -96,5 +97,13 @@ try {
     assert.match(settled.content[0].text, /非用户回答/)
   } finally { mock.timers.reset() }
   await fiber.dispose()
+  registerFollowups(ctx)
+  const suggestions = [{ label: 'Inspect config', prompt: 'Please inspect the model config without changing it.' }]
+  const result = await executeToolFixture(ctx, { callId: 'next-step', name: 'suggest_followups', arguments: { suggestions }, signal: new AbortController().signal })
+  assert.equal(result.isError, false, JSON.stringify(result))
+  assert.equal(result.concludesTurn, true, 'suggestions end the current turn without waiting')
+  assert.deepEqual(result.meta.choicePilotFollowups, suggestions, 'suggestions survive canonical presentation metadata')
+  const invalid = await executeToolFixture(ctx, { callId: 'bad-next-step', name: 'suggest_followups', arguments: { suggestions: [{ label: 'Inspect', prompt: ' ' }] }, signal: new AbortController().signal })
+  assert.equal(invalid.isError, true)
 } finally { await ctx.fiber.dispose() }
 console.log('CHOICE PILOT PIPELINE OK: native ask tool, schema rendering, cancellation normalization and recorded automatic outcome')

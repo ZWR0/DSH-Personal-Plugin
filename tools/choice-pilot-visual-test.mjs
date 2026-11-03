@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { browserOptions, harnessRequire } from './test-environment.mjs'
+import { browserOptions, dependencyPath, harnessRequire } from './test-environment.mjs'
 /** Browser verification of plugin styling on the native question DOM markers. */
 import assert from 'node:assert/strict'
 import { readFileSync, mkdirSync } from 'node:fs'
@@ -25,11 +25,26 @@ try {
     <div data-option-row><button role="checkbox" aria-checked="true">☑ 整理为研究笔记（推荐）<span data-option-description>汇总与当前研究相关的信息</span></button></div>
     <div data-option-row><button role="checkbox" aria-checked="false">☐ 核对引用来源<span data-option-description>逐条验证作者、链接与发布日期</span></button></div>
   </div><footer>原生选项样式预览 · 已选 2 项</footer></section>`)
-  await page.evaluate(() => { window.__ModuleLoader__ = { load(entry) { window.plugin = entry.factory(() => ({})) } } })
+  await page.addScriptTag({ path: dependencyPath('react/umd/react.development.js') })
+  await page.addScriptTag({ path: dependencyPath('react-dom/umd/react-dom.development.js') })
+  await page.evaluate(() => { window.__ModuleLoader__ = { load(entry) { window.plugin = entry.factory(() => React) } } })
   await page.addScriptTag({ content: source })
   await page.evaluate(() => {
-    window.plugin.apply({ locale: {register(){return()=>{}}}, slots:{inject(){},register(){}}, effect(start) { window.disposeStyle = start() } })
+    let dictionaries
+    let Followups
+    window.plugin.apply({ locale: {register(_name, value){dictionaries=value;return()=>{}}}, slots:{inject(_name, start){start()},register(options, component){if(options.id==='choice-pilot-followups')Followups=component}}, effect(start) { window.disposeStyle = start() } })
+    const mount = document.createElement('div')
+    mount.style.cssText = 'max-width:700px;margin:16px auto'
+    document.body.appendChild(mount)
+    const input = document.createElement('textarea')
+    input.setAttribute('aria-label', 'Draft')
+    input.style.cssText = 'display:block;width:100%;max-width:700px;margin:auto;min-height:100px;font:inherit'
+    input.value = '已有草稿，请保留'
+    document.body.appendChild(input)
+    const chat = { order:['f'], nodes:new Map([['f',{kind:'tool-call',data:{root:{kind:'tool-result',name:'suggest_followups',seq:3,callId:'f',isError:false,subCalls:[],meta:{choicePilotFollowups:[{label:'检查本地模型配置',prompt:'请检查本地模型的架构与速度差异，不修改配置。'},{label:'解读我提供的配置',prompt:'我会提供配置片段，请据此分析模型架构。'}]}}}}]]) }
+    ReactDOM.createRoot(mount).render(React.createElement(Followups, {sessionId:'preview',t:key=>dictionaries.zh[key],useChat:selector=>selector(chat),useInput:selector=>selector({phase:'plain'}),inputActions:{captureInsertion:()=>({start:input.value.length,end:input.value.length,draftRev:1}),insertText(text){input.value+=text;return true},persistDraft(){},submit(){throw Error('Must not send')}}}))
   })
+  await page.locator('.cp-followups button').first().waitFor()
   for (const dark of [false, true]) {
     await page.evaluate(({ tokens, dark }) => {
       for (const [, key, light, night] of tokens) document.body.style.setProperty(key, dark ? night : light)
@@ -41,9 +56,15 @@ try {
       const unselected = page.locator('[data-option-row]').last()
       assert.notEqual(await selected.evaluate(el => getComputedStyle(el).backgroundColor), await unselected.evaluate(el => getComputedStyle(el).backgroundColor))
       assert.ok((await selected.locator('button').boundingBox()).height >= 44)
-      await page.screenshot({ path: fileURLToPath(new URL(`${dark ? 'dark' : 'light'}-${width}.png`, out)) })
+      assert.ok((await page.locator('.cp-followups button').first().boundingBox()).height >= 44)
+      await page.screenshot({ path: fileURLToPath(new URL(`${dark ? 'dark' : 'light'}-${width}.png`, out)), fullPage: true })
     }
   }
+  assert.equal(await page.getByRole('textbox', {name:'Draft'}).inputValue(), '已有草稿，请保留')
+  await page.locator('.cp-followups button').first().click()
+  assert.match(await page.getByRole('textbox', {name:'Draft'}).inputValue(), /已有草稿，请保留.*请检查本地模型/s)
+  assert.equal(await page.locator('.cp-followups button').first().isDisabled(), true)
+  assert.match(await page.locator('.cp-followups [role=status]').textContent(), /手动发送/)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   assert.equal(await page.locator('[data-option-row]').first().evaluate(el => getComputedStyle(el).transitionDuration), '0s')
   await page.evaluate(() => window.disposeStyle())
