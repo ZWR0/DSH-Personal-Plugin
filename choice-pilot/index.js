@@ -1,59 +1,29 @@
-/**
- * 选项领航 · Choice Pilot.
- *
- * Reuses DSH's ask_user_question tool and native QuestionComposer card.
- * This plugin supplies questioning policy; the client styles the native answer UI.
- * Explicitly unattended-safe questions use a bounded Host-side wait.
- */
-import { registerTimeout, resolveTimeout } from './timeout.js'
+/** Optional next-task suggestions; task questions belong to the official tool-ask-user plugin. */
 import { registerFollowups } from './followups.js'
+import { registerPreferenceDefaults } from './defaults.js'
 export const inject = ['systemPrompt', 'tools']
 
 const SECTION = [
-  '## 选项领航：任务中的澄清与信息补充',
-  '',
-  '### 何时询问',
-  '执行任务时，如果缺少用户才能提供的关键信息、存在会明显改变结果的需求歧义，或必须由用户决定的方案取舍，请调用实际可用的 `ask_user_question`，让原生交互卡片收集答案；不要仅在普通回复末尾提问然后结束任务。',
-  '先检查本次对话、用户已提供的文件和可用工具能否消除不确定性。客观事实优先查证，不要让用户替你猜事实，也不要编造缺失信息。不要访问与任务无关的私人资料。',
-  '信息已经提供、选择已经明确、已有授权覆盖，或者只是可逆且低影响的实现细节时，自行作出合理判断并继续；必要时简短说明假设。不要把每个不确定点都变成确认，也不要添加用户未要求的审批步骤。',
-  '把问题放在相关行动之前：缺失信息会影响正确性、范围、交付对象或不可逆操作时，不得先执行依赖该信息的部分再询问。',
-  '',
-  '### 可点击的后续方向',
-  '任务已经完成或已经交付当前可支持的答案，结尾提出可选的后续行动时，先交付结果，再调用实际可用的 `suggest_followups`，不要调用 `ask_user_question` 或添加 [自动继续]。该工具结束当前轮，不等待、自动选择或执行建议；用户点击后只填入下一轮草稿，审查并手动发送后才开始新任务。',
-  '提供 1–4 项 suggestions，每项包含简短 label 和完整、自包含的 prompt。prompt 写成用户可直接发送的请求，保留必要范围与限制，不写成模型宣布已经执行。例：label「检查本地模型配置」，prompt「请检查 deepseek-harness 和 DSH 项目中的本地模型配置，核实模型架构，并解释速度差异；不要修改配置或读取密钥内容」。需要用户提供文本的建议应邀请其补充，不编造配置或路径。',
-  '只有完成当前任务确实缺少信息或需要决策时才调用 ask_user_question；不得把已获授权的必要步骤降级成下一轮建议。没有有用的后续方向时直接结束，不为展示按钮而编造工作。suggest_followups 不可用时可给简短文字建议，但不得声称已有按钮。',
-  '',
-  '### 如何构造问题',
-  '一次优先只问 1 个关键问题，最多合并 3 个相互独立的问题。后续问题依赖前一个答案时，先取得答案再问；不要预设用户选择。',
-  '每个问题提供唯一、稳定的 `id` 和简短 `header`；`question` 必须自包含，写清已知上下文、缺少什么，以及答案影响哪项工作。用用户能理解的词，不要求用户了解内部实现。',
-  '存在离散方案时，提供 2–4 个简短、具体且可比较的选项。单选选项互斥；每项用一句 `description` 说明结果或代价，不用含糊的「都可以」「再说」凑数。',
-  '确有推荐方案时，将其排第一，标签末尾加「（推荐）」；没有充分依据时不要强行推荐。推荐和界面预选都不是用户已提交的答案。',
-  '可同时执行的推荐、检查项、交付物或后续工作使用 `multi_select: true`，允许用户一次选择多项；只有相互排斥的方案才使用单选。多选题明确提示选好后提交，选中或取消一项不表示已经提交。不要编造当前工具 schema 中没有的字段。',
-  '需要用户提供名称、完整路径、具体内容或其他无法枚举的信息时，省略 `options`，直接使用原生自由输入卡片，给出简短答案格式或示例；不要为了选项式交互而虚构选项。',
-  '原生界面已有自定义输入入口，不另外添加「其他」选项。不要要求用户在卡片中提交密码、API Key 等秘密，应引导其使用对应设置入口。',
-  '',
-  '### 等待、回答与继续任务',
-  '普通偏好、可逆方案选择及信息补充使用有限等待：在每个问题的 header 开头加入 `[自动继续]`，并在 question 末尾说明等待期限、超时采用推荐项或跳过缺失信息。该标记声明此问题不承担授权或审批。必须确认的删除、付款、对外发送、发布、权限批准、计划审批，以及用户明确要求等待的问题不得加该标记；保持等待真实答案，不得自动批准。混合批次拆分普通问题与必须确认的问题。',
-  '自动继续问题中，选择题只采用明确标记（推荐）或 (Recommended) 的选项；单选有多个推荐或没有推荐时跳过，多选只采用推荐项。自由输入超时不编造信息，跳过问题及依赖缺失信息的工作，继续独立部分。未标记的问题不参与插件自动处理。',
-  '对于非阻塞的偏好补充，遵循工具自身等待策略。工具返回 `pending` 表示尚未收到回答；继续不依赖答案的有用工作，保留待确认事项，不把超时当成默认选项被接受，也不要重复创建相同问题卡片。',
-  '按 `id` 对应解析 `answers`，同时读取 `selected` 与 `custom`。补充文字可能包含限制或修正；与所选项冲突且无法消解时，针对冲突澄清，不忽略补充文字。',
-  '空 `selected` 且无有效 `custom` 表示跳过；跳过、取消、关闭卡片或无响应都不代表授权。不要重复追问已跳过的问题；继续可独立完成的部分，必要前提仍缺失时说明受阻的具体部分。',
-  '收到答案后将其用于当前任务，简短说明采用的选择并接着执行，不要求用户重新发送原始任务。尊重用户在当前对话中后续的明确修正，不跨会话套用偏好。',
-  '带有「选项领航自动处理，非用户回答」的结果是事先配置的超时策略，不能描述成用户选择或授权。不要重复询问超时问题。完成任务时集中列出超时采用的推荐项、未提供的信息、因此跳过的工作及影响；后续真实回复优先，必要时调整尚未执行的工作。',
-  '',
-  '### 能力边界',
-  '只调用当前工具列表中真实存在的 `ask_user_question`。工具不可用或报告无可用交互通道时，明确说明无法展示原生卡片，在普通回复中一次性提出必要问题与选项；不要伪造已弹窗、已收到答案或工具成功，也不要循环重试同一失败请求。',
-  '这是提问策略，不是对全部歧义的自动检测保证。遵循用户明确要求和上级指令；普通交付结尾没有必要决策时不要再追加「要不要继续」之类问题。',
+  '## 选项领航：可选的后续行动',
+  '当前任务完成后，如果存在有用的可选后续行动，先交付结果，再调用实际可用的 suggest_followups，提供 1–4 个简短 label 和完整、自包含的 prompt。没有有用建议时直接结束。',
+  '建议按钮在输入框为空且无附件时，由用户点击发送请求；已有草稿或附件时仅追加，检查后发送。不要自动选择或执行，也不要把已经获得授权的必要工作改为下一轮建议。',
+  '任务中缺少信息或需要用户决定时，由官方 tool-ask-user 提供的工具及其实际 schema、等待和回答规则处理；本插件不提供提问、审批或用户答案。不要把这些问题转换成后续建议，也不要用建议按钮代替知忆书阁的审批。',
 ].join('\n')
 
-/** Register the policy; Cordis disposes the section when this plugin stops. */
+/** Register suggestions and opt-in defaults without wrapping official questions or steering the agent. */
 export function apply(ctx, config = {}) {
-  const seconds = resolveTimeout(config)
-  registerTimeout(ctx, seconds)
+  if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('choice-pilot: config 必须是对象')
+  for (const key of Object.keys(config)) {
+    if (!['timeoutSeconds', 'useRecommendedOnTimeout'].includes(key)) throw new Error(`choice-pilot: 未知配置字段 ${key}`)
+  }
+  if (config.timeoutSeconds !== undefined) {
+    const seconds = config.timeoutSeconds
+    if (seconds !== -1 && (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > 2147483)) throw new Error('choice-pilot: 无效的旧 timeoutSeconds 配置')
+    ctx.logger.warn('choice-pilot: timeoutSeconds 已停用并被忽略；请在官方 tool-ask-user 插件中配置 mode 和 timeout。')
+  }
+  if (config.useRecommendedOnTimeout !== undefined && typeof config.useRecommendedOnTimeout !== 'boolean') throw new Error('choice-pilot: useRecommendedOnTimeout 必须是布尔值')
+  const enabled = config.useRecommendedOnTimeout === true
+  if (enabled) registerPreferenceDefaults(ctx)
   registerFollowups(ctx)
-  ctx.effect(() => ctx.systemPrompt.section({
-    name: 'choice-pilot',
-    order: 60,
-    text: SECTION + (seconds === -1 ? '\n自动继续已关闭，不添加 [自动继续] 标记，沿用原生等待策略。' : `\n当前自动继续等待上限为 ${seconds} 秒。`),
-  }), 'choice-pilot: clarification and option-first section')
+  ctx.effect(() => ctx.systemPrompt.section({ name: 'choice-pilot', order: 60, text: SECTION + (enabled ? '\n已启用超时推荐策略。仅在普通偏好且方案可逆时，在官方问题 header 前加 [可逆偏好] 并明确标记推荐选项，question 中说明超时暂按推荐方案继续；沿用官方 timed 超时设置，不自建计时。审批、删除、付款、发布、对外发送、权限变更和必须取得真实答案的问题不得标记，按官方 schema 使用 timeout: -1 保持等待。未启用 timed 时不会有超时默认策略。插件追加的默认策略不是用户回答，迟到真实回答优先。' : '') }), 'choice-pilot: optional followup guidance')
 }

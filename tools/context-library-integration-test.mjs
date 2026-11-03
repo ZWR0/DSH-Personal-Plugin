@@ -19,6 +19,20 @@ const { Session } = await import(harnessUrl('packages/core/session/lib/index.js'
 const { createScope } = await import(harnessUrl('packages/core/scope/lib/index.js'))
 import * as plugin from '../context-library/index.js'
 import * as lib from '../context-library/library.js'
+import { registerSaveRepair } from '../context-library/repair.js'
+
+let verifySave
+registerSaveRepair({ on(_event, listener) { verifySave = listener } }, () => true)
+const reminders = []
+const claimEvents = [{ type: 'turn/start', data: { turn: 1 } }, { type: 'assistant/message', data: { message: { content: [{ type: 'text', text: '已保存第二条验收约定。' }] } } }]
+const claimingAgent = { session: { snapshotEvents: () => claimEvents }, steer: message => reminders.push(message) }
+verifySave({ agent: claimingAgent, turn: 1, signal: new AbortController().signal })
+verifySave({ agent: claimingAgent, turn: 1, signal: new AbortController().signal })
+assert.equal(reminders.length, 1)
+assert.equal(reminders[0].source.kind, 'context-library')
+claimEvents.splice(1, 0, { type: 'tool/call', data: { name: 'context_library_propose' } })
+verifySave({ agent: { ...claimingAgent }, turn: 1, signal: new AbortController().signal })
+assert.equal(reminders.length, 1, 'real saves do not add verification model steps')
 
 const base = await mkdtemp(join(tmpdir(), 'dsh-context-library-integration-'))
 const profile = join(base, 'profile')
@@ -133,6 +147,7 @@ try {
 
   const tree = await value('tree')
   assert.equal(tree.entries.length, 4)
+  assert.equal(tree.entries.find(entry => entry.id === 'identity').characters, 18, 'body characters include stored newlines, not UTF-8 byte length')
   assert.equal(tree.settings.mode, 'supplement')
   ok('tree route returns entries, settings, and replacement scope')
 
@@ -210,6 +225,8 @@ try {
   assert.match(joinContextSections(renderContextSections(customA)), /RUNTIME-CWD-FACT/)
   ok('custom mode replaces Harness identity only and preserves deployment persona, runtime context, and tools')
 
+  const customPlan = (await value('plan', { sessionId: agentA.id })).plan
+  assert(customPlan.items.find(item => item.status === 'replaced').tokens > 0, 'custom identity contributes its actual counted prefix tokens')
   const customTree = await value('tree')
   const persona = customTree.replacement.sections[0]
   assert.ok(persona.active)
@@ -251,7 +268,8 @@ try {
   ok('automatic strategy owns suggestions; catalog and off reject stale proposal calls')
   const proposal = await proposeTool.execute({
     kind: 'create', type: 'long_term', title: 'Review preference',
-    body: 'PENDING-BODY-MUST-NOT-LEAK', scope: 'global', enabled: true,
+    autoSave: true,
+    body: 'PENDING-BODY-MUST-NOT-LEAK', scope: 'global',
     reason: '用户明确说以后代码审查都要先给风险清单。',
     evidence: [{ kind: 'user-stated', note: '用户：以后评审都先列风险。' }],
   }, { agent: agentA, signal: new AbortController().signal, callId: 'call-1' })
@@ -273,6 +291,7 @@ try {
 
   const approved = await value('decide', { id: proposal.proposalId, action: 'approve', expectedBaseHash: null })
   assert.equal(approved.proposal.status, 'applied')
+  assert.equal((await lib.readEntry({ root: library, id: proposal.entryId })).enabled, true, 'approving a new memory enables it by default')
   const afterApproval = await systemPrompt.assemble({ scope: agentA, agent: agentA })
   assert.match(afterApproval.contexts.find(item => item.name === 'context-library').text, /PENDING-BODY-MUST-NOT-LEAK/)
   const replay = await call('decide', { id: proposal.proposalId, action: 'approve', expectedBaseHash: null })
@@ -309,6 +328,48 @@ try {
   assert.equal(imported.failed.length, 0)
   assert.equal((await call('importApply', { documents: importDocs, planId: importPreview.planId })).ok, false)
   ok('owner-only Markdown import previews, writes formatted entries, and refuses stale plans')
+
+  await value('saveSettings', { strategy: 'auto', suggestionStartTurns: 2, suggestionIntervalTurns: 3 })
+  const cadence = makeAgent('cadence', projectA)
+  for (let turn = 1; turn <= 6; turn++) {
+    cadence.session.append('turn/start', { turn })
+    const assembled = await systemPrompt.assemble({ scope: cadence, agent: cadence })
+    const text = assembled.contexts.find(item => item.name === 'context-library').text
+    assert.equal(text.includes('Memory review due'), turn === 2 || turn === 5)
+    assert.ok(text.includes(library), 'the model sees the actual target directory')
+    assert.equal((await systemPrompt.assemble({ scope: cadence, agent: cadence })).contexts.find(item => item.name === 'context-library').text.includes('Memory review due'), turn === 2 || turn === 5)
+    cadence.session.append('turn/end', { turn, reason: { kind: 'completed' } })
+  }
+  ok('first and recurring reviews follow persisted chat turns and remain stable across model steps')
+
+  await value('saveSettings', { autoSave: true })
+  const saved = await proposeTool.execute({
+    kind: 'create', type: 'long_term', id: 'auto-saved', title: 'Automatic saving test', body: 'Prefer focused checks.', scope: 'global',
+    reason: 'Explicit preference.', evidence: [{ kind: 'user-stated', note: 'Please use focused checks.' }],
+  }, { agent: agentA })
+  assert.equal(saved.outcome, 'saved')
+  assert.match(saved.message, /No manual import/)
+  const savedEntry = await lib.readEntry({ root: library, id: 'auto-saved' })
+  assert.equal(savedEntry.enabled, true)
+  assert.match((await systemPrompt.assemble({ scope: agentA, agent: agentA })).contexts.find(item => item.name === 'context-library').text, /Prefer focused checks/)
+  const storedOnly = await proposeTool.execute({
+    kind: 'create', type: 'long_term', id: 'storage-only', title: 'Storage only', body: 'Keep without loading.', enabled: false,
+    reason: 'User requested storage only.', evidence: [{ kind: 'confirmed', note: 'Save without loading.' }],
+  }, { agent: agentA })
+  assert.equal(storedOnly.outcome, 'saved')
+  assert.equal((await lib.readEntry({ root: library, id: 'storage-only' })).enabled, false)
+  const inferred = await proposeTool.execute({
+    kind: 'create', type: 'long_term', id: 'inference-pending', title: 'Unconfirmed inference', body: 'Maybe prefers long reports.',
+    reason: 'Inference only.', evidence: [{ kind: 'inference', note: 'Asked for a report once.' }],
+  }, { agent: agentA })
+  assert.equal(inferred.outcome, 'pending')
+  const deletion = await proposeTool.execute({ kind: 'delete', type: 'long_term', id: 'auto-saved', reason: 'Delete requested.', evidence: [{ kind: 'confirmed', note: 'Delete this entry.' }] }, { agent: agentA })
+  assert.equal(deletion.outcome, 'pending')
+  const changed = await value('saveSettings', { root: join(base, 'new-library'), autoSave: true })
+  assert.equal(changed.settings.autoSave, false, 'a root change cannot carry the old write permission')
+  await value('saveSettings', { root: library })
+  assert.equal((await value('tree')).settings.autoSave, false)
+  ok('owner authorization saves and enables memory in the loaded root; inference/deletion stay pending and switching roots revokes permission')
 
   const filesBefore = await readFile(join(library, 'identity.md'), 'utf8')
   await fiber.dispose()

@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { browserOptions, dependencyPath, harnessRequire } from './test-environment.mjs'
-/** Browser verification of plugin styling on the native question DOM markers. */
+/** Browser verification of followups and unchanged native question styling. */
 import assert from 'node:assert/strict'
 import { readFileSync, mkdirSync } from 'node:fs'
 
@@ -24,7 +24,8 @@ try {
     <div data-option-row><button role="checkbox" aria-checked="true">☑ 追踪后续公告（推荐）<span data-option-description>检查官网和论文中的最新进展</span></button></div>
     <div data-option-row><button role="checkbox" aria-checked="true">☑ 整理为研究笔记（推荐）<span data-option-description>汇总与当前研究相关的信息</span></button></div>
     <div data-option-row><button role="checkbox" aria-checked="false">☐ 核对引用来源<span data-option-description>逐条验证作者、链接与发布日期</span></button></div>
-  </div><footer>原生选项样式预览 · 已选 2 项</footer></section>`)
+  </div><footer>原生选项保持宿主样式 · 已选 2 项</footer></section>`)
+  const nativeBefore = await page.locator('[data-option-row]').first().evaluate(el => ({ background: getComputedStyle(el).backgroundColor, radius: getComputedStyle(el).borderRadius, padding: getComputedStyle(el).padding }))
   await page.addScriptTag({ path: dependencyPath('react/umd/react.development.js') })
   await page.addScriptTag({ path: dependencyPath('react-dom/umd/react-dom.development.js') })
   await page.evaluate(() => { window.__ModuleLoader__ = { load(entry) { window.plugin = entry.factory(() => React) } } })
@@ -42,7 +43,7 @@ try {
     input.value = '已有草稿，请保留'
     document.body.appendChild(input)
     const chat = { order:['f'], nodes:new Map([['f',{kind:'tool-call',data:{root:{kind:'tool-result',name:'suggest_followups',seq:3,callId:'f',isError:false,subCalls:[],meta:{choicePilotFollowups:[{label:'检查本地模型配置',prompt:'请检查本地模型的架构与速度差异，不修改配置。'},{label:'解读我提供的配置',prompt:'我会提供配置片段，请据此分析模型架构。'}]}}}}]]) }
-    ReactDOM.createRoot(mount).render(React.createElement(Followups, {sessionId:'preview',t:key=>dictionaries.zh[key],useChat:selector=>selector(chat),useInput:selector=>selector({phase:'plain'}),inputActions:{captureInsertion:()=>({start:input.value.length,end:input.value.length,draftRev:1}),insertText(text){input.value+=text;return true},persistDraft(){},submit(){throw Error('Must not send')}}}))
+    ReactDOM.createRoot(mount).render(React.createElement(Followups, {sessionId:'preview',t:key=>dictionaries.zh[key],useChat:selector=>selector(chat),useInput:selector=>selector({phase:'plain',draft:input.value,attachmentIds:[]}),inputActions:{captureInsertion:()=>({start:input.value.length,end:input.value.length,draftRev:1}),insertText(text){input.value+=text;return true},persistDraft(){},submit(){throw Error('Must not send')}}}))
   })
   await page.locator('.cp-followups button').first().waitFor()
   for (const dark of [false, true]) {
@@ -53,9 +54,7 @@ try {
       await page.setViewportSize({ width, height: 620 })
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       const selected = page.locator('[data-option-row]').first()
-      const unselected = page.locator('[data-option-row]').last()
-      assert.notEqual(await selected.evaluate(el => getComputedStyle(el).backgroundColor), await unselected.evaluate(el => getComputedStyle(el).backgroundColor))
-      assert.ok((await selected.locator('button').boundingBox()).height >= 44)
+      assert.deepEqual(await selected.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, radius: getComputedStyle(el).borderRadius, padding: getComputedStyle(el).padding })), nativeBefore, 'Choice Pilot does not override the official question card')
       assert.ok((await page.locator('.cp-followups button').first().boundingBox()).height >= 44)
       await page.screenshot({ path: fileURLToPath(new URL(`${dark ? 'dark' : 'light'}-${width}.png`, out)), fullPage: true })
     }
@@ -69,7 +68,7 @@ try {
   assert.equal(await page.locator('[data-option-row]').first().evaluate(el => getComputedStyle(el).transitionDuration), '0s')
   await page.evaluate(() => window.disposeStyle())
   assert.equal(await page.locator('style[data-dsh-plugin="choice-pilot"]').count(), 0)
-  console.log('CHOICE PILOT VISUAL OK: light/dark, 390/1280px, selected contrast, touch height, reduced motion and unload')
+  console.log('CHOICE PILOT VISUAL OK: unchanged official cards, followups in light/dark at 390/1280px, touch height, draft preservation, reduced motion and unload')
 } finally {
   await browser.close()
 }

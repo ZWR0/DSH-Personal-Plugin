@@ -39,10 +39,10 @@ try {
       entry.factory(name => name === 'react' ? React : ReactDOM).apply(ctx)
     }
     window.root = ReactDOM.createRoot(document.getElementById('mount'))
-    window.showHistory = () => {
-      const item = entries['conversation.input.dock:choice-pilot-history']
-      const chat = { order: ['reply'], nodes: { get: () => ({ key: 'reply', kind: 'question-reply', data: { callId: 'record', questions: [{id:'next',question:'接下来进行哪些工作？'}], answers: [{id:'next',selected:['追踪公告','整理笔记'],custom:'只使用公开来源'}] } }) } }
-      root.render(React.createElement(item.component, { sessionId:'a', t:item.t, useChat:selector=>selector(chat) }))
+    window.showFollowups = () => {
+      const item = entries['conversation.input.dock:choice-pilot-followups']
+      const chat = { order: ['f'], nodes: new Map([['f', { kind: 'tool-call', data: { root: { kind: 'tool-result', name: 'suggest_followups', seq: 2, callId: 'f', meta: { choicePilotFollowups: [{ label: '追踪公告', prompt: '请追踪后续公告，只使用公开来源。' }, { label: '整理笔记', prompt: '请将当前结果整理成研究笔记。' }] } } } }]]) }
+      root.render(React.createElement(item.component, { sessionId:'a', t:item.t, useChat:selector=>selector(chat), useInput:selector=>selector({ phase:'plain', draft:'', attachmentIds:[] }), inputActions: { submit() { throw Error('No automatic submission in preview') } } }))
     }
     window.showCleanup = () => root.render(React.createElement(React.Fragment, null,
       React.createElement(entries['plugins.tab:session-reaper'].component), React.createElement(entries['shell.overlay:session-reaper.notice'].component)))
@@ -79,9 +79,10 @@ try {
       assert.equal(await page.locator('.qr-tray').count(),0)
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       await page.screenshot({ animations: 'disabled', path: fileURLToPath(new URL(`quotes-${dark ? 'dark' : 'light'}-${width}.png`, output)) })
-      await page.evaluate(() => showHistory())
-      await page.locator('.cp-history summary').click()
-      assert.match(await page.locator('.cp-history').textContent(), /追踪公告.*整理笔记.*只使用公开来源/)
+      await page.evaluate(() => showFollowups())
+      await page.locator('.cp-followups').waitFor()
+      assert.match(await page.locator('.cp-followups').textContent(), /追踪公告.*整理笔记/)
+      assert.equal(await page.locator('.cp-history').count(), 0)
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
       await page.screenshot({ animations: 'disabled', path: fileURLToPath(new URL(`choices-${dark ? 'dark' : 'light'}-${width}.png`, output)) })
     }

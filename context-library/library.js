@@ -35,6 +35,9 @@ export const DEFAULTS = Object.freeze({
   perType: { identity: 1200, projects: 1500, decisions: 1200, long_term: 1000 },
   catalogBudget: 600,
   suggestions: true,
+  suggestionStartTurns: 5,
+  suggestionIntervalTurns: 5,
+  autoSave: false,
 })
 
 const TYPE_DIR = { projects: 'projects', decisions: 'decisions', long_term: 'long_term' }
@@ -120,6 +123,9 @@ export function resolveSettings(raw) {
     },
     catalogBudget: integer(input.catalogBudget, DEFAULTS.catalogBudget, 0, 20_000),
     suggestions: boolean(input.suggestions, DEFAULTS.suggestions),
+    suggestionStartTurns: integer(input.suggestionStartTurns, DEFAULTS.suggestionStartTurns, 1, 10000),
+    suggestionIntervalTurns: integer(input.suggestionIntervalTurns, DEFAULTS.suggestionIntervalTurns, 1, 10000),
+    autoSave: boolean(input.autoSave, DEFAULTS.autoSave),
   }
   if (settings.root !== '' && !isAbsolute(settings.root)) fail('settings/invalid-root', '书库目录必须是绝对路径。')
   return settings
@@ -803,6 +809,7 @@ export function computePlan({ profileDir, settings, cwd, customActive = false, c
         + 'the current explicit request, follow the current request.\n\n'
         + entry.body.trim()
         + '\n\n[context-library persona plan=' + plan.planId + ' at=__AT__]\n</context-library-persona>'
+      identityItem.tokens = counterImpl.count(plan.customPrefixText.replace('__AT__', nowIso(now)))
     }
   }
   return plan
@@ -1143,7 +1150,7 @@ export async function createProposal({ root: rootInput, settings, cwd, proposal 
     ? (typeof input.projectPath === 'string' && input.projectPath.trim() !== '' ? resolve(input.projectPath) : existing?.projectPath ?? '')
     : ''
   if (scope === 'project' && projectPath === '') fail('proposal/missing-project', '项目作用域需要绑定项目目录。')
-  const enabled = kind === 'create' ? (type === 'long_term' ? input.enabled === true : true) : existing.enabled
+  const enabled = kind === 'create' ? (type === 'long_term' ? input.enabled !== false : true) : existing.enabled
   const key = kind === 'create' ? input.key !== false : existing.key
   let body = existing?.body ?? ''
   if (kind === 'create' || kind === 'update') {
@@ -1408,7 +1415,7 @@ export async function libraryOverview({ profileDir, settings }) {
       id: entry.id, type: entry.type, title: entry.title, status: entry.status,
       scope: entry.scope, projectPath: entry.projectPath, enabled: entry.enabled, key: entry.key,
       createdAt: entry.createdAt, updatedAt: entry.updatedAt, version: entry.version,
-      bytes: entry.bytes, preview: previewOf(entry.body), error: entry.error, warnings: entry.warnings,
+      bytes: entry.bytes, characters: Array.from(entry.body).length, preview: previewOf(entry.body), error: entry.error, warnings: entry.warnings,
       path: entry.path, relPath: entry.relPath,
     })),
     warnings,

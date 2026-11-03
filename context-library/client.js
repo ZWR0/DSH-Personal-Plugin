@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const { useCallback, useEffect, useMemo, useRef, useState } = React
 
-    const BUILD = '0.4.0-compact-settings'
+    const BUILD = '0.6.2-document-composition'
     const NS = 'contextLibrary'
     const TYPES = ['identity', 'projects', 'decisions', 'long_term']
     const TYPE_KEY = {
@@ -26,7 +26,7 @@ window.__ModuleLoader__.load({
     const SINGULAR = { identity: 'identity', projects: 'project', decisions: 'decision', long_term: 'long_term' }
 
     const zh = {
-      compactWaiting: '待发送', compactCurrent: '已同步', compactChanged: '有更新', compactEntries: '条', compactOther: '未加载与提示', compactLast: '上次加载',
+      preloadTitle: '文档合计',
       importTitle: '添加资料', importFiles: '导入 Markdown', importFolder: '导入文件夹', importHint: '选择 Owner 或 Memory 文件，自动分类，无需编辑格式。',
       importPreview: '导入预览', importConfirm: '确认导入', importDone: '已导入 {count} 条', importPartial: '已导入 {count} 条，失败 {failed} 条。',
       importSkipped: '忽略 {count} 个说明或空文件', importNew: '新增', importUpdate: '更新（保留历史）', importEnabled: '启用', importDisabled: '停用',
@@ -35,13 +35,13 @@ window.__ModuleLoader__.load({
       quickMemoryBody: '## 需要长期记住的事实或偏好\n\n', advanced: '高级设置', simpleHint: '身份写 Agent；我的资料写你自己；长期记忆写已确认的事实和偏好。',
       loadingSettings: '加载设置', entryProperties: '条目属性', editContent: '编辑', filterEntries: '筛选', previewEmpty: '暂无内容', emptyShort: '书库暂无条目',
       modeHelp: '补充模式保留原身份；自定义模式只替换 harness:identity，其余系统约束、工具、环境与历史保留。',
-      strategyHelp: '自动加载相关内容并启用 Agent 建议，建议需批准后保存；仅目录按需读取；关闭停止加载和主动建议。',
-      historyHelp: '已保存条目的历史版本，可恢复。Agent 建议先进入待审修订，批准后才保存。',
+      strategyHelp: '自动加载并按轮次复查记忆；授权自动保存或逐条批准。仅目录按需读取，关闭停止加载和主动建议。',
+      historyHelp: '已保存条目的历史版本，可恢复。未授权自动保存的建议进入待审修订。',
       changeCount: '新增 {add} 行 · 删除 {del} 行', editedDiff: '本次手动修改',
       nav: '知忆书阁',
       label: '知忆书阁',
       title: '知忆书阁',
-      subtitle: '维护身份、项目、决策与长期记忆，在每次模型请求前按预算加载。Agent 只能提出修订，写入必须由你批准。',
+      subtitle: '维护身份、项目、决策与长期记忆，按预算加载。默认逐条批准，也可授权当前书库自动保存新增和更新。',
 
       buildInfo: '界面 {client} · 后端 {host}',
       buildMismatch: '界面与后端版本不一致，请刷新页面；仍不一致时重载插件。',
@@ -95,14 +95,13 @@ window.__ModuleLoader__.load({
 
       budgetTitle: '加载预算',
       budgetHint: '按 DSH token-meter 估算；没有原生估算时明确标注为粗略估算。超出预算时列出省略项，绝不截断文件。',
-      totalBudget: '总预算（tokens）',
-      catalogBudget: '目录预算（tokens）',
       perTypeIdentity: '身份',
       perTypeProjects: '项目',
       perTypeDecisions: '决策',
       perTypeLongTerm: '长期记忆',
-      suggestionsTitle: 'Agent 主动建议',
-      suggestionsHint: '跟随正常聊天，不额外调用模型。只能在有聊天依据时提出，默认去重并遵守你的拒绝。检测是概率性的，不保证发现所有变化。',
+      suggestionsTitle: '记忆建议',
+      suggestionStartTurns: '首次', suggestionIntervalTurns: '间隔',
+      autoSave: '自动记忆',
       tokenNative: 'DSH token-meter',
       tokenHeuristic: '粗略估算（字符 ÷ 4）',
 
@@ -118,7 +117,7 @@ window.__ModuleLoader__.load({
       typeProject: '项目',
       typeDecision: '决策',
       typeLongTerm: '长期记忆',
-      statusActive: '生效',
+      statusActive: '已启用', effectiveCharacters: '{count} 字符',
       statusArchived: '已归档',
       enabledOn: '启用',
       enabledOff: '停用',
@@ -199,7 +198,7 @@ window.__ModuleLoader__.load({
       kindDelete: '删除',
       mergeHint: '多处相关变更已合并为一次询问。',
       noPendingDiff: '没有可显示的差异。',
-      approved: '修订已写入，后续请求使用新版本。',
+      approved: '修订已保存到当前书库。',
       approveFailed: '批准失败：{message}',
       rejectFailed: '操作失败：{message}',
       editTitle: '标题',
@@ -215,7 +214,7 @@ window.__ModuleLoader__.load({
       sessionTitle: '当前会话上下文',
       noSession: '请先打开一个会话。',
       openPreview: '查看当前会话加载内容',
-      previewTitle: '当前会话上下文',
+      previewTitle: '记忆预加载',
       previewHint: '这里展示下一次请求准备加载的内容，与真实注入使用同一份加载计划。刷新页面不会改变已加载的历史。',
       modeLabel: '模式',
       projectLabel: '项目匹配',
@@ -258,7 +257,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
-      compactWaiting: 'Not sent', compactCurrent: 'In sync', compactChanged: 'Changed', compactEntries: 'entries', compactOther: 'Not loaded & notes', compactLast: 'Previous load',
+      preloadTitle: 'Document total',
       importTitle: 'Add context', importFiles: 'Import Markdown', importFolder: 'Import folder', importHint: 'Choose Owner or Memory files. Classification and formatting are automatic.',
       importPreview: 'Import preview', importConfirm: 'Confirm import', importDone: 'Imported {count} entries', importPartial: 'Imported {count}; failed {failed}.',
       importSkipped: 'Skipped {count} documentation or empty files', importNew: 'New', importUpdate: 'Update (history kept)', importEnabled: 'Enabled', importDisabled: 'Disabled',
@@ -267,13 +266,13 @@ window.__ModuleLoader__.load({
       quickMemoryBody: '## Confirmed facts or preferences to remember\n\n', advanced: 'Advanced settings', simpleHint: 'Identity describes the agent; Owner describes you; memory contains confirmed facts and preferences.',
       loadingSettings: 'Loading settings', entryProperties: 'Entry properties', editContent: 'Edit', filterEntries: 'Filter', previewEmpty: 'No content yet', emptyShort: 'No library entries',
       modeHelp: 'Supplement keeps the original identity. Custom replaces only harness:identity; other constraints, tools, environment, and history remain.',
-      strategyHelp: 'Automatic loads relevant entries and enables agent proposals, which require approval before saving. Catalog reads on demand. Off stops loading and proposals.',
-      historyHelp: 'Saved entry versions available for restore. Agent proposals appear in Pending first and are saved only after approval.',
+      strategyHelp: 'Automatic loads entries and reviews memory on a turn schedule. Authorize automatic saves or approve each revision. Catalog reads on demand; Off stops loading and suggestions.',
+      historyHelp: 'Saved versions can be restored. Revisions without automatic-saving permission appear in Pending.',
       changeCount: '{add} lines added · {del} removed', editedDiff: 'Your edits',
       nav: 'Context Library',
       label: 'Context Library',
       title: 'Context Library',
-      subtitle: 'Maintain identity, projects, decisions, and long-term memory; load a bounded selection before each request. Agents may only propose revisions — you approve every write.',
+      subtitle: 'Maintain and load identity, projects, decisions, and memory. Approve each revision or authorize creates and updates in the current library.',
 
       buildInfo: 'Client {client} · Host {host}',
       buildMismatch: 'Client and Host versions differ. Refresh the page; reload the plugin if the mismatch persists.',
@@ -327,14 +326,13 @@ window.__ModuleLoader__.load({
 
       budgetTitle: 'Load budget',
       budgetHint: 'Prices use the DSH token-meter; without it the panel says plainly that numbers are approximate. Over-budget entries are listed as omissions, never truncated.',
-      totalBudget: 'Total budget (tokens)',
-      catalogBudget: 'Catalog budget (tokens)',
       perTypeIdentity: 'Identity',
       perTypeProjects: 'Projects',
       perTypeDecisions: 'Decisions',
       perTypeLongTerm: 'Long-term',
       suggestionsTitle: 'Agent suggestions',
-      suggestionsHint: 'Follows ordinary chat with no extra model calls. Proposals require chat evidence, are deduplicated, and respect your rejection. Detection is probabilistic, not guaranteed.',
+      suggestionStartTurns: 'First review (turns)', suggestionIntervalTurns: 'Review interval (turns)',
+      autoSave: 'Auto-save memory',
       tokenNative: 'DSH token-meter',
       tokenHeuristic: 'Approximate (chars ÷ 4)',
 
@@ -350,7 +348,7 @@ window.__ModuleLoader__.load({
       typeProject: 'Project',
       typeDecision: 'Decision',
       typeLongTerm: 'Long-term',
-      statusActive: 'Active',
+      statusActive: 'Enabled', effectiveCharacters: '{count} characters',
       statusArchived: 'Archived',
       enabledOn: 'Enabled',
       enabledOff: 'Disabled',
@@ -431,7 +429,7 @@ window.__ModuleLoader__.load({
       kindDelete: 'Delete',
       mergeHint: 'Related changes are merged into one question.',
       noPendingDiff: 'No diff to show.',
-      approved: 'Revision written; later requests use the new version.',
+      approved: 'Revision saved to the current library.',
       approveFailed: 'Approve failed: {message}',
       rejectFailed: 'Action failed: {message}',
       editTitle: 'Title',
@@ -447,7 +445,7 @@ window.__ModuleLoader__.load({
       sessionTitle: 'Current session context',
       noSession: 'Open a session first.',
       openPreview: 'View what this session loads',
-      previewTitle: 'Current session context',
+      previewTitle: 'Memory preload',
       previewHint: 'This is the plan for the next request, built by the same loader that injects it. Refreshing does not change what is already in history.',
       modeLabel: 'Mode',
       projectLabel: 'Project match',
@@ -502,7 +500,7 @@ window.__ModuleLoader__.load({
       '.cl-control-label{font-size:11px;color:var(--dsw-alias-label-secondary);}',
       '.cl-loading-settings .cl-choice{flex-wrap:nowrap;}',
       '.cl-loading-settings .cl-choice button{min-width:0;align-items:center;text-align:center;justify-content:center;}',
-      '.cl-budget[open]>.cl-fields,.cl-budget[open]>.cl-meta-grid,.cl-entry-preview[open]>.cl-pre{margin-top:12px;}',
+      '.cl-entry-preview[open]>.cl-pre{margin-top:12px;}',
       '.cl-entry-preview .cl-pre{max-height:300px;overflow:auto;}',
       '.cl-side>.cl-details .cl-fields{grid-template-columns:1fr;margin-top:12px;}',
       '.cl-help{position:relative;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:16px;height:16px;border:1px solid var(--dsw-alias-border-l1);border-radius:50%;font-size:10px;color:var(--dsw-alias-label-secondary);cursor:help;outline-offset:3px;}',
@@ -513,6 +511,14 @@ window.__ModuleLoader__.load({
       '.cl-switch::before{content:"";position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .15s;}',
       '.cl-switch:checked{background:#b8860b;}.cl-switch:checked::before{transform:translateX(12px);}',
       '.cl-switch:focus-visible{outline:2px solid #c9a227;outline-offset:3px;}.cl-switch:disabled{opacity:.5;}',
+      '.cl-memory-settings{align-self:flex-start;width:fit-content;max-width:100%;}.cl-memory-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}.cl-memory-head h3{margin-right:auto;}.cl-memory-rounds{display:flex;gap:14px;}.cl-memory-rounds .cl-field{flex-direction:row;align-items:center;gap:8px;white-space:nowrap;}.cl-memory-rounds input[type=number]{width:64px;min-height:38px;border-radius:10px;padding:8px;font-variant-numeric:tabular-nums;}.cl-preload{display:flex;flex-direction:column;gap:16px;}.cl-preload-total{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:12px;color:var(--dsw-alias-label-secondary);}.cl-preload-total b{font-size:22px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;}.cl-preload-total small{font-size:12px;font-weight:400;}.cl-composition{display:flex;height:6px;overflow:hidden;border-radius:999px;background:var(--dsw-alias-border-l1);}.cl-composition>span{flex-basis:0;min-width:0;}.cl-preload-documents{display:flex;flex-direction:column;}.cl-preload-document{display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--dsw-alias-border-l1);}.cl-preload-document:last-child{border-bottom:0;}.cl-document-dot{width:7px;height:7px;border-radius:50%;}.cl-document-name{font-size:12px;overflow-wrap:anywhere;}.cl-document-usage{display:flex;align-items:baseline;gap:6px;white-space:nowrap;font-variant-numeric:tabular-nums;}.cl-document-usage b{font-size:12px;font-weight:500;}.cl-document-usage small{font-size:10px;color:var(--dsw-alias-label-secondary);}',
+      '@media(max-width:600px){.cl-memory-head{gap:12px;}.cl-memory-head h3{flex-basis:100%;}.cl-memory-rounds{margin-right:auto;gap:12px;}.cl-memory-rounds .cl-field{flex-direction:column;align-items:flex-start;gap:5px;}.cl-document-usage{flex-direction:column;align-items:flex-end;gap:2px;}}',
+      '.cl-autosave{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;font-weight:500;cursor:pointer;box-shadow:0 2px 6px #0000000a;}',
+      '.cl-autosave-track{position:relative;display:block;width:34px;height:20px;border-radius:20px;background:var(--dsw-alias-border-l2);box-shadow:inset 0 1px 3px #00000024;flex-shrink:0;}.cl-autosave-track::before{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--dsw-alias-bg-base);box-shadow:0 1px 3px #00000030;}',
+      '.cl-autosave[aria-checked=true]{border-color:color-mix(in srgb,#b8860b 55%,var(--dsw-alias-border-l2));background:linear-gradient(145deg,color-mix(in srgb,#c9a227 17%,var(--dsw-alias-bg-base)),var(--dsw-alias-bg-layer-1));box-shadow:0 3px 12px #b8860b24,inset 0 1px 0 #e8c76635;}.cl-autosave[aria-checked=true] .cl-autosave-track{background:linear-gradient(135deg,#e8c766,#b8860b);}.cl-autosave[aria-checked=true] .cl-autosave-track::before{transform:translateX(14px);background:#fff9e8;}',
+      '.cl-autosave:focus-visible{outline:2px solid #c9a227;outline-offset:3px;}.cl-autosave:disabled{opacity:.5;cursor:default;}.cl-entry-characters{font-variant-numeric:tabular-nums;}',
+      '@media(hover:hover){.cl-autosave:hover:not(:disabled){border-color:#b8860b;box-shadow:0 4px 16px #b8860b2b;}}',
+      '@media(prefers-reduced-motion:no-preference){.cl-autosave{transition:transform 140ms ease,box-shadow 180ms ease,border-color 180ms ease;}.cl-autosave-track,.cl-autosave-track::before{transition:transform 180ms ease,background 180ms ease;}.cl-autosave:active:not(:disabled){transform:translateY(1px) scale(.98);box-shadow:inset 0 2px 5px #00000016;}}',
       '.cl-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}',
       '.cl-card{padding:14px 16px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1);display:flex;flex-direction:column;gap:9px;min-width:0;}',
       '.cl-card h3{margin:0;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}',
@@ -620,8 +626,6 @@ window.__ModuleLoader__.load({
       '.cl-plan-item{padding:8px 10px;border-radius:10px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);display:flex;flex-direction:column;gap:3px;}',
       '.cl-plan-item-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;font-weight:600;}',
       '.cl-plan-item small{font-size:10px;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere;}',
-      '.cl-bar{height:7px;border-radius:999px;background:var(--dsw-alias-border-l1);overflow:hidden;}',
-      '.cl-bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#e8c766,#b8860b);}',
       '.cl-real{display:flex;flex-direction:column;gap:4px;padding:9px 11px;border-radius:10px;border:1px dashed var(--dsw-alias-border-l2);font-size:11px;line-height:17px;}',
       '.cl-book{justify-content:center;min-width:28px;height:28px;padding:0 6px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);}',
       '.cl-book:hover,.cl-book[aria-expanded="true"]{background:rgba(201,162,39,.10);border-color:transparent;color:var(--dsw-alias-label-primary);}',
@@ -632,16 +636,6 @@ window.__ModuleLoader__.load({
       '.cl-icon-btn:hover:not(:disabled){background:rgba(201,162,39,.10);color:var(--dsw-alias-label-primary);}',
       '.cl-icon-btn:focus-visible{outline:2px solid #c9a227;outline-offset:2px;}.cl-icon-btn:disabled{opacity:.5;cursor:default;}',
       '.cl-icon-btn.spinning svg{animation:cl-spin 1s linear infinite;}@keyframes cl-spin{to{transform:rotate(360deg);}}',
-      '.cl-plan-mode,.cl-plan-status{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);}',
-      '.cl-plan-status::before{content:"";display:inline-block;width:4px;height:4px;border-radius:50%;background:#b8860b;margin:0 7px 2px 0;}',
-      '.cl-budget-line{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;}.cl-budget-line b{font-size:16px;font-weight:600;}',
-      '.cl-dialog .cl-bar{height:4px;margin-top:-5px;}.cl-bar.near span{background:#b8860b;}.cl-bar.full span{background:var(--dsw-alias-state-error-primary,#b54b3e);}',
-      '.cl-dialog .cl-plan-list{gap:0;}.cl-dialog .cl-plan-item{padding:10px 0;border:0;border-bottom:1px solid var(--dsw-alias-border-l1);border-radius:0;background:transparent;}',
-      '.cl-dialog .cl-plan-item-head{display:flex;align-items:baseline;gap:14px;flex-wrap:nowrap;list-style:none;cursor:pointer;}',
-      '.cl-plan-item-head::-webkit-details-marker{display:none;}.cl-plan-item-head:focus-visible{outline:2px solid #c9a227;outline-offset:3px;}',
-      '.cl-plan-type{font-size:11px;font-weight:400;color:var(--dsw-alias-label-secondary);flex:0 0 64px;}',
-      '.cl-plan-item-head>span:last-child{overflow-wrap:anywhere;min-width:0;}.cl-entry-summary{padding:9px 0 0 78px;font-size:11px;line-height:1.6;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary);}',
-      '.cl-entry-summary p{margin:0 0 5px;}.cl-entry-summary code{font:inherit;}',
       '.cl-dialog>.cl-details{border:0;border-top:1px solid var(--dsw-alias-border-l1);border-radius:0;padding:11px 0 0;background:transparent;}',
       '.cl-dialog>.cl-details summary{font-size:12px;font-weight:500;}.cl-dialog>.cl-details[open]>:not(summary){margin-top:10px;}',
       'body[data-ds-dark-theme] .cl-book{border-color:transparent;color:var(--dsw-alias-label-secondary);}',
@@ -742,22 +736,6 @@ window.__ModuleLoader__.load({
       return t(kind === 'create' ? 'kindCreate' : kind === 'update' ? 'kindUpdate' : kind === 'archive' ? 'kindArchive' : 'kindDelete')
     }
 
-    function reasonText(t, reason) {
-      switch (reason) {
-        case 'other-project': return t('stateOtherProject')
-        case 'not-enabled': return t('stateNotEnabled')
-        case 'disabled': return t('stateDisabled')
-        case 'archived': return t('stateArchived')
-        case 'type-budget': return t('reasonTypeBudget')
-        case 'total-budget': return t('reasonTotalBudget')
-        case 'strategy-off':
-        case 'plugin-off': return t('stateOff')
-        case 'needs-project-scope': return t('errorMissingProject')
-        case 'format': return t('stateError')
-        default: return reason || ''
-      }
-    }
-
     function MarkdownImport(props) {
       const t = props.t
       const [busy, setBusy] = useState(false)
@@ -819,44 +797,24 @@ window.__ModuleLoader__.load({
       const data = props.data
       if (data === null) return h('p', { className: 'cl-hint' }, props.loading ? t('previewLoading') : t('noSession'))
       const plan = data.plan
-      const last = data.last
-      const session = data.session || {}
-      if (plan === null) {
-        return h('div', { className: 'cl-empty' }, t('noSession'),
-          session.cwd ? h('code', { className: 'cl-path' }, session.cwd) : null)
-      }
+      if (plan === null) return h('p', { className: 'cl-hint' }, t('noSession'))
       const loaded = (plan.loaded || []).concat((plan.items || []).filter(item => item.status === 'replaced'))
-      const issues = (plan.omitted || []).concat((plan.items || []).filter(item => item.error || ['disabled', 'archived', 'other-project', 'off'].includes(item.status)))
-      const warnings = plan.warnings || []
-      const same = last !== null && last.planId === plan.planId
-      const percent = Math.round((plan.used || 0) / (plan.budget.total || 1) * 100)
-      const tone = percent >= 100 ? 'full' : percent >= 85 ? 'near' : ''
-      const status = last === null ? t('compactWaiting') : same ? t('compactCurrent') : t('compactChanged')
-      return h(React.Fragment, null,
-        h('div', { className: 'cl-toolbar' },
-          h('span', { className: 'cl-plan-mode', title: plan.mode === 'custom' ? t('modeCustomHint') : t('modeSupplementHint'), tabIndex: 0 }, plan.mode === 'custom' ? t('modeCustom') : t('modeSupplement')),
-          h('span', { className: 'cl-plan-status', role: 'status', title: last === null ? t('notLoaded') : t('historyNote'), tabIndex: 0 }, status)),
-        h('div', { className: 'cl-budget-line', title: t('budgetUsed', { used: plan.used || 0, total: plan.budget.total, method: plan.tokenMethod === 'native-token-meter' ? t('tokenNative') : t('tokenHeuristic') }), tabIndex: 0 },
-          h('b', null, (plan.used || 0) + ' / ' + plan.budget.total + ' tokens'),
-          h('span', { className: 'cl-hint' }, percent + '% · ' + loaded.length + ' ' + t('compactEntries'))),
-        h('div', { className: 'cl-bar ' + tone, role: 'meter', 'aria-label': t('budgetTitle'), 'aria-valuemin': 0, 'aria-valuemax': plan.budget.total, 'aria-valuenow': Math.min(plan.used || 0, plan.budget.total), 'aria-valuetext': (plan.used || 0) + ' / ' + plan.budget.total + ' tokens' },
-          h('span', { style: { width: Math.min(100, Math.round((plan.used || 0) / (plan.budget.total || 1) * 100)) + '%' } })),
-        loaded.length === 0 ? h('p', { className: 'cl-hint' }, t('noEntriesLoaded')) : h('div', { className: 'cl-plan-list' }, loaded.map(item =>
-          h('details', { key: item.type + '/' + item.id, className: 'cl-plan-item cl-plan-entry',
-            title: [item.preview, item.relPath, item.projectPath, 'v' + item.version].filter(Boolean).join('\n') },
-            h('summary', { className: 'cl-plan-item-head' }, h('span', { className: 'cl-plan-type' }, t(TYPE_KEY[item.type])), h('span', null, item.title)),
-            h('div', { className: 'cl-entry-summary' },
-              item.preview ? h('p', null, item.preview) : null,
-              h('code', null, [item.relPath, item.projectPath, item.version ? 'v' + item.version : ''].filter(Boolean).join(' · ')))))),
-        issues.length + warnings.length > 0 ? h('details', { className: 'cl-details' },
-          h('summary', null, t('compactOther') + ' · ' + (issues.length + warnings.length)),
-          issues.map(item => h('div', { key: item.type + '/' + item.id, className: 'cl-plan-item', title: item.error || reasonText(t, item.reason) },
-            h('span', null, item.title), h('small', null, item.error || reasonText(t, item.reason)))),
-          warnings.map((item, index) => h('p', { key: index, className: 'cl-hint' }, item.message))) : null,
-        last !== null ? h('details', { className: 'cl-details' },
-          h('summary', null, t('compactLast')),
-          h('p', { className: 'cl-hint' }, formatTime(last.at) + ' · ' + Object.keys(last.versions || {}).length + ' ' + t('compactEntries')),
-          h('small', { title: t('historyNote') }, same ? t('loadedCurrent') : t('loadedStale'))) : null)
+      const total = loaded.reduce((sum, item) => sum + (item.tokens || 0), 0)
+      const approximate = plan.tokenMethod !== 'native-token-meter' ? '≈' : ''
+      const colors = ['#c4a44c', '#a77c53', '#718b68', '#677f95', '#8a7496', '#ad7771']
+      const number = value => approximate + value.toLocaleString()
+      return h('section', { className: 'cl-preload', 'aria-label': t('preloadTitle') },
+        h('div', { className: 'cl-preload-total' },
+          h('span', null, t('preloadTitle')),
+          h('b', null, number(total), h('small', null, ' tokens'))),
+        total > 0 ? h('div', { className: 'cl-composition', role: 'img', 'aria-label': loaded.map(item => item.title + ': ' + number(item.tokens || 0) + ' tokens').join('; ') },
+          loaded.map((item, index) => h('span', { key: item.id, style: { flexGrow: item.tokens || 0, backgroundColor: colors[index % colors.length] },
+            title: item.title + ' · ' + number(item.tokens || 0) + ' tokens', 'aria-hidden': true }))) : null,
+        loaded.length === 0 ? h('p', { className: 'cl-hint' }, t('noEntriesLoaded')) : h('div', { className: 'cl-preload-documents' },
+          loaded.map((item, index) => h('div', { key: item.id, className: 'cl-preload-document' },
+            h('span', { className: 'cl-document-dot', style: { backgroundColor: colors[index % colors.length] }, 'aria-hidden': true }),
+            h('span', { className: 'cl-document-name', title: item.relPath || item.title }, item.title || item.relPath),
+            h('span', { className: 'cl-document-usage' }, h('b', null, number(item.tokens || 0)), h('small', null, 'tokens · ' + (total ? (100 * (item.tokens || 0) / total).toFixed(1) : '0.0') + '%'))))))
     }
 
     function PendingCard(props) {
@@ -989,6 +947,7 @@ window.__ModuleLoader__.load({
       const [confirmDelete, setConfirmDelete] = useState(false)
       const [form, setForm] = useState(null)
       const [picking, setPicking] = useState(false)
+      const [rootDraft, setRootDraft] = useState('')
       const alive = useRef(true)
       const face = useRef(props)
       face.current = props
@@ -1004,6 +963,7 @@ window.__ModuleLoader__.load({
           if (!alive.current) return
           setTree(value)
           setForm(value.settings)
+          setRootDraft(value.root)
           setError('')
         }, function (cause) {
           if (alive.current) setError(t('readFailed', { message: errorText(cause) }))
@@ -1210,6 +1170,12 @@ window.__ModuleLoader__.load({
               h('div', { className: 'cl-toolbar' },
                 h('button', { type: 'button', className: 'cl-btn primary', disabled: picking || busy !== '', onClick: pickRoot }, picking ? t('choosing') : t('chooseFolder')),
                 h('button', { type: 'button', className: 'cl-btn', disabled: busy !== '', onClick: resetRoot }, t('useDefault')))),
+            h('details', { className: 'cl-details' },
+              h('summary', null, t('rootPath')),
+              h('label', { className: 'cl-field' }, t('rootPath'),
+                h('input', { value: rootDraft, onChange: event => setRootDraft(event.target.value), disabled: busy !== '' })),
+              h('button', { type: 'button', className: 'cl-btn', disabled: busy !== '' || !rootDraft.trim() || rootDraft === tree.root,
+                onClick: () => saveSettings({ root: rootDraft.trim() }, t('rootChanged')) }, t('save'))),
             entries.some(entry => entry.type === 'identity' && entry.error)
               ? h('p', { className: 'cl-error', role: 'alert' }, t('identityInvalid', { message: entries.find(entry => entry.type === 'identity' && entry.error).error })) : null),
           h('section', { className: 'cl-card cl-loading-settings' },
@@ -1229,30 +1195,19 @@ window.__ModuleLoader__.load({
             replacement !== null && replacement.sections[0].errors.length > 0
               ? h('p', { className: 'cl-error' }, t('customErrors', { list: replacement.sections[0].errors.map(item => item.sessionId.slice(0, 16)).join(', ') })) : null),
           h(MarkdownImport, { t, hostBuild: tree.build, call: face.current.call, onDone: () => { void loadTree(true) } }),
-            h('details', { className: 'cl-details cl-budget' },
-              h('summary', { title: t('budgetHint') }, t('budgetTitle')),
-              h('div', { className: 'cl-fields' },
-                h('label', { className: 'cl-field' }, t('totalBudget'),
-                  h('input', {
-                    type: 'number', min: 200, step: 100, value: settings.budgetTokens, disabled: busy !== '',
-                    onChange: function (event) { setForm({ ...form, budgetTokens: Number(event.target.value) }) },
-                    onBlur: function () { saveSettings({ budgetTokens: Number(form.budgetTokens) }) },
-                  })),
-                h('label', { className: 'cl-field' }, t('catalogBudget'),
-                  h('input', {
-                    type: 'number', min: 0, step: 50, value: settings.catalogBudget, disabled: busy !== '',
-                    onChange: function (event) { setForm({ ...form, catalogBudget: Number(event.target.value) }) },
-                    onBlur: function () { saveSettings({ catalogBudget: Number(form.catalogBudget) }) },
-                  }))),
-              h('div', { className: 'cl-meta-grid' },
-                TYPES.map(function (type) {
-                  return h('label', { key: type, className: 'cl-field' }, t(TYPE_KEY[type]) + ' · ' + (counts[type] || 0),
-                    h('input', {
-                      type: 'number', min: 100, step: 100, value: settings.perType[type], disabled: busy !== '',
-                      onChange: function (event) { setForm({ ...form, perType: { ...form.perType, [type]: Number(event.target.value) } }) },
-                      onBlur: function () { saveSettings({ perType: form.perType }) },
-                    }))
-                }))),
+          h('section', { className: 'cl-card cl-memory-settings' },
+            h('div', { className: 'cl-memory-head' },
+              h('h3', null, t('suggestionsTitle')),
+              h('div', { className: 'cl-memory-rounds' },
+                ['suggestionStartTurns', 'suggestionIntervalTurns'].map(key => h('label', { key, className: 'cl-field' }, t(key),
+                  h('input', { type: 'number', min: 1, max: 10000, value: settings[key] ?? 5, disabled: busy !== '',
+                    onChange: event => setForm({ ...form, [key]: Number(event.target.value) }),
+                    onBlur: () => saveSettings({ [key]: Number(form[key] ?? 5) }),
+                  })))),
+              h('button', { type: 'button', role: 'switch', className: 'cl-autosave',
+                'aria-label': t('autoSave'), 'aria-checked': settings.autoSave === true, disabled: busy !== '',
+                onClick: () => saveSettings({ autoSave: !settings.autoSave }),
+              }, h('span', null, t('autoSave')), h('span', { className: 'cl-autosave-track', 'aria-hidden': true })))),
           (tree.warnings || []).length > 0
             ? h('details', { className: 'cl-details' },
               h('summary', null, t('warningsTitle') + ' · ' + tree.warnings.length),
@@ -1305,7 +1260,7 @@ window.__ModuleLoader__.load({
                       h(TypeChip, { t: t, type: entry.type }),
                       h(StatusChip, { t: t, item: entry }),
                       entry.scope === 'project' ? h('span', { className: 'cl-chip' }, t('scopeProject')) : null,
-                      h('span', null, 'v' + entry.version)),
+                      h('span', { className: 'cl-entry-characters' }, t('effectiveCharacters', { count: entry.enabled === false || entry.status === 'archived' || entry.error ? '0' : Number.isSafeInteger(entry.characters) ? entry.characters.toLocaleString() : '—' }))),
                     entry.error ? h('span', { className: 'cl-error' }, entry.error) : null)
                   }))),
             ),
@@ -1429,8 +1384,6 @@ window.__ModuleLoader__.load({
       const [data, setData] = useState(null)
       const [loading, setLoading] = useState(false)
       const [error, setError] = useState('')
-      const [notice, setNotice] = useState('')
-      const [pendingList, setPendingList] = useState([])
       const closeRef = useRef(null)
       const dialogRef = useRef(null)
       const alive = useRef(true)
@@ -1455,14 +1408,10 @@ window.__ModuleLoader__.load({
         const sessionId = face.current.currentSessionId()
         if (typeof sessionId !== 'string' || sessionId === '') { setData(null); return }
         setLoading(true); setError('')
-        Promise.all([
-          face.current.call('plan', { sessionId }),
-          face.current.call('pending', {}),
-        ]).then(function (results) {
+        face.current.call('plan', { sessionId }).then(function (result) {
           if (!alive.current) return
-          setData(results[0])
-          setCount(results[0].pendingCount || 0)
-          setPendingList(results[1].proposals || [])
+          setData(result)
+          setCount(result.pendingCount || 0)
           setLoading(false)
         }, function (cause) {
           if (!alive.current) return
@@ -1471,7 +1420,7 @@ window.__ModuleLoader__.load({
       }, [t])
 
       const openDialog = function () {
-        setOpen(true); setNotice(''); setData(null)
+        setOpen(true); setData(null)
         load()
       }
 
@@ -1498,11 +1447,6 @@ window.__ModuleLoader__.load({
         }
       }, [open])
 
-      const onPendingDone = function (message) {
-        setNotice(message)
-        load()
-      }
-
       return h(React.Fragment, null,
         h(StyleTag),
         h('button', {
@@ -1525,23 +1469,51 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'cl-icon-btn', title: t('close'), 'aria-label': t('close'), ref: closeRef, onClick: function () { setOpen(false) } }, h(DialogIcon, { close: true }))),
 
               error !== '' ? h('p', { className: 'cl-error', role: 'alert' }, error) : null,
-              notice !== '' ? h('p', { className: 'cl-notice', role: 'status' }, notice) : null,
-              h(PlanPanel, { t: t, data: data, loading: loading }),
-              pendingList.length > 0
-                ? h('details', { className: 'cl-details' },
-                  h('summary', null, t('pendingTitle') + ' · ' + pendingList.length),
-                  h('div', { className: 'cl-pending' }, pendingList.map(function (proposal) {
-                    return h(PendingCard, {
-                      key: proposal.id, t: t, call: face.current.call, proposal: proposal,
-                      onDone: onPendingDone,
-                      onRebased: function (next) {
-                        setPendingList(function (current) { return current.map(function (item) { return item.id === next.id ? next : item }) })
-                      },
-                    })
-                  })))
-                : null)),
+              h(PlanPanel, { t: t, data: data, loading: loading }))),
             document.body)
           : null)
+    }
+
+    /** Show current-session proposals beside the composer, using the same approval actions as settings. */
+    function PendingDock(props) {
+      const seq = props.useChat(chat => {
+        let latest = -1
+        const visit = block => {
+          if (!block) return
+          if (block.kind === 'tool-result' && block.name === 'context_library_propose') latest = Math.max(latest, block.seq)
+          for (const child of block.subCalls || []) visit(child)
+        }
+        for (const key of chat.order) {
+          const node = chat.nodes.get(key)
+          if (node?.kind === 'tool-call') visit(node.data.root)
+        }
+        return latest
+      })
+      const [proposals, setProposals] = useState([])
+      const [notice, setNotice] = useState({ sessionId: '', text: '' })
+      const [error, setError] = useState({ sessionId: '', text: '' })
+      const [refresh, setRefresh] = useState(0)
+      useEffect(() => {
+        let active = true
+        setProposals([]); setError({ sessionId: props.sessionId, text: '' }); setNotice({ sessionId: props.sessionId, text: '' })
+        props.call('pending', {}).then(value => {
+          if (active) setProposals(value.proposals.filter(item => item.source?.sessionId === props.sessionId))
+        }, cause => { if (active) setError({ sessionId: props.sessionId, text: errorText(cause) }) })
+        return () => { active = false }
+      }, [props.sessionId, seq, refresh])
+      const visible = proposals.filter(item => item.source?.sessionId === props.sessionId)
+      const noticeText = notice.sessionId === props.sessionId ? notice.text : ''
+      const errorTextValue = error.sessionId === props.sessionId ? error.text : ''
+      if (!visible.length && !noticeText && !errorTextValue) return null
+      return h('section', { className: 'cl-pending', 'aria-label': props.t('pendingTitle') },
+        h(StyleTag),
+        errorTextValue ? h('p', { role: 'alert' }, errorTextValue, h('button', { type: 'button', onClick: () => setRefresh(value => value + 1) }, props.t('retry'))) : null,
+        noticeText ? h('p', { role: 'status' }, noticeText) : null,
+        visible.map(proposal => h(PendingCard, {
+          key: proposal.id, proposal, t: props.t, call: props.call,
+          onDone: message => { setNotice({ sessionId: props.sessionId, text: message }); setProposals(items => items.filter(item => item.id !== proposal.id)) },
+          onRebased: next => setProposals(items => items.map(item => item.id === next.id ? next : item)),
+        })))
     }
 
     function unwrap(answer) {
@@ -1585,6 +1557,10 @@ window.__ModuleLoader__.load({
           inject: function () { return face },
         }, ComposerButton)
       })
+      ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+        name: 'conversation.input.dock', id: 'context-library-pending', order: 20, locale: NS,
+        inject: () => ({ call: face.call }),
+      }, PendingDock))
     }
 
     return { inject: ['slots', 'locale', 'connection', 'uiSession', 'uiWorkspace'], apply: apply }

@@ -1,5 +1,5 @@
 import { harnessRequire } from './test-environment.mjs'
-/** Load both plugin halves and verify reversible native-card styling. */
+/** Load both plugin halves and verify isolated suggestion styling. */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
@@ -9,19 +9,19 @@ const req = harnessRequire
 const { JSDOM } = req('jsdom')
 const dom = new JSDOM('<!doctype html><html><head></head><body></body></html>')
 const cleanups = []
-let History
 let Followups
 let section
 const ctx = {
-  on() {},
+  on() { assert.fail('suggestions must not intercept tools or steer the agent') },
   tools: { register() {} },
   locale: { register() { return () => {} } },
-  slots: { inject(name, register) { register() }, register(options, component) { if (options.id === 'choice-pilot-history') History = component; else Followups = component; return () => {} } },
+  slots: { inject(name, register) { register() }, register(options, component) { assert.equal(options.id, 'choice-pilot-followups'); Followups = component; return () => {} } },
   effect(start) { cleanups.push(start()) },
   systemPrompt: { section(value) { section = value; return () => { section = undefined } } },
 }
 apply(ctx)
 assert.equal(section.name, 'choice-pilot')
+assert.doesNotMatch(section.text, /\[自动继续\]|自动处理|每个问题提供/)
 let entry
 runInNewContext(readFileSync(new URL('../choice-pilot/client.js', import.meta.url), 'utf8'), {
   window: { __ModuleLoader__: { load(value) { entry = value } } },
@@ -35,14 +35,7 @@ for (const key of ['window','document','navigator']) Object.defineProperty(globa
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const mount = document.createElement('div'); document.body.append(mount)
 const root = createRoot(mount)
-let chat = { order: ['q'], nodes: { get: () => ({ key:'q',kind:'question-reply',data:{callId:'call',questions:[{id:'a',question:'接下来做什么'}],answers:[{id:'a',selected:['追踪公告','整理笔记'],custom:'只用公开来源'}]} }) } }
-await React.act(async () => root.render(React.createElement(History,{sessionId:'s',t:key=>key,useChat:selector=>selector(chat)})))
-assert.match(document.body.textContent,/追踪公告.*整理笔记.*只用公开来源/)
-await React.act(async()=>document.querySelector('.cp-history button').click())
-assert.match(document.querySelector('[role=status]').textContent,/unavailable/)
-chat = {order:[],nodes:{get(){}}}
-await React.act(async () => root.render(React.createElement(History,{sessionId:'other',t:key=>key,useChat:selector=>selector(chat)})))
-assert.equal(document.querySelector('.cp-history'),null)
+let chat
 
 const suggestions = [{ label: '检查本地模型配置', prompt: '请检查本地模型架构并解释速度差异，不修改配置。' }, { label: '解读配置片段', prompt: '我会补充配置文本，请根据我提供的内容解读模型架构。' }]
 const followup = { key: 'f', kind: 'tool-call', anchorSeq: 8, data: { root: { kind: 'tool-result', name: 'suggest_followups', seq: 8, callId: 'followups', isError: false, meta: { choicePilotFollowups: suggestions }, subCalls: [] } } }
@@ -52,11 +45,13 @@ let revision = 1
 let insertions = 0
 let persists = 0
 let refuseInsertion = false
-const props = { sessionId: 's', t: key => key, useChat: selector => selector(chat), useInput: selector => selector({ phase: 'plain' }), inputActions: {
+let sends = 0
+let attachmentIds = []
+const props = { sessionId: 's', t: key => key, useChat: selector => selector(chat), useInput: selector => selector({ phase: 'plain', draft, attachmentIds }), inputActions: {
   captureInsertion: () => ({ start: 0, end: 2, draftRev: revision }),
   insertText(text, span) { if (refuseInsertion) return false; assert.equal(span.start, span.end, 'never replace selected draft text'); assert.equal(span.draftRev, revision); draft = draft.slice(0, span.start) + text + draft.slice(span.end); revision++; insertions++; return true },
   persistDraft() { persists++ },
-  submit() { assert.fail('a followup must never send a message') },
+  submit() { sends++ },
   setDraft() { assert.fail('a followup must never overwrite the draft') },
 } }
 await React.act(async () => root.render(React.createElement(Followups, props)))
@@ -76,6 +71,17 @@ props.inputActions.persistDraft = () => { throw new Error('storage unavailable')
 await React.act(async () => document.querySelectorAll('.cp-followups button')[1].click())
 assert.equal(document.querySelector('.cp-followups [role=alert]').textContent, 'saveFailed')
 assert.equal(document.querySelectorAll('.cp-followups button')[1].disabled, true, 'a save failure must not duplicate an inserted prompt')
+assert.equal(sends, 0, 'existing drafts are never sent by a suggestion')
+draft = ''
+props.inputActions.persistDraft = () => { persists++ }
+await React.act(async () => root.render(React.createElement(Followups, { ...props, sessionId: 'empty' })))
+await React.act(async () => document.querySelector('.cp-followups button').click())
+assert.equal(sends, 1, 'an explicit click with an empty composer submits through the native action')
+assert.match(draft, /请检查本地模型架构/)
+draft = ''; attachmentIds = ['attachment']
+await React.act(async () => root.render(React.createElement(Followups, { ...props, sessionId: 'attachment' })))
+await React.act(async () => document.querySelector('.cp-followups button').click())
+assert.equal(sends, 1, 'existing attachments require review instead of being sent with a suggestion')
 const child = { ...followup.data.root, meta: undefined, callId: 'ptc-child', call: { argsRaw: JSON.stringify({ suggestions }) } }
 chat = { order: ['p'], nodes: new Map([['p', { kind: 'tool-call', data: { root: { kind: 'tool-result', name: 'run_code', subCalls: [child] } } }]]) }
 await React.act(async () => root.render(React.createElement(Followups, props)))
@@ -95,4 +101,4 @@ for (const dispose of cleanups.reverse()) dispose()
 assert.equal(section, undefined)
 assert.equal(dom.window.document.querySelector('style'), null)
 dom.window.close()
-console.log('CHOICE PILOT OK: prompt registration, browser loader, stylesheet lifetime and disposal')
+console.log('CHOICE PILOT OK: prompt registration, browser loader, suggestion-only registration, draft preservation, sending and disposal')

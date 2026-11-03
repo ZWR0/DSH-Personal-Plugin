@@ -83,7 +83,6 @@ window.__ModuleLoader__.load({
       elapsed: '用时',
       detail: '详情',
       collapse: '收起',
-      empty: '开始对话后，这里会实时显示 Token、速度与用时',
       peakPair: '输入峰 / 输出峰', turnPair: '本轮输入 / 输出', closingPair: '收尾输出 / 上限', sessionPair: '累计输入 / 输出', latencyPair: '首字 / 缓存', turnInput: '本轮输入（含缓存）', turnOutput: '本轮输出', lastOutput: '收尾回复输出', outputLimit: '收尾回复 maxTokens',
       input: '会话累计输入',
       output: '会话累计输出',
@@ -129,7 +128,6 @@ window.__ModuleLoader__.load({
       elapsed: 'Elapsed',
       detail: 'Details',
       collapse: 'Collapse',
-      empty: 'Token totals, live speed, and elapsed time appear here once the conversation starts.',
       peakPair: 'Peak in / out', turnPair: 'Turn in / out', closingPair: 'Closing out / limit', sessionPair: 'Session in / out', latencyPair: 'First token / cache', turnInput: 'Turn input incl. cache', turnOutput: 'Turn output', lastOutput: 'Closing response output', outputLimit: 'Closing request maxTokens',
       input: 'Session input',
       output: 'Session output',
@@ -537,13 +535,6 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
   text-transform: uppercase;
   color: var(--dsw-alias-label-tertiary);
   white-space: nowrap;
-}
-.au-empty {
-  flex: 1;
-  min-width: 0;
-  font-size: 11.5px;
-  line-height: 16px;
-  color: var(--dsw-alias-label-tertiary);
 }
 .au-toggle {
   appearance: none;
@@ -1256,7 +1247,7 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
           label: contextWindow > 0 ? Math.round(ratio * 100) + '%' : '—',
           caption: t('context'),
         }),
-        h('span', { className: 'au-divider' }),
+        hasData ? h('span', { className: 'au-divider' }) : null,
         hasData
           ? h('span', { className: 'au-metrics' },
             h('span', { className: 'au-metric' },
@@ -1268,7 +1259,7 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
             h('span', { className: 'au-metric' },
               h('b', null, formatDuration(elapsedMs)),
               h('small', null, t('elapsed'))))
-          : h('span', { className: 'au-empty' }, t('empty')),
+          : null,
         // An empty session has nothing to break down, so the disclosure only
         // appears once a first reading exists.
         hasData

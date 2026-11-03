@@ -2,7 +2,7 @@ import { browserOptions, dependencyPath, harnessRequire } from './test-environme
 /** Real browser rendering of the settings page and composer preview with mocked Host replies. */
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 const req = harnessRequire
@@ -17,8 +17,8 @@ const settings = {
   catalogBudget: 600, suggestions: true,
 }
 const entries = [
-  { id: 'identity', type: 'identity', title: '身份', status: 'active', scope: 'global', projectPath: '', enabled: true, key: true, version: '1111aaaa', bytes: 80, preview: '称呼：小林，偏好中文。', error: null, warnings: [], createdAt: now, updatedAt: now, path: 'D:\\lib\\context-library\\identity.md', relPath: 'identity.md' },
-  { id: 'alpha', type: 'projects', title: 'Alpha 项目', status: 'active', scope: 'project', projectPath: 'D:\\work\\alpha', enabled: true, key: true, version: '2222bbbb', bytes: 140, preview: 'Alpha 的目标与当前状态。', error: null, warnings: [], createdAt: now, updatedAt: now, path: 'D:\\lib\\context-library\\projects\\alpha.md', relPath: 'projects/alpha.md' },
+  { id: 'identity', type: 'identity', title: '身份', status: 'active', scope: 'global', projectPath: '', enabled: true, key: true, version: '1111aaaa', characters: 18, bytes: 80, preview: '称呼：小林，偏好中文。', error: null, warnings: [], createdAt: now, updatedAt: now, path: 'D:\\lib\\context-library\\identity.md', relPath: 'identity.md' },
+  { id: 'alpha', type: 'projects', title: 'Alpha 项目', status: 'active', scope: 'project', projectPath: 'D:\\work\\alpha', enabled: true, key: true, version: '2222bbbb', characters: 1234, bytes: 140, preview: 'Alpha 的目标与当前状态。', error: null, warnings: [], createdAt: now, updatedAt: now, path: 'D:\\lib\\context-library\\projects\\alpha.md', relPath: 'projects/alpha.md' },
   { id: 'beta', type: 'projects', title: 'Beta 项目', status: 'active', scope: 'project', projectPath: 'D:\\work\\beta', enabled: true, key: true, version: '3333cccc', bytes: 90, preview: 'Beta 项目。', error: null, warnings: [], createdAt: now, updatedAt: now, path: 'D:\\lib\\context-library\\projects\\beta.md', relPath: 'projects/beta.md' },
   { id: 'db', type: 'decisions', title: '数据库选型', status: 'active', scope: 'global', projectPath: '', enabled: true, key: true, version: '4444dddd', bytes: 60, preview: '使用 PostgreSQL。', error: null, warnings: [], createdAt: now, updatedAt: now, path: 'D:\\lib\\context-library\\decisions\\db.md', relPath: 'decisions/db.md' },
 ]
@@ -76,12 +76,12 @@ try {
     window.__calls = []
     const ok = value => ({ ok: true, value })
     const mock = {
-      tree: () => ok({ build: '0.4.0-compact-settings', root: settings.root, entries, warnings: [{ path: 'projects/legacy.md', code: 'entry/format', message: '缺少元数据块。' }], pending: [proposal], pendingWarnings: [], settings, replacement, tokenMethod: 'native-token-meter' }),
+      tree: () => ok({ build: '0.6.2-document-composition', root: settings.root, entries, warnings: [{ path: 'projects/legacy.md', code: 'entry/format', message: '缺少元数据块。' }], pending: [proposal], pendingWarnings: [], settings, replacement, tokenMethod: 'native-token-meter' }),
       importPreview: payload => ok({ planId: 'import-test', items: [{ id: 'owner-profile', type: 'long_term', title: '我的资料（Owner）', enabled: true, action: 'create', sources: payload.documents.map(doc => doc.path), preview: 'Owner background' }], ignored: [] }),
       importApply: () => ok({ saved: [{ id: 'owner-profile', type: 'long_term' }], failed: [], ignored: [] }),
       entry: payload => ok({ entry: { ...entries.find(item => item.id === payload.id), body: 'Alpha 的正文内容。' }, history: [{ file: '2026__2222bbbb.md', version: '2222bbbb', savedAt: now, actor: 'user', reason: '' }] }),
       save: payload => ok({ entry: { ...entries[1], version: '9999eeee', title: payload.title }, version: '9999eeee', created: false, unchanged: false }),
-      saveSettings: payload => ok({ settings: { ...settings, ...payload, perType: { ...settings.perType, ...(payload.perType || {}) } }, root: settings.root, previousRoot: settings.root, changedRoot: false, note: '' }),
+      saveSettings: payload => { Object.assign(settings, { ...payload, perType: { ...settings.perType, ...(payload.perType || {}) } }); return ok({ settings, root: settings.root, previousRoot: settings.root, changedRoot: false, note: '' }) },
       pending: () => ok({ proposals: [proposal], warnings: [] }),
       decide: payload => ok({ proposal: { ...proposal, status: payload.action === 'approve' ? 'applied' : 'deferred' } }),
       rebase: () => ok({ proposal: { ...proposal, baseHash: 'hash-new', baseVersion: '7777ffff' } }),
@@ -128,7 +128,31 @@ try {
   })
   await page.getByRole('heading', { name: /^知忆书阁$/ }).waitFor()
   await page.getByText('D:\\lib\\context-library', { exact: true }).waitFor()
-  assert.equal(await page.locator('.cl-budget').getAttribute('open'),null)
+  assert.equal(await page.locator('.cl-budget').count(), 0)
+  assert.equal(await page.getByText('总预算（tokens）', { exact: true }).count(), 0)
+  assert.equal(await page.getByText('仅保存有明确陈述或确认依据的新增和更新', { exact: false }).count(), 0)
+  const autoSave = page.getByRole('switch', { name: '自动记忆', exact: true })
+  assert((await autoSave.boundingBox()).height >= 44)
+  await autoSave.click()
+  await page.waitForFunction(() => document.querySelector('.cl-autosave')?.getAttribute('aria-checked') === 'true')
+  assert.equal(await page.evaluate(() => window.__calls.filter(c => c.endpoint === 'saveSettings').at(-1).payload.autoSave), true)
+  await mkdir('DSH-Personal-Plugin/tools/.test-tmp/ui-refinement', { recursive: true })
+  const originalStyle = await page.locator('body').getAttribute('style')
+  for (const [theme, width] of [['dark', 1180], ['dark', 390], ['light', 1180], ['light', 390]]) {
+    await page.setViewportSize({ width, height: 900 })
+    if (theme === 'light') await page.evaluate(() => {
+      Object.assign(document.body.style, { background: '#faf9f6', color: '#24221c' })
+      for (const [key, value] of Object.entries({ '--dsw-alias-label-primary': '#24221c', '--dsw-alias-label-secondary': '#605b50', '--dsw-alias-bg-base': '#faf9f6', '--dsw-alias-bg-layer-1': '#ffffff', '--dsw-alias-bg-layer-2': '#f4f1e9', '--dsw-alias-border-l1': '#e4dfd3', '--dsw-alias-border-l2': '#d7cebb' })) document.body.style.setProperty(key, value)
+    })
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    const row = await page.locator('.cl-memory-head').boundingBox()
+    if (width > 600) assert(row.height <= 48, 'round inputs and the switch share one compact row')
+    await page.locator('.cl-memory-settings').screenshot({ path: `DSH-Personal-Plugin/tools/.test-tmp/ui-refinement/memory-${theme}-${width}.png` })
+  }
+  await page.locator('body').evaluate((element, style) => { if (style === null) element.removeAttribute('style'); else element.setAttribute('style', style) }, originalStyle)
+  await page.setViewportSize({ width: 1180, height: 980 })
+  await autoSave.press('Space')
+  await page.waitForFunction(() => document.querySelector('.cl-autosave')?.getAttribute('aria-checked') === 'false')
   await page.getByRole('group',{name:'加载策略',exact:true}).getByRole('button',{name:'仅目录',exact:true}).click()
   assert.equal(await page.evaluate(()=>window.__calls.filter(c=>c.endpoint==='saveSettings').at(-1).payload.suggestions),false)
   await page.getByRole('group',{name:'加载策略',exact:true}).getByRole('button',{name:'自动',exact:true}).click()
@@ -142,6 +166,8 @@ try {
   await page.getByText('已导入 1 条', { exact: true }).waitFor()
   assert.equal(await page.evaluate(() => window.__calls.some(c => c.endpoint === 'importApply' && c.payload.planId === 'import-test')), true)
   await page.getByRole('button', { name: /^项目 2$/ }).click()
+  assert.match(await page.getByRole('listitem').filter({ hasText: 'Alpha 项目' }).textContent(), /1,234 字符/)
+  assert.doesNotMatch(await page.getByRole('listitem').filter({ hasText: 'Alpha 项目' }).textContent(), /v2222bbbb/)
   await page.getByRole('listitem').filter({ hasText: 'Alpha 项目' }).click()
   await page.locator('.cl-field textarea').waitFor()
   await page.locator('.cl-field textarea').fill('Alpha 的正文内容（浏览器改写）。')
@@ -239,33 +265,55 @@ try {
   })
   await page.getByRole('button', { name: /知忆书阁/ }).click()
   await page.getByRole('dialog').waitFor()
-  await page.getByText('待发送', { exact: true }).waitFor()
-  await page.getByText('812 / 4000 tokens', { exact: true }).waitFor()
-  assert.match(await page.getByText('待发送', { exact: true }).getAttribute('title'), /尚未发出/)
-  assert.equal(await page.locator('.cl-dialog details[open]').count(), 0)
-  assert.equal(await page.locator('.cl-dialog').getByText('Alpha 的目标与当前状态。', { exact: true }).isVisible(), false)
-  assert.match(await page.locator('.cl-dialog .cl-plan-item').filter({ hasText: 'Alpha 项目' }).getAttribute('title'), /Alpha 的目标与当前状态/)
+  await page.getByText('文档合计', { exact: true }).waitFor()
+  assert.match(await page.locator('.cl-preload-total').textContent(), /520 tokens/)
+  assert.equal(await page.locator('.cl-composition>span').count(), 2)
+  const usage = await page.locator('.cl-preload-document').allTextContents()
+  assert.match(usage[0], /200tokens · 38.5%/)
+  assert.match(usage[1], /320tokens · 61.5%/)
+  assert.equal(await page.locator('.cl-dialog .cl-details').count(), 0)
+  assert.equal(await page.getByText('未加载与提示', { exact: true }).count(), 0)
   assert((await page.locator('.cl-dialog').boundingBox()).width <= 480)
-  await page.locator('.cl-dialog summary').filter({ hasText: '未加载与提示' }).click()
-  await page.getByText('其他项目', { exact: true }).waitFor()
-  await page.locator('.cl-dialog summary').filter({ hasText: '未加载与提示' }).click()
-  const row=page.locator('.cl-plan-entry').filter({hasText:'Alpha 项目'})
-  await row.locator('summary').click()
-  assert.equal(await row.locator('.cl-entry-summary').isVisible(),true)
-  await page.getByRole('button',{name:'重新计算',exact:true}).click()
-  await page.getByRole('button',{name:'重新计算',exact:true}).waitFor({state:'visible'})
-  assert.equal(await row.getAttribute('open'),'')
-  await row.locator('summary').click()
-  await page.setViewportSize({width:390,height:850})
-  await row.locator('summary').click()
-  assert.equal(await row.locator('.cl-entry-summary').isVisible(),true)
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
-  await page.screenshot({path:'tools/shot-context-library-dialog-mobile.png'})
-  await row.locator('summary').click()
-  await page.setViewportSize({width:1180,height:980})
-  await page.screenshot({ path: 'tools/shot-context-library-preview.png' })
+  for (const width of [390, 1180]) {
+    await page.setViewportSize({ width, height: 850 })
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+    await page.locator('.cl-dialog').screenshot({ path: `DSH-Personal-Plugin/tools/.test-tmp/ui-refinement/preload-${width}.png` })
+  }
+  await page.evaluate(() => {
+    const original = window.__mock.plan
+    window.__mock.plan = () => {
+      const value = original()
+      value.value.plan.loaded = value.value.plan.loaded.filter(item => item.id !== 'identity')
+      value.value.plan.items = [{ id: 'identity', type: 'identity', title: '身份', tokens: 160, status: 'replaced' }]
+      return value
+    }
+  })
+  await page.getByRole('button', { name: '重新计算', exact: true }).click()
+  await page.waitForFunction(() => document.querySelector('.cl-preload-total')?.textContent.includes('480 tokens'))
+  assert.equal(await page.locator('.cl-preload-document').count(), 2, 'custom identity is included exactly once')
+  await page.evaluate(() => { window.__mock.plan = () => ({ ok: true, value: { plan: { loaded: [], items: [], tokenMethod: 'native-token-meter' }, session: {} } }) })
+  await page.getByRole('button', { name: '重新计算', exact: true }).click()
+  await page.waitForFunction(() => document.querySelector('.cl-preload-total')?.textContent.includes('0 tokens'))
+  assert.equal(await page.locator('.cl-composition').count(), 0, 'empty plans have no invalid percentage segments')
   await page.keyboard.press('Escape')
   await page.getByRole('dialog').waitFor({ state: 'detached' })
+  await page.evaluate(() => {
+    const dock = window.__components['conversation.input.dock']
+    window.__mock.decide = payload => ({ ok: true, value: { proposal: { id: payload.id, status: 'applied' } } })
+    window.__root.render(React.createElement(dock.component, { ...dock.face, t: window.__t, sessionId: 'session-test', useChat: f => f({ order: [], nodes: new Map() }) }))
+  })
+  // Pending entries belong to their originating chat, including on the first mount.
+  assert.equal(await page.locator('.cl-pending-card').count(), 0)
+  await page.evaluate(() => {
+    const dock = window.__components['conversation.input.dock']
+    const old = window.__mock.pending
+    window.__mock.pending = () => { const answer = old(); answer.value.proposals[0].source = { sessionId: 'session-test' }; return answer }
+    window.__root.render(React.createElement(dock.component, { ...dock.face, t: window.__t, sessionId: 'session-test', useChat: f => f({ order: ['t'], nodes: new Map([['t', { kind: 'tool-call', data: { root: { kind: 'tool-result', name: 'context_library_propose', seq: 1 } } }]]) }) }))
+  })
+  await page.locator('.cl-pending-card').waitFor()
+  await page.getByRole('button', { name: '同意', exact: true }).click()
+  await page.locator('.cl-pending-card').waitFor({ state: 'detached' })
+  assert.equal(await page.evaluate(() => window.__calls.some(item => item.endpoint === 'decide' && item.payload.action === 'approve' && item.payload.expectedBaseHash === 'hash-base')), true)
   assert.deepEqual(errors, [])
   console.log('CONTEXT LIBRARY CLIENT BROWSER OK: settings editor, pending approval, compact settings, automatic suggestions, single-column editor, integrated properties, direct body editing and compact scope filter, folder-only import, composer preview, Escape close, narrow layout; screenshots saved')
 } finally {

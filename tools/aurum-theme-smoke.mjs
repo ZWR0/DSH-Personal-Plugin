@@ -179,6 +179,7 @@ for (const [running, partial, calls, expected] of [
     useChat: selector => selector({ legacy: { nodes: [], partial, runningCalls: calls } }),
   }))
   if (!markup.includes('data-aurum-phase="' + expected + '"')) throw new Error('stage mismatch: ' + expected)
+  if (markup.includes('au-empty') || markup.includes('开始对话后')) throw new Error('startup helper text is visible')
   if (!markup.includes('role="status"')) throw new Error('stage has no accessible status')
 }
 

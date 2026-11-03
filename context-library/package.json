@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-context-library",
-  "version": "0.5.0",
+  "version": "0.6.2",
   "private": true,
   "type": "module",
   "exports": {
@@ -14,12 +14,16 @@
     "index.js",
     "library.js",
     "importer.js",
+    "repair.js",
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
     "README.md"
   ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm": "*"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

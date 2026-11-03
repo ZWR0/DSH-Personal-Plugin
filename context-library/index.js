@@ -5,14 +5,15 @@
  * read/propose tools, the write-path guard, and the owner-authenticated routes
  * over the shared `/api` Connection carrier. All library mutations that an
  * agent proposes go through the persisted approval ledger in `library.js`;
- * this file never lets a tool argument mark a proposal approved.
+ * only owner settings can grant automatic saving; tool arguments cannot grant approval.
  */
 import { join, resolve, isAbsolute } from 'node:path'
 import * as lib from './library.js'
 import { previewImport, applyImport } from './importer.js'
+import { registerSaveRepair } from './repair.js'
 
 export const name = 'context-library'
-export const BUILD = '0.4.0-compact-settings'
+export const BUILD = '0.6.2-document-composition'
 
 /** Services this plugin cannot operate without. */
 export const inject = ['connection', 'profileContext', 'systemPrompt', 'tools', 'agents', 'workingDirectory']
@@ -36,12 +37,13 @@ const GUIDANCE = 'The user maintains 知忆书阁, a personal context library. E
   + 'Never turn a one-off interest, temporary mood, hypothetical, quoted third-party view, or your own guess into an '
   + 'identity fact. Do not propose secrets, credentials, or sensitive personal data. Merge related changes into one '
   + 'proposal, deduplicate by entry and content, and do not re-propose something the user rejected or deferred. '
-  + 'A proposal is NOT saved: only the user can approve it in the 知忆书阁 UI. Never say an entry was remembered, '
-  + 'updated, or deleted before that approval. Use context_library_read to load a catalogued entry in full when needed. '
+  + 'Always use context_library_propose to save to the active library; never ask for an output folder, export a replacement document, or require manual import. '
+  + 'The runtime context states the active root and whether the user granted automatic saving. The tool reports saved or pending; only report saved after a saved result. '
+  + 'Without that grant proposals require the user to click approval in the library UI, not type approval into chat. Use context_library_read to load a catalogued entry in full when needed. '
   + 'Detection is best-effort prompt-guided behavior; it cannot guarantee that every lasting fact is noticed.'
 
 const DISABLED_NOTE = '知忆书阁: the agent may not write library entries or approval records directly. '
-  + 'Use context_library_propose to submit a candidate revision; the user must approve it in the 知忆书阁 UI.'
+  + 'Use context_library_propose; it saves under the current library permission or creates a revision for UI approval.'
 
 function errorResult(code, error, details = {}) {
   return { ok: false, error: { code, message: MESSAGE(error), details: details ?? {} } }
@@ -110,6 +112,7 @@ export async function apply(ctx) {
     // The automatic strategy replaces the former independent suggestions toggle.
     return current.enabled && current.strategy === 'auto'
   }
+  registerSaveRepair(ctx, suggestionsEnabled)
 
   function serial(task) {
     const next = chain.then(task, task)
@@ -276,9 +279,13 @@ export async function apply(ctx) {
       try {
         const plan = planFor(agent)
         recordLast(agent, plan)
-        if (plan.text === '') return ''
+        const turns = agent.session.snapshotEvents().filter(event => event.type === 'turn/start').length
+        const due = current.strategy === 'auto' && turns >= current.suggestionStartTurns
+          && (turns - current.suggestionStartTurns) % current.suggestionIntervalTurns === 0
+        const state = `Active library root: ${lib.libraryRoot(profileDir, current)}\nAutomatic saving: ${current.autoSave ? 'authorized for create/update with user-stated or confirmed evidence; new long-term entries are enabled' : 'not authorized; proposals require UI approval'}.\n`
+          + (due ? `Memory review due at chat turn ${turns}. Review concrete durable facts from this conversation and use context_library_propose for useful new or changed entries. Do not ask whether to review, invent facts, repeat pending/rejected proposals, or interrupt the current task. If nothing qualifies, continue without a proposal.\n` : '')
         // The marker time is this assembly, not the cache fill time.
-        return lib.renderContextText(plan, nowIso())
+        return state + lib.renderContextText(plan, nowIso())
       } catch (error) {
         ctx.logger.warn(`context-library: context provider failed: ${MESSAGE(error)}`)
         return ''
@@ -359,7 +366,7 @@ export async function apply(ctx) {
       type: 'object',
       additionalProperties: false,
       properties: {
-        outcome: { type: 'string', enum: ['pending', 'duplicate', 'suppressed'] },
+        outcome: { type: 'string', enum: ['saved', 'pending', 'duplicate', 'suppressed'] },
         proposalId: { type: 'string' },
         entryId: { type: 'string' },
         message: { type: 'string' },
@@ -376,11 +383,11 @@ export async function apply(ctx) {
 
   ctx.tools.register({
     name: 'context_library_propose',
-    description: 'Submit a candidate change to the user\'s 知忆书阁 context library. This NEVER writes an entry: it only '
-      + 'creates a pending proposal that the user must review and approve in the 知忆书阁 UI. Use it only when the chat '
+    description: 'Save a candidate change to the active 知忆书阁 library without choosing an export directory or importing files. '
+      + 'With the user\'s automatic-saving setting, create/update with stated or confirmed evidence saves immediately; otherwise it creates a pending revision for UI approval. Deletes, archives and inferences always require UI approval. Use it only when the chat '
       + 'contains concrete evidence of a durable identity fact, explicit preference, project record, agreed decision, '
       + 'long-term fact, or an outdated/duplicate entry. Mark inferences as inference, never propose secrets or sensitive '
-      + 'personal data, merge related changes, and do not repeat a rejected suggestion. Never claim the library was updated.',
+      + 'personal data, merge related changes, and do not repeat a rejected suggestion. Report saved only when the result says saved.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -392,7 +399,7 @@ export async function apply(ctx) {
         body: { type: 'string', description: 'Complete Markdown body for create/update. Not a diff.' },
         scope: { type: 'string', enum: ['global', 'project'], description: 'Whether the entry applies to all projects or one bound project.' },
         projectPath: { type: 'string', description: 'Absolute project directory when scope is project.' },
-        enabled: { type: 'boolean', description: 'For a new long_term entry, set true only when the user explicitly enabled it.' },
+        enabled: { type: 'boolean', description: 'New long_term entries are enabled after approval by default; set false when the user wants storage without loading.' },
         key: { type: 'boolean', description: 'For a decision, whether it is a key decision worth auto-loading.' },
         expectedVersion: { type: 'string', description: 'Version shown by the catalog/read tool, so a stale proposal is refused.' },
         reason: { type: 'string', description: 'Why this change is warranted, in one or two sentences.' },
@@ -416,43 +423,58 @@ export async function apply(ctx) {
     output: PROPOSE_OUTPUT,
     when: suggestionsEnabled,
     async execute(args, exec) {
-      if (!suggestionsEnabled()) throw new Error('自动建议未启用，请先选择自动加载策略。')
-      const input = assertObject(args, '参数')
-      const sessionId = exec?.agent?.id ?? ''
-      const result = await lib.createProposal({
-        root: lib.libraryRoot(profileDir, settingsNow()),
-        settings: settingsNow(),
-        cwd: exec?.agent ? cwdOf(exec.agent) : process.cwd(),
-        proposal: {
-          kind: input.kind,
-          type: input.type,
-          id: input.id,
-          title: input.title,
-          body: input.body,
-          scope: input.scope,
-          projectPath: input.projectPath,
-          enabled: input.enabled,
-          key: input.key,
-          expectedVersion: input.expectedVersion,
-          reason: input.reason,
-          evidence: input.evidence,
-          sensitive: input.sensitive,
-          sessionId,
-        },
+      return serial(async () => {
+        if (!suggestionsEnabled()) throw new Error('自动建议未启用，请先选择自动加载策略。')
+        const input = assertObject(args, '参数')
+        const sessionId = exec?.agent?.id ?? ''
+        const current = settingsNow()
+        const root = lib.libraryRoot(profileDir, current)
+        const autoSave = current.autoSave && ['create', 'update'].includes(input.kind)
+          && Array.isArray(input.evidence) && input.evidence.length > 0
+          && input.evidence.every(item => ['user-stated', 'confirmed'].includes(item?.kind))
+        const result = await lib.createProposal({
+          root,
+          settings: current,
+          cwd: exec?.agent ? cwdOf(exec.agent) : process.cwd(),
+          proposal: {
+            kind: input.kind,
+            type: input.type,
+            id: input.id,
+            title: input.title,
+            body: input.body,
+            scope: input.scope,
+            projectPath: input.projectPath,
+            enabled: input.enabled,
+            key: input.key,
+            expectedVersion: input.expectedVersion,
+            reason: input.reason,
+            evidence: input.evidence,
+            sensitive: input.sensitive,
+            sessionId,
+          },
+        })
+        bump()
+        if (result.suppressed === true) {
+          return { outcome: 'suppressed', entryId: String(input.id ?? ''), message: result.note }
+        }
+        if (result.existing === true) {
+          return { outcome: 'duplicate', proposalId: result.proposal.id, entryId: result.proposal.entryId, message: 'The same revision is already pending; do not submit it again.' }
+        }
+        if (autoSave) {
+          const applied = await lib.decideProposal({ root, id: result.proposal.id, action: 'approve', expectedBaseHash: result.proposal.baseHash })
+          bump()
+          if (!applied.conflict) return {
+            outcome: 'saved', proposalId: result.proposal.id, entryId: result.proposal.entryId,
+            message: `Saved to ${applied.entry?.path ?? root} under the user's automatic-saving permission. No manual import is needed.`,
+          }
+        }
+        return {
+          outcome: 'pending',
+          proposalId: result.proposal.id,
+          entryId: result.proposal.entryId,
+          message: 'Waiting for explicit user approval in 知忆书阁. It is not saved or remembered yet.',
+        }
       })
-      bump()
-      if (result.suppressed === true) {
-        return { outcome: 'suppressed', entryId: String(input.id ?? ''), message: result.note }
-      }
-      if (result.existing === true) {
-        return { outcome: 'duplicate', proposalId: result.proposal.id, entryId: result.proposal.entryId, message: 'The same revision is already pending; do not submit it again.' }
-      }
-      return {
-        outcome: 'pending',
-        proposalId: result.proposal.id,
-        entryId: result.proposal.entryId,
-        message: 'Waiting for explicit user approval in 知忆书阁. It is not saved or remembered yet.',
-      }
     },
     presentCall: args => ({ card: 'generic', title: `Propose ${args?.kind ?? 'revision'} · ${args?.type ?? ''} ${args?.id ?? ''}`, kind: 'other' }),
   })
@@ -682,6 +704,7 @@ export async function apply(ctx) {
           const previousRoot = lib.libraryRoot(profileDir, current)
           const result = await lib.saveSettings(profileDir, {
             ...payload,
+            ...(payload.root !== undefined && lib.comparablePath(lib.libraryRoot(profileDir, { root: payload.root })) !== lib.comparablePath(previousRoot) ? { autoSave: false } : {}),
             ...(['auto', 'catalog', 'off'].includes(payload.strategy)
               ? { suggestions: payload.strategy === 'auto' } : {}),
           })

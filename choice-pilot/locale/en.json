@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Choice Pilot",
-    "description": "In-task questions and timed continuation, with next-step suggestions that fill a draft for manual review and sending."
+    "description": "Next-task suggestions and optional timeout defaults, preserving official questions and late answers."
   }
 }
