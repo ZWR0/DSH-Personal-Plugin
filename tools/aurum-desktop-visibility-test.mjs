@@ -78,6 +78,14 @@ try {
     assert.equal(targeted.pointerVisible,true)
     assert.equal(targeted.pointerSource,'agent-target')
   })
+  const realNow = Date.now
+  try {
+    const waitingAt = realNow() + 31000
+    Date.now = () => waitingAt
+    await handlers['tools/execute']({ ...exec, name:'mcp__wincu__windows_computer_use_snapshot', arguments:{} }, async()=>{
+      assert.equal(JSON.parse(readFileSync(file)).indicator, true, 'Thinking longer than 30 seconds retains the desktop series')
+    })
+  } finally { Date.now = realNow }
   handlers['session/event']({ id: 'test' }, { type: 'turn/end', data: { turn: 1 } })
   assert.equal(JSON.parse(readFileSync(file)).active, false)
   console.log('PASS: fullscreen page pointer, visibility switches, browser status, no Esc interception, desktop handoff and turn cleanup')

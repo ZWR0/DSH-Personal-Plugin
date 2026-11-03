@@ -15,7 +15,7 @@ export const BROWSER_APPS = Object.freeze(['default', 'edge', 'chrome', 'firefox
 export const DEFAULT_SETTINGS = Object.freeze({
   browserFirst: true, browserReuseExisting: false, browserVisible: true, browserApp: 'default', browserSignIn: false,
   mode: 'full', toolPreset: 'auto', enabledTools: TOOL_NAMES, indicatorEnabled: true, cursorIndicatorEnabled: true, remoteIndicatorVisible: true, indicatorText: '灵犀御机正在操控电脑',
-  pointerAnimationMs: 240, indicatorPosition: 'top', indicatorIdleMs: 800, stopShortcut: '',
+  pointerAnimationMs: 600, indicatorPosition: 'top', indicatorIdleMs: 800, stopShortcut: '',
   resumeToken: 0, previewToken: 0
 });
 

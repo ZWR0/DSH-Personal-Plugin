@@ -102,7 +102,7 @@ export class TakeoverControl {
         this.persist();
       }
     }
-    const presentation=JSON.stringify([this.config.indicatorEnabled,this.config.cursorIndicatorEnabled,this.config.remoteIndicatorVisible,this.config.indicatorText,this.config.indicatorPosition,this.config.indicatorIdleMs,this.config.stopShortcut]);
+    const presentation=JSON.stringify([this.config.indicatorEnabled,this.config.cursorIndicatorEnabled,this.config.remoteIndicatorVisible,this.config.indicatorText,this.config.indicatorPosition,this.config.indicatorIdleMs,this.config.pointerAnimationMs,this.config.stopShortcut]);
     if (this.child && this.sentPresentation!==presentation) {
       if(((this.seriesHeld&&this.seriesIndicator)||this.shown>0)&&!this.paused&&!this.blockedSeries.has(this.seriesKey))await this.presentSeries();
       else await this.command('configure',this.browserAction?{...this.config,cursorIndicatorEnabled:false}:this.config);

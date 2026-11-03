@@ -142,7 +142,7 @@ const INDICATOR_SCRIPT = '(' + function () {
   host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;margin:0!important;border:0!important;padding:0!important;width:100vw!important;height:100vh!important;background:transparent!important;z-index:2147483647!important;pointer-events:none!important;user-select:none!important;contain:strict!important;';
   const shadow = host.attachShadow({ mode: 'closed' });
   shadow.innerHTML = '<style>.layer{position:absolute;inset:0;overflow:hidden}.layer.capture{display:none}' +
-    '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform var(--motion,240ms) cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
+    '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform var(--motion,600ms) cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
     '.status{position:absolute;top:18px;left:50%;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 14px;border:1px solid #b18b3266;border-radius:999px;background:#1d1e20ee;color:#f6edd6;font:13px/1.5 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}.status.on{display:block}' +
     '.pointer.on{opacity:1}.pointer svg{position:relative;display:block;margin:-26px 0 0 -22px;filter:drop-shadow(0 0 3px #a87a2290) drop-shadow(0 0 8px #a87a2250) drop-shadow(0 0 14px #a87a2228)}' +
     '.ring{position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:3px;border:1px solid #d9b75d;opacity:.75}' +
@@ -181,7 +181,7 @@ const INDICATOR_SCRIPT = '(' + function () {
   // show the pointer around a screenshot.
   globalThis.__dshStatus = (next, point, presentation) => {
     if(presentation)options=presentation;
-    pointer.style.setProperty('--motion',(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:options.pointerAnimationMs??240)+'ms');
+    pointer.style.setProperty('--motion',(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:options.pointerAnimationMs??600)+'ms');
     if (next === 'capture' || next === 'captured') { layer.classList.toggle('capture', next === 'capture'); return; }
     state = next;
     mount();
@@ -1193,7 +1193,7 @@ export class BrowserLane {
     if (point && this.showsIndicator(tab) && tab.indicator === 'working') {
       await this.updateIndicator(tab, { x: point.x, y: point.y, click });
       const settings=this.presentationSettings();
-      if(settings.cursorIndicatorEnabled!==false)await sleep(settings.pointerAnimationMs??240);
+      if(settings.cursorIndicatorEnabled!==false)await sleep(settings.pointerAnimationMs??600);
     }
   }
 

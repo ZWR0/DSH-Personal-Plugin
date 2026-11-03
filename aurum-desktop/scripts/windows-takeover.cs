@@ -141,9 +141,9 @@ namespace DshTakeover {
     Native.Point? testPointerPoint;
     Native.Point targetPoint, targetFrom, renderedPoint;
     bool hasTarget;
-    int pointerAnimationMs=240, activeAnimationMs;
+    int pointerAnimationMs=600, activeAnimationMs;
     string targetPhase="none";
-    DateTime targetExpires=DateTime.MinValue;
+    DateTime clickEnds=DateTime.MinValue;
     readonly System.Diagnostics.Stopwatch targetClock=new System.Diagnostics.Stopwatch();
     Rectangle[] displays=new Rectangle[0],testDisplays;
     string displaySignature="";
@@ -171,7 +171,7 @@ namespace DshTakeover {
       timer.Interval = 35;
       timer.Tick += delegate {
         double elapsed = hideAt == DateTime.MaxValue ? -1 : (DateTime.UtcNow - hideAt).TotalMilliseconds;
-        if (elapsed >= 160) { HideFrames(); HidePointer(); armed = false; hideAt = DateTime.MaxValue; return; }
+        if (elapsed >= 160) { HideFrames(); hasTarget=false; HidePointer(); armed = false; hideAt = DateTime.MaxValue; return; }
         byte alpha = elapsed >= 0 ? (byte)Math.Max(0, 255 * (1 - elapsed / 160)) : (byte)255;
         if(armed&&!paused)RefreshDisplays(false);
         UpdatePointer(alpha);
@@ -250,7 +250,7 @@ namespace DshTakeover {
           UpdatePointer(255);
         } else if(action=="target_config") {
           cursorIndicator=Get(command,"cursorIndicatorEnabled",true);
-          pointerAnimationMs=Math.Max(0,Math.Min(1000,Get(command,"pointerAnimationMs",240)));
+          pointerAnimationMs=Math.Max(0,Math.Min(1000,Get(command,"pointerAnimationMs",600)));
           idleMs=Math.Max(200,Math.Min(3000,Get(command,"indicatorIdleMs",800)));
           ConfigureVisibility(Get(command,"remoteIndicatorVisible",true));UpdatePointer(255);
         } else if(action=="pointer_target") {
@@ -266,7 +266,7 @@ namespace DshTakeover {
         } else if (action == "stop") {
           Stop("user");
         } else if (action == "resume") {
-          paused = false; armed = false; cancel.Reset(); HideFrames(); HidePointer(); hideAt = DateTime.MaxValue;
+          paused = false; armed = false; cancel.Reset(); HideFrames(); hasTarget=false; HidePointer(); hideAt = DateTime.MaxValue;
         } else if (action == "close") {
           cancel.Set(); ExitThread();
         } else if (action == "test_key" && testMode) {
@@ -360,11 +360,12 @@ namespace DshTakeover {
       targetPoint=new Native.Point(x,y);hasTarget=true;
       activeAnimationMs=moved&&phase==0?pointerAnimationMs:0;
       targetPhase=phase==1?"click":"move";targetClock.Restart();
-      targetExpires=DateTime.UtcNow.AddMilliseconds(activeAnimationMs+idleMs);
+      clickEnds=DateTime.UtcNow.AddMilliseconds(550);
       UpdatePointer(255);return moved;
     }
     void UpdatePointer(byte alpha) {
-      if(paused||!cursorIndicator||!hasTarget||DateTime.UtcNow>=targetExpires) { HidePointer(); return; }
+      if(paused||!cursorIndicator||!hasTarget) { HidePointer(); return; }
+      if(targetPhase=="click"&&DateTime.UtcNow>=clickEnds)targetPhase="move";
       double progress=activeAnimationMs==0?1:Math.Min(1,targetClock.Elapsed.TotalMilliseconds/activeAnimationMs);
       double eased=progress*progress*(3-2*progress);
       renderedPoint=new Native.Point((int)Math.Round(targetFrom.x+(targetPoint.x-targetFrom.x)*eased),(int)Math.Round(targetFrom.y+(targetPoint.y-targetFrom.y)*eased));

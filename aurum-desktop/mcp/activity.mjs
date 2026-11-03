@@ -5,8 +5,6 @@ export function isDesktopTool(name=''){
   return /^(?:mcp__wincu__)?windows_computer_use_(?!health$|tools$)[a-z_]+$/.test(name);
 }
 
-export const ACTIVITY_IDLE_MS=30000;
-
 const callArguments=value=>{
   if(typeof value==='string')try{return JSON.parse(value);}catch{return {};}
   return value&&typeof value==='object'?value:{};
@@ -25,10 +23,9 @@ export function readableAbort(exec,result){
 
 // The host knows turn boundaries; the stdio worker only knows individual calls.
 // Keep this lease outside the worker so tool-list reloads preserve the series.
-export function installActivity(ctx,file,{idleMs=ACTIVITY_IDLE_MS,reuseExisting=()=>false}={}){
+export function installActivity(ctx,file,{reuseExisting=()=>false}={}){
   let owner,closed=false,needsPublish=true;
-  const expireIdle=()=>{if(owner&&owner.pending===0&&Date.now()-owner.lastActive>=idleMs)owner=undefined;};
-  const publish=()=>{needsPublish=true;expireIdle();atomicJson(file,{active:!!owner,sessionId:owner?.id??null,turn:owner?.turn??null,indicator:!!owner?.desktop,action:owner?(owner.pending===0?'waiting':owner.action):null,browserAction:owner?.browserAction?(owner.pending===0?'waiting':owner.browserAction):null,expiresAt:owner?Date.now()+5000:0});needsPublish=false;};
+  const publish=()=>{needsPublish=true;atomicJson(file,{active:!!owner,sessionId:owner?.id??null,turn:owner?.turn??null,indicator:!!owner?.desktop,action:owner?(owner.pending===0?'waiting':owner.action):null,browserAction:owner?.browserAction?(owner.pending===0?'waiting':owner.browserAction):null,expiresAt:owner?Date.now()+5000:0});needsPublish=false;};
   publish();
   ctx.on('tools/execute',async(exec,next)=>{
     if(!isDesktopTool(exec.name))return next();
@@ -36,19 +33,18 @@ export function installActivity(ctx,file,{idleMs=ACTIVITY_IDLE_MS,reuseExisting=
     const session=exec.agent?.session;
     const turn=exec.agent?.phase?.kind==='running'?exec.agent.phase.turn:undefined;
     if(session&&turn!==undefined){
-      expireIdle();
       if(owner&&owner.id!==session.id)throw Error('COMPUTER_USE_BUSY: Another conversation is using the desktop. Wait for that operation series to finish or stop it before retrying.');
-      const current=owner??={id:session.id,turn,pending:0,lastActive:Date.now(),desktop:false,browserAction:null,action:null};
+      const current=owner??={id:session.id,turn,pending:0,desktop:false,browserAction:null,action:null};
       if(current.turn!==turn){current.turn=turn;current.desktop=false;current.browserAction=null;}
       const args=callArguments(exec.arguments), action=exec.name.replace(/^(?:mcp__wincu__)?windows_computer_use_/,'');
       current.action=action;
       const effectiveArgs=action==='open_browser'?{...args,reuseExisting:args.reuseExisting??reuseExisting()}:args;
       // Browser status never borrows the system pointer or stop shortcuts.
       if((action==='open_browser'&&!effectiveArgs.reuseExisting)||isBrowserCall(effectiveArgs))current.browserAction=exec.name.replace(/^(?:mcp__wincu__)?windows_computer_use_/,'');
-      if(!isQuietCall(action,effectiveArgs))current.desktop=true;
+      if(!isQuietCall(action,effectiveArgs)||(!isBrowserCall(effectiveArgs)&&['click','double_click','move','drag','scroll','focus','invoke','set_value'].includes(action)))current.desktop=true;
       current.pending++;publish();
       try{return readableAbort(exec,await next());}
-      finally{current.pending--;current.lastActive=Date.now();if(owner===current)publish();}
+      finally{current.pending--;if(owner===current)publish();}
     }
     return readableAbort(exec,await next());
   },{global:true});
