@@ -76,6 +76,8 @@ window.__ModuleLoader__.load({
       refresh: '刷新',
       refreshing: '正在刷新…',
       newSession: '新建会话',
+      creatingSession: '正在创建…', createFailed: '新建会话失败：{message}', openCreated: '打开新会话', createdReady: '独立会话已创建，点击打开即可开始',
+      newSessionHint: '创建独立对话，不携带已有消息或草稿',
       groupWaiting: '等待我回答',
       groupRunning: '正在运行',
       groupIdle: '最近会话',
@@ -177,6 +179,8 @@ window.__ModuleLoader__.load({
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
       newSession: 'New session',
+      creatingSession: 'Creating…', createFailed: 'Could not create session: {message}', openCreated: 'Open new session', createdReady: 'Your independent session is ready to open',
+      newSessionHint: 'Create an independent conversation without existing messages or drafts',
       groupWaiting: 'Waiting for you',
       groupRunning: 'Running',
       groupIdle: 'Recent sessions',
@@ -342,6 +346,8 @@ window.__ModuleLoader__.load({
       '.mdk-workbench .mdk-conn{box-shadow:none}.mdk-workbench .mdk-rowwrap{box-shadow:0 2px 8px color-mix(in srgb,var(--dsw-alias-label-primary) 3%,transparent)}.mdk-workbench .mdk-rowwrap:has(.mdk-row[aria-current=true]){box-shadow:none}.mdk-workbench .mdk-filters .mdk-choice{box-shadow:none;background:transparent;border-color:transparent;color:var(--dsw-alias-label-secondary)}.mdk-workbench .mdk-filters .mdk-choice[aria-pressed=true]{background:color-mix(in srgb,var(--mdk-accent) 8%,var(--dsw-alias-bg-layer-1));border-color:color-mix(in srgb,var(--mdk-accent) 25%,var(--mdk-line));color:var(--mdk-accent)}.mdk-workbench .mdk-filters .mdk-count{background:transparent;color:inherit;font-variant-numeric:tabular-nums}.mdk-workbench .mdk-card-files{color:var(--mdk-accent);border-color:var(--mdk-line)}.mdk-workbench .mdk-btn[data-variant=quiet],.mdk-workbench .mdk-rowacts .mdk-btn[data-variant=danger]{background:transparent;border-color:transparent;box-shadow:none}.mdk-workbench .mdk-rowacts{column-gap:10px}.mdk-workbench .mdk-rowwrap>.mdk-rowacts{padding-top:10px;padding-bottom:12px}.mdk-workbench .mdk-card-open[data-variant=primary]{box-shadow:none}.mdk-workbench .mdk-btn[data-variant=quiet]:focus-visible,.mdk-workbench .mdk-btn[data-variant=danger]:focus-visible{outline-offset:-2px}',
       '@media(hover:hover){.mdk-workbench .mdk-btn[data-variant=quiet]:hover:not(:disabled){background:var(--mdk-soft);border-color:transparent;box-shadow:none}.mdk-workbench .mdk-rowacts .mdk-btn[data-variant=danger]:hover:not(:disabled){background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 8%,transparent);box-shadow:none}.mdk-workbench .mdk-filters .mdk-choice:hover:not([aria-pressed=true]){background:var(--mdk-soft)}}',
       '@media(max-width:600px){.mdk-workbench .mdk-rowwrap>.mdk-rowacts{grid-template-columns:repeat(2,minmax(0,1fr))}.mdk-workbench .mdk-rowwrap>.mdk-rowacts>.mdk-btn:only-of-type,.mdk-workbench .mdk-rowwrap>.mdk-rowacts>.mdk-btn:nth-of-type(3):last-of-type{grid-column:1/-1}}',
+      '.mdk-workbench .mdk-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:10px}.mdk-workbench .mdk-searchbox{grid-column:auto;min-width:0;min-height:48px}.mdk-workbench .mdk-newsession{min-width:112px;min-height:48px;padding:10px 16px;border-radius:12px;white-space:nowrap;font-size:14px;font-weight:600;box-shadow:0 3px 10px color-mix(in srgb,var(--mdk-accent) 12%,transparent)}.mdk-workbench .mdk-newsession:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}.mdk-workbench .mdk-newsession[data-busy=true]{cursor:progress}.mdk-create-notice{margin:0 24px 12px;padding:10px 12px;border:1px solid var(--mdk-line);border-radius:10px;background:var(--mdk-soft);font-size:13px;line-height:1.6;overflow-wrap:anywhere}.mdk-create-notice[role=alert]{color:var(--dsw-alias-state-error-primary)}',
+      '@media(hover:hover){.mdk-workbench .mdk-newsession:hover:not(:disabled){box-shadow:0 4px 14px color-mix(in srgb,var(--mdk-accent) 20%,transparent);filter:brightness(1.04)}}@media(prefers-reduced-motion:no-preference){.mdk-workbench .mdk-btn,.mdk-workbench .mdk-choice{transition:background-color 140ms ease,border-color 140ms ease,box-shadow 140ms ease,transform 140ms ease}.mdk-workbench .mdk-btn:active:not(:disabled),.mdk-workbench .mdk-choice:active:not(:disabled){transform:translateY(1px)}}@media(max-width:600px){.mdk-workbench .mdk-tools{padding:12px 16px}.mdk-workbench .mdk-newsession{padding:10px 12px}.mdk-create-notice{margin-inline:16px}}',
     ].join('')
 
     function ActionIcon({ name }) {
@@ -473,6 +479,7 @@ window.__ModuleLoader__.load({
       } catch (_) { /* unavailable or damaged browser storage uses defaults */ }
       const activity = createStore({ items: [], sound: savedSound.enabled, volume: savedSound.volume, soundReady: false, soundBusy: false, error: '', storageError: '' })
       const fileNotice = createStore('')
+      const creation = createStore({ busy: false, error: '', sessionId: null })
       const historyEpoch = createStore(0)
       let initialMobileHome = false
       try { initialMobileHome = window.localStorage.getItem(HOME_KEY) === 'true' } catch (_) { /* storage may be blocked */ }
@@ -837,13 +844,26 @@ window.__ModuleLoader__.load({
         revealConversation()
       }
 
-      function startSession() {
+      async function startSession(cwd) {
+        const previous = creation.getSnapshot()
+        if (previous.busy) return
+        creation.publish({ ...previous, busy: true, error: '' })
         stopBrowsing()
-        try { ctx.uiWorkspace.startSession() } catch (error) {
-          console.warn('mobile-deck: could not start a session', error)
-          return
+        let sessionId = previous.sessionId
+        try {
+          const navigation = ctx.layout.beginNavigation()
+          if (!sessionId) sessionId = await ctx.sessions.create(cwd ? { cwd } : {})
+          if (!active) return
+          if (navigation.aborted || !settings.getSnapshot().enabled) {
+            creation.publish({ busy: false, error: '', sessionId })
+            return
+          }
+          ctx.uiWorkspace.openSession(sessionId)
+          revealConversation()
+          creation.publish({ busy: false, error: '', sessionId: null })
+        } catch (error) {
+          if (active) creation.publish({ busy: false, sessionId, error: t('createFailed', { message: String(error.message || error) }) })
         }
-        revealConversation()
       }
 
       async function saveSettings(patch) {
@@ -1136,6 +1156,7 @@ window.__ModuleLoader__.load({
         const reviewed = useStore(reviewedFailures)
         const events = useStore(activity)
         const fileError = useStore(fileNotice)
+        const newConversation = useStore(creation)
         const rules = useStore(alertRules)
 
         const twoPane = snapshot.layout === 'pad' ? true : snapshot.layout === 'phone' ? false : wide
@@ -1233,20 +1254,18 @@ window.__ModuleLoader__.load({
               h('div', { className: 'mdk-sub' }, t('pageHint'))),
             h(ConnectionChip)),
           banner,
-          h('div', { className: 'mdk-tools' },
+          h('div', { className: 'mdk-tools', 'aria-busy': newConversation.busy },
             h('label', { className: 'mdk-searchbox' }, h(ActionIcon, { name: 'search' }), h('input', {
               type: 'search', className: 'mdk-search', value: query,
               placeholder: t('search'), 'aria-label': t('search'),
               onChange: event => setQuery(event.target.value),
             })),
             h('button', {
-              type: 'button', className: 'mdk-btn', 'data-variant': 'primary', onClick: startSession,
-            }, h(ActionIcon, { name: 'newSession' }), t('newSession')),
-            h('button', {
-              type: 'button', className: 'mdk-btn', disabled: fresh.refreshing,
-              onClick: () => { void refreshSessions() },
-            'data-busy': fresh.refreshing, 'data-variant': 'quiet',
-            }, h(ActionIcon, { name: 'refresh' }), fresh.refreshing ? t('refreshing') : t('refresh'))),
+              type: 'button', className: 'mdk-btn mdk-newsession', 'data-variant': 'primary', disabled: newConversation.busy || offline,
+              'data-busy': newConversation.busy, 'aria-description': t('newSessionHint'),
+              onClick: () => { void startSession(selected && selected.row.cwd) },
+            }, h(ActionIcon, { name: 'newSession' }), t(newConversation.busy ? 'creatingSession' : newConversation.sessionId ? 'openCreated' : 'newSession'))),
+          newConversation.error || newConversation.sessionId ? h('div', { className: 'mdk-create-notice', role: newConversation.error ? 'alert' : 'status' }, newConversation.error || t('createdReady')) : null,
           h('div', { className: 'mdk-filters', role: 'group', 'aria-label': t('filterAll') },
             [['all', 'filterAll', rows.length], ['followed', 'filterFollowed', rows.filter(item => rules.followed.includes(item.row.id)).length], ['waiting', 'filterWaiting', rows.filter(isTodo).length], ['running', 'filterRunning', rows.filter(item => !isWaiting(item) && isRunning(item)).length], ['unread', 'filterUnread', rows.filter(item => item.status && item.status.completionUnread).length]].map(([value, key, count]) =>
               h('button', { key: value, type: 'button', className: 'mdk-choice', 'aria-pressed': filter === value, onClick: () => setFilter(value) }, t(key), h('span', { className: 'mdk-count' }, count)))),

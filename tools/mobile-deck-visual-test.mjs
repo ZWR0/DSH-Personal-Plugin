@@ -80,8 +80,8 @@ for(const dark of [false,true]){
   for (const button of await page.locator('.mdk-btn[data-variant=primary]').all()) {
     assert.notEqual(await button.evaluate(el=>getComputedStyle(el).backgroundImage),'none','primary actions retain their contrast background')
   }
-  assert.equal(await page.locator('.mdk-tools>.mdk-btn .mdk-icon').count(),2)
-  assert.deepEqual(await page.locator('.mdk-tools>.mdk-btn').allTextContents(),['新建会话','刷新'])
+  assert.equal(await page.locator('.mdk-tools>.mdk-btn .mdk-icon').count(),1)
+  assert.deepEqual(await page.locator('.mdk-tools>.mdk-btn').allTextContents(),['新建会话'])
   await page.screenshot({path:`${out}/${dark?'dark':'light'}-${width}.png`,fullPage:true})
   await page.locator('.mdk-filters button').filter({hasText:'待处理'}).click()
   await page.locator('[data-todo-kind=failure]').waitFor()

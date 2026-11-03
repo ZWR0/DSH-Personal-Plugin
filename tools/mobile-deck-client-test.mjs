@@ -24,6 +24,10 @@ let connectionState = 'connected'
 let cancelled = []
 let opened = []
 let started = 0
+const createRequests = []
+let createGate = null
+let createFailure = null
+let navigation = new AbortController()
 let reconnected = 0
 let panelSelections = []
 let activePanelId = 'mobile-deck'
@@ -96,6 +100,7 @@ const ctx = {
     },
   },
   sessions: {
+    async create(request) { createRequests.push(request); if (createGate) await createGate.promise; if (createFailure) throw createFailure; return `new-${createRequests.length}` },
     list: { getSnapshot: () => catalog, subscribe(fn) { listeners.list.add(fn); return () => listeners.list.delete(fn) } },
     async refresh() {
       refreshCount += 1
@@ -142,7 +147,7 @@ const ctx = {
     openSession(id) { opened.push(id) },
     startSession() { started += 1 },
   },
-  layout: { selectPanel(id) { activePanelId=id; panelSelections.push(id); nativePanelChanged() } },
+  layout: { beginNavigation() { navigation.abort(); navigation = new AbortController(); return navigation.signal }, selectPanel(id) { navigation.abort(); activePanelId=id; panelSelections.push(id); nativePanelChanged() } },
 }
 
 // ---------------------------------------------------------------- load module
@@ -223,7 +228,7 @@ document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles
 composer.focus()
 assert.equal(document.activeElement, composer, 'keyboard navigation can reach the editor')
 await React.act(async () => openRecord())
-ctx.uiWorkspace.startSession = () => { composer.focus() }
+// Newly created sessions open through the same native navigation callback.
 await React.act(async () => [...document.querySelectorAll('.mdk-btn')].find(node => node.textContent === '新建会话').click())
 assert.equal(document.activeElement, composer, 'new sessions retain normal input behavior')
 window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
@@ -261,8 +266,43 @@ assert.equal(document.querySelector('.mdk-guide'), null)
 // New session entry.
 const newButton = [...document.querySelectorAll('.mdk-btn')].find(node => node.textContent === '新建会话')
 await React.act(async () => newButton.click())
-assert.equal(started, 1)
+assert.equal(started, 0, 'never reuse native startSession or its unsent draft')
+assert.equal(createRequests.length, 2)
+assert.equal(opened.at(-1), 'new-2')
+assert.ok(createRequests.every(request => !('sessionId' in request)), 'creation never names an existing blank session')
+assert.equal(document.querySelectorAll('.mdk-tools>.mdk-btn').length, 1, 'no permanent refresh button')
 assert.equal(panelSelections.at(-1), null)
+
+// Creation waits for a fresh identity, prevents duplicate taps and never opens on failure.
+createGate = (() => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } })()
+const beforeCreate = createRequests.length
+await React.act(async () => newButton.click())
+assert.equal(newButton.disabled, true)
+assert.match(newButton.textContent, /正在创建/)
+await React.act(async () => newButton.click())
+assert.equal(createRequests.length, beforeCreate + 1)
+await React.act(async () => createGate.resolve())
+createGate = null
+assert.equal(newButton.disabled, false)
+assert.equal(opened.at(-1), `new-${createRequests.length}`)
+const beforeFailure = opened.length
+createFailure = new Error('creation unavailable')
+await React.act(async () => newButton.click())
+assert.equal(opened.length, beforeFailure)
+assert.match(document.querySelector('.mdk-create-notice').textContent, /creation unavailable/)
+createFailure = null
+await React.act(async () => newButton.click())
+assert.equal(opened.at(-1), `new-${createRequests.length}`)
+createGate = (() => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } })()
+await React.act(async () => newButton.click())
+ctx.layout.selectPanel('mobile-deck')
+await React.act(async () => createGate.resolve())
+createGate = null
+assert.equal(newButton.textContent, '打开新会话', 'superseded navigation leaves a recoverable created session')
+const beforeReopen = createRequests.length
+await React.act(async () => newButton.click())
+assert.equal(createRequests.length, beforeReopen, 'opening a created session must not create another')
+assert.equal(opened.at(-1), `new-${beforeReopen}`)
 
 // ---------------------------------------------------------------- stop semantics
 
