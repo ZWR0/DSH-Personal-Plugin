@@ -1919,7 +1919,7 @@ function Show-AgentTarget {
   if(-not $script:WcuPointerHwnd) { return }
   [void](Test-Failsafe)
   $script:WcuLastAgentTarget=@{x=$X;y=$Y;phase=if($Clicked){'click'}else{'move'}}
-  $phase=if($Clicked){1}elseif($Immediate -or $script:WcuAction -eq 'drag'){2}else{0}
+  $phase=if($Clicked){1}elseif($Immediate){2}else{0}
   $reply=[WindowsComputerUseNative]::AgentTarget($script:WcuPointerHwnd,$X,$Y,$phase)
   if($reply -eq 0) { throw 'COMPUTER_USE_INDICATOR_UNAVAILABLE: Target feedback failed. A click-feedback failure may follow dispatched input; observe the app before retrying.' }
   if($reply -eq 2 -and $phase -eq 0) {

@@ -145,8 +145,8 @@ const INDICATOR_SCRIPT = '(' + function () {
     '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform var(--motion,600ms) cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
     '.status{position:absolute;top:18px;left:50%;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 14px;border:1px solid #b18b3266;border-radius:999px;background:#1d1e20ee;color:#f6edd6;font:13px/1.5 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}.status.on{display:block}' +
     '.pointer.on{opacity:1}.pointer svg{position:relative;display:block;margin:-26px 0 0 -22px;filter:drop-shadow(0 0 3px #a87a2290) drop-shadow(0 0 8px #a87a2250) drop-shadow(0 0 14px #a87a2228)}' +
-    '.ring{position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:3px;border:1px solid #d9b75d;opacity:.75}' +
-    '.ring.go{animation:ring .55s ease-out}.trace{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.trace polyline{fill:none;stroke:#d9b75d;stroke-width:1.4;stroke-dasharray:3 4;opacity:0}.trace.go polyline{animation:trace .9s ease-out}@keyframes trace{from{opacity:.65}to{opacity:0}}@keyframes ring{from{opacity:1;transform:scale(.75)}to{opacity:.75;transform:scale(1)}}' +
+    '.ring{display:none;position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:3px;border:1px solid #d9b75d;opacity:.75}' +
+    '.ring.go{display:block;animation:ring .55s ease-out}.trace{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.trace polyline{fill:none;stroke:#d9b75d;stroke-width:1.4;stroke-dasharray:3 4;opacity:0}.trace.go polyline{animation:trace .9s ease-out}@keyframes trace{from{opacity:.65}to{opacity:0}}@keyframes ring{from{opacity:1;transform:scale(.75)}to{opacity:.75;transform:scale(1)}}' +
     '@media (prefers-reduced-motion:reduce){.pointer{transition:opacity .2s}.ring.go,.trace.go polyline{animation:none}}</style>' +
     '<div class="layer"><svg class="trace"><polyline/></svg><div class="status"></div><div class="pointer"><div class="ring"></div><svg width="20" height="22" viewBox="0 0 20 22"><path d="M4 3 16 7C18 7.7 18 9 16 10C13.5 10.5 10 9.5 9.8 13.4C9.6 14.7 9.2 16 8.5 17.5C7.6 19.2 6 19 5.5 16.5L2 5C1.5 3 2.5 2.5 4 3Z" fill="#1b2221" stroke="#d9b76d" stroke-width=".85" stroke-linejoin="round"/></svg></div></div>';
   const layer = shadow.querySelector('.layer'), pointer = shadow.querySelector('.pointer'), ring = shadow.querySelector('.ring');
@@ -183,6 +183,10 @@ const INDICATOR_SCRIPT = '(' + function () {
     if(presentation)options=presentation;
     pointer.style.setProperty('--motion',(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:options.pointerAnimationMs??600)+'ms');
     if (next === 'capture' || next === 'captured') { layer.classList.toggle('capture', next === 'capture'); return; }
+    if(next==='working'&&!lastPoint){
+      lastPoint={x:Math.round(innerWidth/2),y:Math.round(innerHeight/2)};
+      pointer.style.setProperty('--x',`${lastPoint.x}px`);pointer.style.setProperty('--y',`${lastPoint.y}px`);
+    }
     state = next;
     mount();
     badge(state === 'working' && options.indicatorEnabled);

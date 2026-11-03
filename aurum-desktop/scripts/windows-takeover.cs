@@ -168,7 +168,7 @@ namespace DshTakeover {
       callback = OnKey;
       hook = Native.SetWindowsHookEx(13, callback, Native.GetModuleHandle(null), 0);
       if (hook == IntPtr.Zero) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Could not install the stop shortcut listener");
-      timer.Interval = 35;
+      timer.Interval = 16;
       timer.Tick += delegate {
         double elapsed = hideAt == DateTime.MaxValue ? -1 : (DateTime.UtcNow - hideAt).TotalMilliseconds;
         if (elapsed >= 160) { HideFrames(); hasTarget=false; HidePointer(); armed = false; hideAt = DateTime.MaxValue; return; }
@@ -246,7 +246,8 @@ namespace DshTakeover {
           if (!indicator) HideFrames();
           else if (rebuild&&!displaysRebuilt) { HideFrames(); ShowFrames(); }
           else foreach (var frame in frames) frame.Present(255);
-          if(action=="preview") { Native.Point point; if(Native.GetCursorPos(out point))SetTarget(point.x,point.y,2); }
+          pointerAnimationMs=Math.Max(0,Math.Min(1000,Get(command,"pointerAnimationMs",600)));
+          if(cursorIndicator&&!hasTarget) { Native.Point point; if(Native.GetCursorPos(out point))SetTarget(point.x,point.y,2); }
           UpdatePointer(255);
         } else if(action=="target_config") {
           cursorIndicator=Get(command,"cursorIndicatorEnabled",true);
@@ -356,6 +357,11 @@ namespace DshTakeover {
     bool SetTarget(int x,int y,int phase) {
       if(paused||!cursorIndicator)return false;
       bool moved=!hasTarget||targetPoint.x!=x||targetPoint.y!=y;
+      UpdatePointer(255);
+      if(!moved&&phase!=2) {
+        if(phase==1) { targetPhase="click";clickEnds=DateTime.UtcNow.AddMilliseconds(550); }
+        return false;
+      }
       targetFrom=hasTarget?renderedPoint:new Native.Point(x,y);
       targetPoint=new Native.Point(x,y);hasTarget=true;
       activeAnimationMs=moved&&phase==0?pointerAnimationMs:0;
@@ -412,7 +418,7 @@ namespace DshTakeover {
     internal void SetRemoteVisible(bool visible) {remoteVisible=visible;if(IsHandleCreated)Native.SetWindowDisplayAffinity(Handle,visible?0u:0x11u);}
     internal bool ClickThrough { get { return (Native.GetWindowLong(Handle,-20)&0x08080020)==0x08080020; } }
     internal bool CaptureExcluded { get { uint affinity; return Native.GetWindowDisplayAffinity(Handle,out affinity)&&affinity==0x11; } }
-    // Fixed marker canvas in 96-DPI units; the reticle names the actual input hotspot.
+    // Fixed marker canvas in 96-DPI units; click feedback marks the input hotspot.
     static float CanvasWidth(SizeF extent) { return 80f; }
     static float CanvasHeight(SizeF extent) { return 80f; }
     static bool FlipX(Native.Point point, Rectangle screen, float zoom, SizeF extent) { return screen.Right-point.x < (CanvasWidth(extent)-24)*zoom; }
@@ -496,12 +502,7 @@ namespace DshTakeover {
       using(var g=Graphics.FromImage(image)) {
         g.Clear(Color.Transparent);g.SmoothingMode=SmoothingMode.AntiAlias;g.TextRenderingHint=TextRenderingHint.AntiAliasGridFit;g.ScaleTransform(zoom,zoom);
         float targetX=left?canvasWidth-32:32,targetY=up?canvasHeight-32:32;
-        using(var aim=new Pen(Color.FromArgb(clicked?255:200,217,183,109),clicked?2f:1f)) {
-          float gap=clicked?7:5;
-          g.DrawLine(aim,targetX-gap,targetY-2,targetX-gap,targetY-gap);g.DrawLine(aim,targetX-gap,targetY-gap,targetX-2,targetY-gap);
-          g.DrawLine(aim,targetX+gap,targetY+2,targetX+gap,targetY+gap);g.DrawLine(aim,targetX+gap,targetY+gap,targetX+2,targetY+gap);
-          g.DrawLine(aim,targetX-7,targetY-8,targetX-3,targetY-3);
-        }
+        if(clicked)using(var aim=new Pen(Color.FromArgb(230,217,183,109),1.4f))g.DrawEllipse(aim,targetX-7,targetY-7,14,14);
         // Offset from the Windows hotspot instead of drawing a second arrow over it.
         float x=targetX-22,y=targetY-26;
         using(var arrow=new GraphicsPath()) {

@@ -24,6 +24,8 @@ Object.defineProperty(dom.window.document, 'fullscreenElement', { get: () => ful
 dom.window.HTMLElement.prototype.showPopover = function () {}
 try {
   dom.window.eval('(' + source.slice(begin + "const INDICATOR_SCRIPT = '(' + ".length, end + 1) + ')()')
+  dom.window.__dshStatus('working', null, { indicatorEnabled:true,cursorIndicatorEnabled:true })
+  assert.equal(dom.window.__dshIndicator().pointer,true,'Browser takeover shows a pointer before the first target')
   dom.window.__dshStatus('working', { x: 320, y: 180 }, { action: 'click', indicatorEnabled: true, cursorIndicatorEnabled: true })
   assert.equal(dom.window.__dshIndicator().pointer, true)
   assert.equal(dom.window.__dshIndicator().status, true)
@@ -73,7 +75,7 @@ try {
     await control.sync()
     const status = await control.command('status')
     assert.equal(status.statusOnly, false)
-    assert.equal(status.pointerVisible, false)
+    assert.equal(status.pointerVisible, true)
     const targeted=await control.command('pointer_target',{x:400,y:300})
     assert.equal(targeted.pointerVisible,true)
     assert.equal(targeted.pointerSource,'agent-target')
