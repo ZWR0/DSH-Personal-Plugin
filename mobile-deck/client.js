@@ -76,7 +76,6 @@ window.__ModuleLoader__.load({
       refresh: '刷新',
       refreshing: '正在刷新…',
       newSession: '新建会话',
-      backToChat: '回到会话',
       groupWaiting: '等待我回答',
       groupRunning: '正在运行',
       groupIdle: '最近会话',
@@ -178,7 +177,6 @@ window.__ModuleLoader__.load({
       refresh: 'Refresh',
       refreshing: 'Refreshing…',
       newSession: 'New session',
-      backToChat: 'Back to chat',
       groupWaiting: 'Waiting for you',
       groupRunning: 'Running',
       groupIdle: 'Recent sessions',
@@ -348,7 +346,7 @@ window.__ModuleLoader__.load({
 
     function ActionIcon({ name }) {
       const paths = {
-        newSession: 'M12 5v14M5 12h14', backToChat: 'M9 5H5v14h14V9M5 12h11m-4-4 4 4-4 4',
+        newSession: 'M12 5v14M5 12h14',
         open: 'M7 17 17 7M7 7h10v10', refresh: 'M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1',
         retry: 'M20 7v5h-5M6 7a7 7 0 1 1-1 9', stop: 'M7 7h10v10H7z',
         save: 'M5 4h12l3 3v13H4V4h1m3 0v6h8V4M8 20v-6h8v6', search: 'M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',
@@ -419,6 +417,36 @@ window.__ModuleLoader__.load({
 `
 
     function apply(ctx) {
+      let stopBrowsing = () => {}
+      /** Keep touch navigation in reading mode until the user targets the composer. */
+      function prepareConversationBrowsing() {
+        stopBrowsing()
+        if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) return
+        const isComposer = target => target && typeof target.closest === 'function' && target.closest('[data-composer-input]')
+        const dismissAutomaticFocus = event => {
+          if (isComposer(event.target)) event.target.blur()
+        }
+        const beginTyping = event => {
+          if (isComposer(event.target)) stopBrowsing()
+        }
+        const navigateKeyboard = event => {
+          if (event.key === 'Tab') stopBrowsing()
+        }
+        stopBrowsing = () => {
+          document.removeEventListener('focusin', dismissAutomaticFocus, true)
+          document.removeEventListener('pointerdown', beginTyping, true)
+          document.removeEventListener('mousedown', beginTyping, true)
+          document.removeEventListener('keydown', navigateKeyboard, true)
+          stopBrowsing = () => {}
+        }
+        document.addEventListener('focusin', dismissAutomaticFocus, true)
+        document.addEventListener('pointerdown', beginTyping, true)
+        document.addEventListener('mousedown', beginTyping, true)
+        document.addEventListener('keydown', navigateKeyboard, true)
+        const focused = document.activeElement
+        if (isComposer(focused)) focused.blur()
+      }
+      ctx.effect(() => () => stopBrowsing(), 'mobile-deck: conversation browsing focus')
       ctx.effect(() => {
         const style = document.createElement('style')
         style.dataset.mobileDeckPluginTabs = 'true'
@@ -793,26 +821,29 @@ window.__ModuleLoader__.load({
         setStop(id, row && row.running === false ? { phase: 'stopped' } : { phase: 'stopping' })
       }
 
-      function openConversation() {
+      function revealConversation() {
         try { ctx.layout.selectPanel(null) } catch (error) {
           console.warn('mobile-deck: could not reveal the native conversation', error)
         }
       }
 
       function openSession(id) {
+        prepareConversationBrowsing()
         try { ctx.uiWorkspace.openSession(id) } catch (error) {
+          stopBrowsing()
           console.warn('mobile-deck: could not open the session', error)
           return
         }
-        openConversation()
+        revealConversation()
       }
 
       function startSession() {
+        stopBrowsing()
         try { ctx.uiWorkspace.startSession() } catch (error) {
           console.warn('mobile-deck: could not start a session', error)
           return
         }
-        openConversation()
+        revealConversation()
       }
 
       async function saveSettings(patch) {
@@ -1212,9 +1243,6 @@ window.__ModuleLoader__.load({
               type: 'button', className: 'mdk-btn', 'data-variant': 'primary', onClick: startSession,
             }, h(ActionIcon, { name: 'newSession' }), t('newSession')),
             h('button', {
-              type: 'button', className: 'mdk-btn', onClick: openConversation,
-            }, h(ActionIcon, { name: 'backToChat' }), t('backToChat')),
-            h('button', {
               type: 'button', className: 'mdk-btn', disabled: fresh.refreshing,
               onClick: () => { void refreshSessions() },
             'data-busy': fresh.refreshing, 'data-variant': 'quiet',
@@ -1342,6 +1370,7 @@ window.__ModuleLoader__.load({
 
       /** Keep the workbench panel available to the composer while enabled. */
       function syncPanelRegistration(enabled) {
+        if (!enabled) stopBrowsing()
         if (enabled && !disposePanel) {
           const disposeMain = ctx.slots.inject('main', () => ctx.slots.register({
             name: 'main',

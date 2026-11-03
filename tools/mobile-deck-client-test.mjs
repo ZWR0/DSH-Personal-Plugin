@@ -193,6 +193,53 @@ await React.act(async () => document.querySelector('.mdk-rowacts .mdk-btn').clic
 assert.deepEqual(opened, ['wait'])
 assert.deepEqual(panelSelections, [null], 'native sidebar only adopts the conversation when activePanelId is null')
 
+// Touch returns open the transcript without retaining or restoring editor focus.
+const originalMatchMedia = window.matchMedia
+const originalOpen = ctx.uiWorkspace.openSession
+const originalStart = ctx.uiWorkspace.startSession
+window.matchMedia = query => ({ matches: query === '(pointer: coarse)', addEventListener() {}, removeEventListener() {} })
+const composer = document.createElement('div')
+composer.setAttribute('data-composer-input', '')
+composer.tabIndex = 0
+document.body.appendChild(composer)
+const otherInput = document.createElement('input')
+document.body.appendChild(otherInput)
+ctx.uiWorkspace.openSession = () => { composer.focus() }
+composer.focus()
+await React.act(async () => document.querySelector('.mdk-rowacts .mdk-btn').click())
+assert.notEqual(document.activeElement, composer, 'touch session entry dismisses automatic editor focus')
+composer.focus()
+assert.notEqual(document.activeElement, composer, 'delayed editor focus stays dismissed while reading')
+otherInput.focus()
+assert.equal(document.activeElement, otherInput, 'other input controls stay usable')
+composer.dispatchEvent(new window.Event('pointerdown', { bubbles: true }))
+composer.focus()
+assert.equal(document.activeElement, composer, 'explicit input tap enables typing')
+assert.equal([...document.querySelectorAll('.mdk-btn')].some(node => node.textContent === '回到会话'), false, 'conversation records provide navigation without a separate return button')
+const openRecord = () => document.querySelector('.mdk-rowacts .mdk-btn').click()
+await React.act(async () => openRecord())
+assert.notEqual(document.activeElement, composer, 'reopening a conversation record dismisses retained focus')
+document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', bubbles: true }))
+composer.focus()
+assert.equal(document.activeElement, composer, 'keyboard navigation can reach the editor')
+await React.act(async () => openRecord())
+ctx.uiWorkspace.startSession = () => { composer.focus() }
+await React.act(async () => [...document.querySelectorAll('.mdk-btn')].find(node => node.textContent === '新建会话').click())
+assert.equal(document.activeElement, composer, 'new sessions retain normal input behavior')
+window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+await React.act(async () => document.querySelector('.mdk-rowacts .mdk-btn').click())
+assert.equal(document.activeElement, composer, 'fine-pointer desktop navigation retains normal focus')
+window.matchMedia = query => ({ matches: query === '(pointer: coarse)', addEventListener() {}, removeEventListener() {} })
+await React.act(async () => openRecord())
+cleanups.get('mobile-deck: conversation browsing focus')()
+composer.focus()
+assert.equal(document.activeElement, composer, 'plugin teardown releases browsing focus protection')
+composer.remove()
+otherInput.remove()
+window.matchMedia = originalMatchMedia
+ctx.uiWorkspace.openSession = originalOpen
+ctx.uiWorkspace.startSession = originalStart
+
 // Search covers the full catalog before applying the recent-session limit.
 const search = document.querySelector('.mdk-search')
 async function searchFor(value) {
@@ -523,4 +570,4 @@ assert.equal(registrations.has('main:mobile-deck'), false, 'teardown releases th
 assert.equal(registrations.has('sidebar.panellist:mobile-deck'), false)
 
 await React.act(async () => root.unmount())
-console.log('MOBILE DECK CLIENT OK: grouping/search/filters, task activity deduplication, audio fallback, composer badge/navigation, single native workspace-files action and navigation, device preference, stop, offline state, enable switching and teardown')
+console.log('MOBILE DECK CLIENT OK: grouping/search/filters, task activity deduplication, audio fallback, composer badge/navigation, touch reading focus and explicit typing, single native workspace-files action and navigation, device preference, stop, offline state, enable switching and teardown')
