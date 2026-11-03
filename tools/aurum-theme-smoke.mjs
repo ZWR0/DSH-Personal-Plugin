@@ -158,7 +158,7 @@ const props = {
 }
 const html = renderToStaticMarkup(React.createElement(dock.Component, props))
 if (!html.includes('au-strip')) throw new Error('rendered markup lacks the rail')
-if (!html.includes('5.91M')) throw new Error('token total missing from the rail')
+if (!html.includes('≈191.0k / ≈60')) throw new Error('live peak estimate missing from the rail')
 if (!html.includes('19%')) throw new Error(`context reading missing: ${html.slice(0, 300)}`)
 if (!html.includes('--au-ratio')) throw new Error('rail does not publish its context ratio')
 if (!html.includes('5.0')) throw new Error('session average speed missing from the rail')

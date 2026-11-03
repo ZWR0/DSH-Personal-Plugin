@@ -71,6 +71,7 @@ window.__ModuleLoader__.load({
     }
 
     const zh = {
+      sessionTotal: '会话累计 Token',
       title: '暗金仪表',
       phaseDuration: '当前阶段（本页观察）', phaseActivity: '最近状态更新', phaseToolNames: '运行中工具',
       phaseWaiting: '等待模型',
@@ -83,8 +84,9 @@ window.__ModuleLoader__.load({
       detail: '详情',
       collapse: '收起',
       empty: '开始对话后，这里会实时显示 Token、速度与用时',
-      input: '输入',
-      output: '输出',
+      peakPair: '输入峰 / 输出峰', turnPair: '本轮输入 / 输出', closingPair: '收尾输出 / 上限', sessionPair: '累计输入 / 输出', latencyPair: '首字 / 缓存', turnInput: '本轮输入（含缓存）', turnOutput: '本轮输出', lastOutput: '收尾回复输出', outputLimit: '收尾回复 maxTokens',
+      input: '会话累计输入',
+      output: '会话累计输出',
       turnsSteps: '轮次 / 步数',
       ttft: '首字延迟',
       cache: '缓存命中',
@@ -115,6 +117,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
+      sessionTotal: 'Session tokens',
       title: 'Aurum telemetry',
       phaseDuration: 'Stage duration (this page)', phaseActivity: 'Last state update', phaseToolNames: 'Running tools',
       phaseWaiting: 'Waiting for model',
@@ -127,8 +130,9 @@ window.__ModuleLoader__.load({
       detail: 'Details',
       collapse: 'Collapse',
       empty: 'Token totals, live speed, and elapsed time appear here once the conversation starts.',
-      input: 'Input',
-      output: 'Output',
+      peakPair: 'Peak in / out', turnPair: 'Turn in / out', closingPair: 'Closing out / limit', sessionPair: 'Session in / out', latencyPair: 'First token / cache', turnInput: 'Turn input incl. cache', turnOutput: 'Turn output', lastOutput: 'Closing response output', outputLimit: 'Closing request maxTokens',
+      input: 'Session input',
+      output: 'Session output',
       turnsSteps: 'Turns / steps',
       ttft: 'First token',
       cache: 'Cache hit',
@@ -482,6 +486,8 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
   transform: rotate(-90deg);
 }
 .au-ring-meta {
+  align-items: center;
+  text-align: center;
   display: flex;
   flex-direction: column;
   line-height: 1.12;
@@ -505,11 +511,14 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
 .au-metrics {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
 .au-metric {
+  flex: 1;
+  align-items: center;
+  text-align: center;
   display: flex;
   flex-direction: column;
   line-height: 1.15;
@@ -558,20 +567,23 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
 .au-toggle:active {
   transform: translateY(1px);
 }
-.au-expand {
+.au-expand, .au-turn-grid {
   margin: 0 12px 10px;
   padding-top: 9px;
   border-top: 1px solid var(--au-cell-line, rgba(150, 112, 14, 0.22));
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px 10px;
 }
+.au-turn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 4px 0 0; padding: 0; border: 0; }
+.au-row { flex-wrap: wrap; gap: 8px; }
+.au-metrics { flex-wrap: wrap; justify-content: space-evenly; }
 .au-cell {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 4px 8px;
   border-radius: 8px;
   background: var(--au-gold-soft);
 }
@@ -594,7 +606,7 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
 .au-chart svg {
   width: 100%;
   height: auto;
-  max-height: 140px;
+  max-height: 100px;
   display: block;
 }
 .au-speed-legend { justify-content: flex-end; padding: 3px 6px 0; }
@@ -661,7 +673,10 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
 }
 @media (max-width: 560px) {
   .au-row { flex-wrap: wrap; }
-  .au-expand { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .au-metrics { flex-basis: 100%; order: 1; }
+  .au-ring { margin: 0 auto; }
+  .au-divider { display: none; }
+  .au-expand, .au-turn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 `
 
@@ -1102,6 +1117,20 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
           h('text', { x: 588, y: 110, textAnchor: 'end' }, formatDuration(span))))
     }
 
+    function TurnUsageDetails(props) {
+      const chat = props.useChat(snapshot => snapshot)
+      const tails = (chat.order || []).map(key => chat.nodes.get(key)).filter(node => node?.kind === 'turn-tail')
+      const tail = tails.sort((a, b) => b.data.turn - a.data.turn)[0]?.data
+      const usage = tail?.tokenUsage
+      const last = tail?.closing?.finalNode
+      const exact = value => Number.isFinite(value) ? value.toLocaleString('en-US') : '—'
+      const input = usage ? usage.totalTokens - usage.outputTokens : undefined
+      const cell = (label, a, b) => h('div', { className: 'au-cell' }, h('b', null, exact(a) + ' / ' + exact(b)), h('small', null, props.t(label)))
+      return h('div', { className: 'au-context', 'data-aurum-turn-usage': '' },
+        h('div', { className: 'au-turn-grid' }, cell('turnPair', input, usage?.outputTokens),
+          cell('closingPair', last?.usage?.outputTokens, last?.requestConfig?.maxTokens)))
+    }
+
     function TelemetryRail(props) {
       const t = props.t
       const enabled = useEnabled()
@@ -1184,6 +1213,22 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
       const history = useMemo(function () {
         return live.history.map(function (row) { return { at: row.at, value: row.value * tokensPerChar, turn: row.turn } })
       }, [live.history, tokensPerChar])
+      const currentTurn = running ? (partial?.turn ?? Math.max(0, turns - 1))
+        : nodes.reduce((latest, node) => node.kind === 'assistant' ? Math.max(latest, node.turn) : latest, -1)
+      const calls = nodes.filter(node => node.kind === 'assistant' && node.turn === currentTurn && node.usage)
+      const peak = values => { const counts = values.filter(Number.isFinite); return counts.length ? Math.max(...counts) : null }
+      const reportedInput = peak(calls.map(node => Number.isFinite(node.usage.inputTokens)
+        ? Number.isFinite(node.usage.totalTokens) && Number.isFinite(node.usage.outputTokens)
+          ? node.usage.totalTokens - node.usage.outputTokens
+          : Number.isFinite(node.usage.cacheReadTokens) && Number.isFinite(node.usage.cacheWriteTokens)
+            ? node.usage.inputTokens + node.usage.cacheReadTokens + node.usage.cacheWriteTokens : null : null))
+      const reportedOutput = peak(calls.map(node => node.usage.outputTokens))
+      const estimatedInput = running && Number.isFinite(pressure?.projectedTokens) && (reportedInput === null || pressure.projectedTokens > reportedInput)
+      const streamOutput = running && partial ? Math.round(blockChars(partial.blocks) * tokensPerChar) : 0
+      const estimatedOutput = streamOutput > 0 && (reportedOutput === null || streamOutput > reportedOutput)
+      const peakInput = estimatedInput ? pressure.projectedTokens : reportedInput
+      const peakOutput = estimatedOutput ? streamOutput : reportedOutput
+      const peakText = (value, estimated) => value === null ? '—' : (estimated ? '≈' : '') + formatTokens(value)
       const hasData = totalTokens > 0 || steps > 0 || usedTokens > 0
 
       if (!enabled) return null
@@ -1210,11 +1255,11 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
         hasData
           ? h('span', { className: 'au-metrics' },
             h('span', { className: 'au-metric' },
-              h('b', null, formatTokens(totalTokens)),
-              h('small', null, t('tokens'))),
+              h('b', { 'data-aurum-peaks': '' }, peakText(peakInput, estimatedInput) + ' / ' + peakText(peakOutput, estimatedOutput)),
+              h('small', null, t('peakPair'))),
             h('span', { className: 'au-metric' },
               h('b', null, shownSpeed === null ? '—' : (speedEstimated ? '≈' : '') + shownSpeed.toFixed(1)),
-              h('small', null, t('speed') + ' · ' + t('perSecond'))),
+              h('small', null, t('perSecond'))),
             h('span', { className: 'au-metric' },
               h('b', null, formatDuration(elapsedMs)),
               h('small', null, t('elapsed'))))
@@ -1231,24 +1276,19 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
           : null),
       expanded
         ? h('div', { className: 'au-expand' },
+          h(TurnUsageDetails, props),
           phase ? h('div', { className: 'au-cell' }, h('b', null, formatDuration(Math.max(0, stageNow - stageClock.start))), h('small', null, t('phaseDuration'))) : null,
           phase ? h('div', { className: 'au-cell' }, h('b', null, new Date(stageClock.activity).toLocaleTimeString()), h('small', null, t('phaseActivity'))) : null,
           phase === 'phaseTools' ? h('div', { className: 'au-cell', style: { overflowWrap: 'anywhere' } }, h('b', null, activeTools.map(call => call.name).join(' · ')), h('small', null, t('phaseToolNames'))) : null,
           h('div', { className: 'au-cell' },
-            h('b', null, formatTokens(inputTokens)),
-            h('small', null, t('input') + ' · ' + t('tokens'))),
-          h('div', { className: 'au-cell' },
-            h('b', null, formatTokens(outputTokens)),
-            h('small', null, t('output') + ' · ' + t('tokens'))),
+            h('b', null, formatTokens(inputTokens) + ' / ' + formatTokens(outputTokens)),
+            h('small', null, t('sessionPair'))),
           h('div', { className: 'au-cell' },
             h('b', null, turns + ' / ' + steps),
             h('small', null, t('turnsSteps'))),
           h('div', { className: 'au-cell' },
-            h('b', null, stats && stats.ttftSteps > 0 ? formatDuration(stats.ttftMs / stats.ttftSteps) : '—'),
-            h('small', null, t('ttft'))),
-          h('div', { className: 'au-cell' },
-            h('b', null, inputTokens > 0 && usage ? Math.round(usage.cacheReadTokens / inputTokens * 100) + '%' : '—'),
-            h('small', null, t('cache'))),
+            h('b', null, (stats && stats.ttftSteps > 0 ? formatDuration(stats.ttftMs / stats.ttftSteps) : '—') + ' / ' + (inputTokens > 0 && usage ? Math.round(usage.cacheReadTokens / inputTokens * 100) + '%' : '—')),
+            h('small', null, t('latencyPair'))),
           h('div', { className: 'au-cell' },
             h('b', null, formatDuration(stats ? stats.llmMs : 0) + ' / ' + formatDuration(stats ? stats.toolMs : 0)),
             h('small', null, t('modelTool'))),
