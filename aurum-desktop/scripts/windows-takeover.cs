@@ -132,7 +132,7 @@ namespace DshTakeover {
     DateTime nextDisplayPoll=DateTime.MinValue;
     int displayRevision;
     readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
-    bool armed, paused, shuttingDown;
+    bool armed, paused, shuttingDown, statusOnly;
     readonly HashSet<int> physicalDown = new HashSet<int>(), swallowed = new HashSet<int>();
     string stopShortcut = "";
     int stopKey, stopModifiers;
@@ -211,15 +211,16 @@ namespace DshTakeover {
       try {
         bool consumed = false;
         string action = Get(command, "command", "");
-        if (action == "begin" || action == "preview") {
+        if (action == "begin" || action == "preview" || action == "browser_status") {
           if (paused) throw new InvalidOperationException("COMPUTER_USE_STOPPED_BY_USER");
+          bool nextStatusOnly = action == "browser_status";
           ConfigureShortcut(Get(command, "stopShortcut", stopShortcut));
           bool nextIndicator = Get(command, "indicatorEnabled", true);
           ConfigureVisibility(Get(command,"remoteIndicatorVisible",true));
-          cursorIndicator = Get(command, "cursorIndicatorEnabled", true);
+          cursorIndicator = !nextStatusOnly && Get(command, "cursorIndicatorEnabled", true);
           string nextText = Get(command, "indicatorText", "灵犀御机正在操控电脑"), nextPosition = Get(command, "indicatorPosition", "top");
-          bool rebuild = nextIndicator != indicator || nextText != text || nextPosition != position || frames.Count == 0;
-          indicator = nextIndicator; text = nextText; position = nextPosition;
+          bool rebuild = nextStatusOnly != statusOnly || nextIndicator != indicator || nextText != text || nextPosition != position || frames.Count == 0;
+          statusOnly = nextStatusOnly; indicator = nextIndicator; text = nextText; position = nextPosition;
           idleMs = Math.Max(200, Math.Min(3000, Get(command, "indicatorIdleMs", 800)));
           armed = true; hideAt = action == "preview" ? DateTime.UtcNow.AddMilliseconds(1800) : DateTime.MaxValue;
           bool displaysRebuilt=RefreshDisplays(true);
@@ -262,7 +263,7 @@ namespace DshTakeover {
           testDisplays=null;nextDisplayPoll=DateTime.MinValue;
         } else if (action != "status") throw new InvalidOperationException("Unknown takeover command");
         Native.Point livePoint; bool liveCursorAvailable=Native.GetCursorPos(out livePoint);
-        Emit(new { id = id, ok = true, armed = armed, paused = paused, cancelled = cancel.WaitOne(0), consumed = consumed, stopShortcut = stopShortcut, windows = frames.Count, remoteIndicatorVisible=remoteVisible, overlayCaptureExcluded=frames.Count>0&&frames.TrueForAll(frame=>frame.CaptureExcluded), overlayClickThrough=frames.Count>0&&frames.TrueForAll(frame=>frame.ClickThrough), displayRevision=displayRevision, displays=Array.ConvertAll(displays,r=>new {left=r.Left,top=r.Top,width=r.Width,height=r.Height}), overlayBounds=frames.ConvertAll(frame=>new {left=frame.DisplayBounds.Left,top=frame.DisplayBounds.Top,width=frame.DisplayBounds.Width,height=frame.DisplayBounds.Height}), cursorError = cursorError, liveCursorAvailable = liveCursorAvailable, pointerSource = testPointerPoint.HasValue ? "test-seam" : "windows", pointerVisible = pointer != null, pointerClickThrough = pointer != null && pointer.ClickThrough, pointerCaptureExcluded = pointer != null && pointer.CaptureExcluded, foreground = Native.GetForegroundWindow().ToInt64() });
+        Emit(new { id = id, ok = true, armed = armed, statusOnly = statusOnly, indicatorText = text, paused = paused, cancelled = cancel.WaitOne(0), consumed = consumed, stopShortcut = stopShortcut, windows = frames.Count, remoteIndicatorVisible=remoteVisible, overlayCaptureExcluded=frames.Count>0&&frames.TrueForAll(frame=>frame.CaptureExcluded), overlayClickThrough=frames.Count>0&&frames.TrueForAll(frame=>frame.ClickThrough), displayRevision=displayRevision, displays=Array.ConvertAll(displays,r=>new {left=r.Left,top=r.Top,width=r.Width,height=r.Height}), overlayBounds=frames.ConvertAll(frame=>new {left=frame.DisplayBounds.Left,top=frame.DisplayBounds.Top,width=frame.DisplayBounds.Width,height=frame.DisplayBounds.Height}), cursorError = cursorError, liveCursorAvailable = liveCursorAvailable, pointerSource = testPointerPoint.HasValue ? "test-seam" : "windows", pointerVisible = pointer != null, pointerClickThrough = pointer != null && pointer.ClickThrough, pointerCaptureExcluded = pointer != null && pointer.CaptureExcluded, foreground = Native.GetForegroundWindow().ToInt64() });
       } catch (Exception error) { Emit(new { id = id, ok = false, error = error.Message }); }
     }
     IntPtr OnKey(int code, IntPtr message, IntPtr data) {
@@ -308,7 +309,7 @@ namespace DshTakeover {
       if (!down) { physicalDown.Remove(vk); return swallowed.Remove(vk); }
       physicalDown.Add(vk);
       if (swallowed.Contains(vk)) return true;
-      if (!armed || paused) return false;
+      if (!armed || paused || statusOnly) return false;
       int modifiers = 0; foreach (int key in physicalDown) modifiers |= Modifier(key);
       if (vk != 0x1B && (stopKey == 0 || vk != stopKey || modifiers != stopModifiers)) return false;
       swallowed.Add(vk);
@@ -320,11 +321,11 @@ namespace DshTakeover {
       Emit(new { kind = "stopped", reason = reason });
     }
     void ShowFrames() {
-      foreach (var bounds in displays) { var frame = new Frame(bounds, String.IsNullOrEmpty(stopShortcut)?"Esc":stopShortcut, position,remoteVisible); frames.Add(frame); frame.Show(); frame.Present(255); }
+      foreach (var bounds in displays) { var frame = new Frame(bounds, statusOnly?text:(text+" · "+(String.IsNullOrEmpty(stopShortcut)?"Esc":stopShortcut)), position,remoteVisible,statusOnly); frames.Add(frame); frame.Show(); frame.Present(255); }
     }
     void HideFrames() { foreach (var frame in frames) frame.Dispose(); frames.Clear(); }
     void UpdatePointer(byte alpha) {
-      if (!armed || paused || !cursorIndicator) { HidePointer(); return; }
+      if (!armed || paused || statusOnly || !cursorIndicator) { HidePointer(); return; }
       Native.Point point;
       if(testMode&&testPointerPoint.HasValue)point=testPointerPoint.Value;
       else if (!Native.GetCursorPos(out point)) { cursorError=Marshal.GetLastWin32Error(); HidePointer(); return; }
@@ -484,11 +485,11 @@ namespace DshTakeover {
     readonly Rectangle rectangle;
     bool remoteVisible;
     IntPtr dc, bitmap, previous;
-    internal Frame(Rectangle bounds, string text, string position,bool visible) {
+    internal Frame(Rectangle bounds, string text, string position,bool visible,bool statusOnly=false) {
       remoteVisible=visible;rectangle = bounds; AutoScaleMode=AutoScaleMode.None;FormBorderStyle = FormBorderStyle.None;
       ShowInTaskbar = false; TopMost = true; StartPosition = FormStartPosition.Manual;
       Bounds=bounds;
-      using (var image = Draw(bounds.Width, bounds.Height, text, position)) bitmap = image.GetHbitmap(Color.FromArgb(0));
+      using (var image = Draw(bounds.Width, bounds.Height, text, position,statusOnly)) bitmap = image.GetHbitmap(Color.FromArgb(0));
       dc = Native.CreateCompatibleDC(IntPtr.Zero); previous = Native.SelectObject(dc, bitmap);
     }
     protected override bool ShowWithoutActivation { get { return true; } }
@@ -507,7 +508,7 @@ namespace DshTakeover {
       var blend = new Native.Blend { op=0, flags=0, alpha=alpha, format=1 };
       if (!Native.UpdateLayeredWindow(Handle, IntPtr.Zero, ref destination, ref size, dc, ref origin, 0, ref blend, 2)) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Could not present takeover overlay");
     }
-    internal static Bitmap Draw(int width, int height, string text, string position) {
+    internal static Bitmap Draw(int width, int height, string text, string position,bool statusOnly=false) {
       var image = new Bitmap(width,height,PixelFormat.Format32bppPArgb);
       using (var g = Graphics.FromImage(image)) {
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -519,13 +520,13 @@ namespace DshTakeover {
         // DeepSeek-blue falloff that reads on light ones.
         g.CompositingMode = CompositingMode.SourceCopy;
         int core = (int)Math.Round(2*scale), glow = core+(int)Math.Round(18*scale);
-        for (int i=0;i<glow;i++) {
+        for (int i=0;i<(statusOnly?0:glow);i++) {
           var color = i<core ? Color.FromArgb(235,242,218,150) : Color.FromArgb((int)(175*Math.Pow(1-(i-core)/(double)(glow-core),2.2)),177,139,50);
           using (var pen = new Pen(color,1)) g.DrawRectangle(pen,i,i,width-2*i-1,height-2*i-1);
         }
         g.CompositingMode = CompositingMode.SourceOver;
-        // The pill contains only the currently configured stop shortcut.
-        using(var keyFont=new Font("Segoe UI",10f*scale,FontStyle.Regular,GraphicsUnit.Point))
+        // Browser status uses the DSH stop button; desktop status names its stop shortcut.
+        using(var keyFont=new Font("Microsoft YaHei UI",10f*scale,FontStyle.Regular,GraphicsUnit.Point))
         using(var measure=new StringFormat(StringFormat.GenericTypographic) { FormatFlags=StringFormatFlags.NoWrap }) {
           string shortcut=String.IsNullOrEmpty(text)?"Esc":text;
           float pillHeight=30*scale;

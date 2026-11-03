@@ -15,6 +15,7 @@ export function createLiveReference(value){
   return Object.freeze({get:()=>current,[Symbol.for('cosmokit.volatile.write')]:next=>{current=next;}});
 }
 const fields = {
+  browserReuseExisting: z.boolean().default(false).description('复用已有浏览器 / Reuse the existing browser'),
   browserFirst: z.boolean().default(true).description('网页优先使用浏览器通道 / Prefer browser use for web pages'),
   browserVisible: z.boolean().default(true).description('显示DSH浏览器窗口 / Show the DSH browser'),
   browserApp: z.union(BROWSER_APPS.map(value=>z.const(value))).default('default').description('使用的浏览器 / Browser'),
@@ -94,8 +95,8 @@ export async function apply(ctx, config) {
   }
   liveAdapters.add(self); ctx.effect(() => () => { liveAdapters.delete(self); });
   if (liveAdapters.size > 1) ctx.logger.warn('dsh-computer-use-win: %d entries of this plugin run in one profile, and DSH keeps only one set of mcp__wincu tools. Remove the extra entry from dsh.profile.bundles in the profile package.json or from its cordis.patch.yml.', liveAdapters.size);
-  installActivity(ctx,runtime.activityFile);
   let desired = normalizeSettings(config), runningSelection, connection, stopped = false;
+  installActivity(ctx,runtime.activityFile,{reuseExisting:()=>desired.browserReuseExisting});
   let updates = Promise.resolve();
   atomicJson(runtime.configFile, desired);
   ctx.effect(() => () => { stopped = true; });

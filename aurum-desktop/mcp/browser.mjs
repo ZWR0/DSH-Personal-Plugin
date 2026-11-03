@@ -137,16 +137,18 @@ const INDICATOR_SCRIPT = '(' + function () {
   const BADGE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#b18b32"/>' +
     '<path d="M10 6.5v18.2l4.6-4.4 3.2 7 3.2-1.4-3.1-6.8h6.5z" fill="#fff" stroke="#624b18" stroke-width="1.3" stroke-linejoin="round"/></svg>');
   const host = document.createElement('div');
+  host.setAttribute('popover','manual');
   host.setAttribute('aria-hidden', 'true'); host.setAttribute('data-dsh-browser-status', '');
-  host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;user-select:none!important;contain:strict!important;';
+  host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;margin:0!important;border:0!important;padding:0!important;width:100vw!important;height:100vh!important;background:transparent!important;z-index:2147483647!important;pointer-events:none!important;user-select:none!important;contain:strict!important;';
   const shadow = host.attachShadow({ mode: 'closed' });
   shadow.innerHTML = '<style>.layer{position:absolute;inset:0;overflow:hidden}.layer.capture{display:none}' +
     '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
+    '.status{position:absolute;top:18px;left:50%;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 14px;border:1px solid #b18b3266;border-radius:999px;background:#1d1e20ee;color:#f6edd6;font:13px/1.5 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}.status.on{display:block}' +
     '.pointer.on{opacity:1}.pointer svg{position:relative;display:block;margin:-2px 0 0 -2px;filter:drop-shadow(0 0 3px #a87a2290) drop-shadow(0 0 8px #a87a2250) drop-shadow(0 0 14px #a87a2228)}' +
     '.ring{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;border:2px solid #d9b75d;opacity:0}' +
     '.ring.go{display:none}@keyframes ring{from{opacity:.95;transform:scale(.35)}to{opacity:0;transform:scale(1.4)}}' +
     '@media (prefers-reduced-motion:reduce){.pointer{transition:opacity .2s}.ring.go{animation:none}}</style>' +
-    '<div class="layer"><div class="pointer"><div class="ring"></div><svg width="20" height="22" viewBox="0 0 20 22"><path d="M4 3 16 7C18 7.7 18 9 16 10C13.5 10.5 10 9.5 9.8 13.4C9.6 14.7 9.2 16 8.5 17.5C7.6 19.2 6 19 5.5 16.5L2 5C1.5 3 2.5 2.5 4 3Z" fill="#1b2221" stroke="#d9b76d" stroke-width=".85" stroke-linejoin="round"/></svg></div></div>';
+    '<div class="layer"><div class="status"></div><div class="pointer"><div class="ring"></div><svg width="20" height="22" viewBox="0 0 20 22"><path d="M4 3 16 7C18 7.7 18 9 16 10C13.5 10.5 10 9.5 9.8 13.4C9.6 14.7 9.2 16 8.5 17.5C7.6 19.2 6 19 5.5 16.5L2 5C1.5 3 2.5 2.5 4 3Z" fill="#1b2221" stroke="#d9b76d" stroke-width=".85" stroke-linejoin="round"/></svg></div></div>';
   const layer = shadow.querySelector('.layer'), pointer = shadow.querySelector('.pointer'), ring = shadow.querySelector('.ring');
   // The tab icon: the page's own icon links point at the badge while DSH works
   // and get their addresses back afterwards. A link added for a page without
@@ -165,16 +167,29 @@ const INDICATOR_SCRIPT = '(' + function () {
       saved = null;
     }
   };
-  let state = 'idle';
+  let state = 'idle', options = {indicatorEnabled:true,cursorIndicatorEnabled:true}, lastPoint = null;
+  const status = shadow.querySelector('.status');
+  const labels = {waiting:'等待下一步',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',set_value:'打开页面或填写内容',type_text:'输入文字',keypress:'发送按键',snapshot:'查看页面',tree:'读取页面',find:'查找控件',activate_window:'展示浏览器'};
+  const mount = () => {
+    const parent=document.fullscreenElement??document.documentElement;
+    if(parent&&host.parentNode!==parent)parent.append(host);
+    if(host.isConnected&&!host.matches(':popover-open'))host.showPopover();
+  };
+  document.addEventListener('fullscreenchange',mount);
   // state: 'working' or 'idle'; point: where the next action lands, in CSS
   // pixels of the viewport ({ x, y, click }); 'capture'/'captured' hide and
   // show the pointer around a screenshot.
-  globalThis.__dshStatus = (next, point) => {
+  globalThis.__dshStatus = (next, point, presentation) => {
+    if(presentation)options=presentation;
     if (next === 'capture' || next === 'captured') { layer.classList.toggle('capture', next === 'capture'); return; }
     state = next;
-    if (!host.isConnected && document.documentElement) document.documentElement.append(host);
-    badge(state === 'working');
-    if (point && state === 'working') {
+    mount();
+    badge(state === 'working' && options.indicatorEnabled);
+    status.textContent='灵犀御机 · '+(labels[options.action]??'浏览器操作')+' · 页面指针独立于系统鼠标';
+    status.classList.toggle('on',state==='working'&&options.indicatorEnabled);
+    pointer.classList.toggle('on',state==='working'&&options.cursorIndicatorEnabled&&!!lastPoint);
+    if (point && state === 'working' && options.cursorIndicatorEnabled) {
+      lastPoint=point;
       pointer.style.setProperty('--x', `${Math.round(point.x)}px`); pointer.style.setProperty('--y', `${Math.round(point.y)}px`);
       pointer.classList.add('on');
       if (point.click) { ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go'); }
@@ -182,7 +197,7 @@ const INDICATOR_SCRIPT = '(' + function () {
     if (state !== 'working') pointer.classList.remove('on');
   };
   globalThis.__dshIndicator = () => ({ state, pointer: pointer.classList.contains('on'), x: parseFloat(pointer.style.getPropertyValue('--x')), y: parseFloat(pointer.style.getPropertyValue('--y')),
-    badge: Boolean(saved), capture: layer.classList.contains('capture') });
+    badge: Boolean(saved), status:status.classList.contains('on'), text:status.textContent, fullscreen:!!document.fullscreenElement, mountedInFullscreen:!document.fullscreenElement||host.parentNode===document.fullscreenElement, capture: layer.classList.contains('capture') });
   globalThis.__dshStatus('idle');
   document.addEventListener('DOMContentLoaded', () => globalThis.__dshStatus(state), { once: true });
 }.toString() + ')();';
@@ -211,6 +226,7 @@ export function isBrowserCall(args) {
 const READS = new Set(['snapshot', 'tree', 'accessibility_tree', 'find', 'element_info', 'screenshot', 'ocr', 'wait_for']);
 export const BACKGROUND_FIRST = new Set(['invoke', 'set_value', 'scroll', 'type_text']);
 export function isQuietCall(action, args = {}) {
+  if(action==='open_browser')return !args.reuseExisting||!args.activate;
   if (isBrowserCall(args) || ['health', 'list_windows', 'wait'].includes(action)) return true;
   if (!args || args.activate === true) return false;
   if (READS.has(action) || action === 'launch_app') return true;
@@ -625,6 +641,7 @@ const SCROLL_POSITION = `function () {
 export class BrowserLane {
   constructor({ env = process.env } = {}) {
     this.env = env;
+    this.presentationSettings=()=>env.WCU_SETTINGS_JSON?JSON.parse(env.WCU_SETTINGS_JSON):{indicatorEnabled:true,cursorIndicatorEnabled:true};
     this.disabled = env.WCU_BROWSER_LANE === 'off';
     this.app = env.WCU_BROWSER_APP === 'firefox' || Object.hasOwn(APPS, env.WCU_BROWSER_APP ?? '') ? env.WCU_BROWSER_APP : 'default';
     this.keepSignIns = env.WCU_BROWSER_SIGNIN === '1';
@@ -1142,7 +1159,7 @@ export class BrowserLane {
     if (!this.showsIndicator(tab) || !tab.sessionId || tab.closed || tab.crashed || tab.dialog) return;
     try {
       const { executionContextId } = await tab.browser.cdp.send('Page.createIsolatedWorld', { frameId: tab.mainFrameId, worldName: INDICATOR_WORLD }, tab.sessionId, 500);
-      const status = extra ?? `globalThis.__dshStatus(${JSON.stringify(tab.indicator ?? 'idle')}, ${JSON.stringify(point ?? null)});`;
+      const status = extra ?? `globalThis.__dshStatus(${JSON.stringify(tab.indicator ?? 'idle')}, ${JSON.stringify(point ?? null)},${JSON.stringify({...this.presentationSettings(),action:tab.operation??'snapshot'})});`;
       await tab.browser.cdp.send('Runtime.evaluate', { contextId: executionContextId, expression: `${INDICATOR_SCRIPT}\n${status}` }, tab.sessionId, 500);
     } catch { /* Navigation or an open modal may temporarily prevent page script. */ }
   }
@@ -1152,7 +1169,7 @@ export class BrowserLane {
   async working(tab, call) {
     if (call.tabs.has(tab)) return;
     call.tabs.add(tab); tab.busy = (tab.busy ?? 0) + 1; clearTimeout(tab.restTimer);
-    if (tab.indicator !== 'working') { tab.indicator = 'working'; await this.updateIndicator(tab); }
+    tab.indicator = 'working'; await this.updateIndicator(tab);
   }
 
   rest(tab, now) {
@@ -1164,6 +1181,7 @@ export class BrowserLane {
       tab.indicator = 'idle'; this.updateIndicator(tab).catch(() => { });
     };
     if (now) return idle();
+    tab.operation='waiting'; this.updateIndicator(tab).catch(() => {});
     const later = delay => { tab.restTimer = setTimeout(() => this.seriesActive() ? later(1000) : idle(), delay); tab.restTimer.unref?.(); };
     later(INDICATOR_LINGER_MS);
   }
@@ -1513,13 +1531,14 @@ export class BrowserLane {
   async runPage(action, args, request, call = { tabs: new Set() }) {
     if (this.disabled) fail('BROWSER_LANE_UNAVAILABLE', 'the browser lane is turned off (WCU_BROWSER_LANE=off)');
     const conflict = ['windowTitle', 'processId', 'nativeWindowHandle', 'x', 'y'].filter(key => args[key] !== undefined);
-    if (conflict.length) fail('INVALID_ARGUMENTS', `browserTab and page element ids target a page; drop ${conflict.join(', ')}`);
+    if (conflict.length) fail('INVALID_ARGUMENTS', `browserTab and page element ids target a page; drop ${conflict.join(', ')} and retry the same browser-lane action. Do not switch to desktop navigation for an argument error. For a new tab use only {elementId:"new-tab",value:"https://the-requested-site/"}.`);
     if (action === 'invoke' && (args.action ?? 'default') !== 'default') fail('INVALID_ARGUMENTS', `invoke action '${args.action}' is for UI Automation elements; in a page, click the element to open or close it, and scroll its list or the page to bring it into view`);
     const match = typeof args.elementId === 'string' ? ELEMENT_ID.exec(args.elementId) : null;
     const opener = typeof args.elementId === 'string' ? NEW_TAB.exec(args.elementId) : null;
     if (opener) {
       if (action !== 'set_value') fail('INVALID_ARGUMENTS', `${args.elementId} opens a tab only through set_value with a web address`);
       const tab = await this.openTab(opener[1], args.value, request, call);
+      if(args.activate)await tab.browser.cdp.send('Target.activateTarget',{targetId:tab.targetId});
       if (tab.dialog) return { meta: { ok: true, action, channel: 'browser', opened: this.describeTab(tab), background: true, dialog: tab.dialog, verification: 'sent', verificationNote: DIALOG_NOTE } };
       if (tab.navigatingTo) return { meta: { ok: true, action, channel: 'browser', opened: this.describeTab(tab), background: true, ...this.slowNavigation(tab) } };
       const outline = await this.outline(tab);
@@ -1529,6 +1548,7 @@ export class BrowserLane {
     const tabKey = match?.[1] ?? args.browserTab;
     if (match && args.browserTab && args.browserTab !== match[1]) fail('INVALID_ARGUMENTS', `elementId ${args.elementId} belongs to tab ${match[1]}, not ${args.browserTab}`);
     const tab = await this.findTab(tabKey, request);
+    tab.operation=action;
     await this.working(tab, call);
     // An open alert/confirm/prompt blocks the page: every other call would hang.
     if (tab.dialog) {
@@ -1553,7 +1573,7 @@ export class BrowserLane {
       case 'snapshot': case 'tree': {
         const outline = await this.outline(tab, args.maxNodes);
         this.remember(tab, outline);
-        const result = this.page({ ok: true, action, tab: this.describeTab(tab), ...(tab.navigatingTo ? { stillLoading: true, navigatingTo: tab.navigatingTo } : {}) }, `${this.header(tab)}\n${render(outline.lines)}`, outline);
+        const result = this.page({ ok: true, action, media:await this.mediaState(tab), tab: this.describeTab(tab), ...(tab.navigatingTo ? { stillLoading: true, navigatingTo: tab.navigatingTo } : {}) }, `${this.header(tab)}\n${render(outline.lines)}`, outline);
         if (action === 'snapshot' && args.includeScreenshot) {
           try { result.screenshot = await this.screenshot(tab, args.maxWidth); } catch (error) { result.meta.captureError = error.message; }
         }
@@ -1737,7 +1757,13 @@ export class BrowserLane {
     if (tab.dialog) return { meta: { ok: true, action, channel: 'browser', target, ...detail, dialog: tab.dialog, verification: 'sent', verificationNote: [DIALOG_NOTE, ...notes].join(' ') } };
     const outline = await this.outline(tab);
     const change = this.changes(tab, outline);
-    return this.page({ ok: true, action, target, ...detail, verification: 'sent', verificationNote: ['Sent inside the page without the desktop pointer or keyboard. The page state after the action follows; check it for the expected effect.', ...notes].join(' '), pageChange: change.mode }, change.text, outline);
+    return this.page({ ok: true, action, target, ...detail, media:await this.mediaState(tab), verification: 'sent', verificationNote: ['Sent inside the page without the desktop pointer or keyboard. The page state after the action follows; check it for the expected effect.', ...notes].join(' '), pageChange: change.mode }, change.text, outline);
+  }
+
+  // Media state is observed independently of a dispatched click.
+  async mediaState(tab) {
+    const {result}=await this.send(tab,'Runtime.evaluate',{expression:`({fullscreen:!!document.fullscreenElement,visibility:document.visibilityState,videos:[...document.querySelectorAll('video')].slice(0,8).map(video=>({paused:video.paused,ended:video.ended,currentTime:video.currentTime,duration:Number.isFinite(video.duration)?video.duration:null,readyState:video.readyState,muted:video.muted}))})`,returnByValue:true});
+    return result.value;
   }
 
   slowNavigation(tab) {

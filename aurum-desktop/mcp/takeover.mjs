@@ -45,7 +45,7 @@ export class TakeoverControl {
     stateFile = process.env.WCU_STATE_FILE, activityFile=process.env.WCU_ACTIVITY_FILE,testMode = false, config = {} } = {}) {
     this.powershell = powershell; this.onStop = onStop; this.configFile = configFile; this.stateFile = stateFile;
     this.testMode = testMode; this.config = normalizeSettings(config); this.active = 0; this.shown = 0; this.paused = false;
-    this.activityFile=activityFile;this.seriesHeld=false;this.seriesIndicator=false;this.seriesKey=null;this.stoppedSeriesKey=null;this.blockedSeries=new Map();
+    this.activityFile=activityFile;this.seriesHeld=false;this.seriesIndicator=false;this.browserAction=null;this.operation=null;this.seriesKey=null;this.stoppedSeriesKey=null;this.blockedSeries=new Map();
     this.eventName = `Local\\DSH-WCU-${randomUUID()}`; this.waiters = new Map(); this.nextId = 0;
     this.resumeToken = this.config.resumeToken; this.previewToken = this.config.previewToken; this.pauseMessage = STOPPED;
     this.disabledForTest = process.env.NODE_ENV === 'test' && process.env.WCU_TEST_NO_TAKEOVER === '1';
@@ -88,15 +88,15 @@ export class TakeoverControl {
       const activity=JSON.parse(readFileSync(this.activityFile,'utf8'));
       const held=activity.active===true&&Number.isFinite(activity.expiresAt)&&activity.expiresAt>Date.now();
       const key=held?JSON.stringify([activity.sessionId,activity.turn]):this.seriesKey;
-      // A series of browser-lane calls is held for turn tracking but shows
-      // nothing; the indicator starts with the series' first desktop call.
-      const indicator=held&&activity.indicator!==false;
+      const browserAction=held&&activity.indicator===false&&this.shown===0?activity.browserAction??null:null;
+      const operation=held?activity.action??null:null;
+      const indicator=held&&(activity.indicator!==false||!!browserAction);
       if(held&&!this.blockedSeries.has(key)&&this.paused&&this.active===0)await this.resumeOperation();
-      if(held!==this.seriesHeld||key!==this.seriesKey||indicator!==this.seriesIndicator){
+      if(held!==this.seriesHeld||key!==this.seriesKey||indicator!==this.seriesIndicator||browserAction!==this.browserAction||operation!==this.operation){
         this.seriesKey=key;
-        this.seriesHeld=held;this.seriesIndicator=indicator;
+        this.seriesHeld=held;this.seriesIndicator=indicator;this.browserAction=browserAction;this.operation=operation;
         if(!this.paused&&!this.blockedSeries.has(key)&&!this.disabledForTest){
-          if(indicator)await this.command('begin',this.config);
+          if(indicator)await this.presentSeries();
           else if(this.shown===0&&this.child)await this.command('end');
         }
         this.persist();
@@ -104,14 +104,15 @@ export class TakeoverControl {
     }
     const presentation=JSON.stringify([this.config.indicatorEnabled,this.config.cursorIndicatorEnabled,this.config.remoteIndicatorVisible,this.config.indicatorText,this.config.indicatorPosition,this.config.indicatorIdleMs,this.config.stopShortcut]);
     if (this.child && this.sentPresentation!==presentation) {
-      await this.command(((this.seriesHeld&&this.seriesIndicator)||this.shown>0)&&!this.paused&&!this.blockedSeries.has(this.seriesKey)?'begin':'configure', this.config);
+      if(((this.seriesHeld&&this.seriesIndicator)||this.shown>0)&&!this.paused&&!this.blockedSeries.has(this.seriesKey))await this.presentSeries();
+      else await this.command('configure',this.browserAction?{...this.config,cursorIndicatorEnabled:false}:this.config);
       this.sentPresentation=presentation;
       this.sentShortcut = this.config.stopShortcut; this.sentCursorIndicator = this.config.cursorIndicatorEnabled;this.sentRemoteVisible=this.config.remoteIndicatorVisible;
     }
     if (this.config.resumeToken !== this.resumeToken && this.active === 0) {
       if (this.child) await this.command('resume');
       this.resumeToken = this.config.resumeToken; this.paused = false;this.stoppedSeriesKey=null;this.blockedSeries.clear(); this.persist('resumed-by-user');
-      if(this.seriesHeld&&this.seriesIndicator&&!this.disabledForTest)await this.command('begin',this.config);
+      if(this.seriesHeld&&this.seriesIndicator&&!this.disabledForTest)await this.presentSeries();
     }
     if (this.config.previewToken !== this.previewToken) {
       this.previewToken = this.config.previewToken;
@@ -119,16 +120,20 @@ export class TakeoverControl {
       if (!this.paused && this.active === 0 && !this.disabledForTest) await this.command('preview', this.config);
     }
   }
-  // A quiet lease (browser-lane calls) checks the stopped state and counts as an
-  // action in progress, but neither shows the indicator nor arms the stop keys.
+  async presentSeries() {
+    const labels={open_browser:'打开网页',waiting:'等待下一步',set_value:'打开页面或填写内容',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',type_text:'输入文字',keypress:'发送按键',focus:'聚焦控件',invoke:'操作页面',activate_window:'展示浏览器',snapshot:'查看页面',accessibility_tree:'读取页面',find:'查找控件',screenshot:'截取页面',wait_for:'等待页面',close_window:'关闭标签页',element_info:'查看控件'};
+    if(!this.browserAction)return this.command('begin',{...this.config,indicatorText:this.config.indicatorText+(labels[this.operation]?' · '+labels[this.operation]:'')});
+    return this.command('browser_status',{...this.config,cursorIndicatorEnabled:false,indicatorText:'灵犀御机 · '+(labels[this.browserAction]??'浏览器操作')+' · 用 DSH 停止按钮中断'});
+  }
+  // Browser leases retain a status pill without arming global stop shortcuts.
   async begin({ quiet = false } = {}) {
     await this.sync();
     if(this.seriesHeld&&this.blockedSeries.has(this.seriesKey))throw new Error(this.blockedSeries.get(this.seriesKey));
     if(this.paused&&!this.activityFile&&this.active===0)await this.resumeOperation();
     if (this.paused) throw new Error(this.pauseMessage);
     if (this.closed) throw new Error('COMPUTER_USE_STOPPING');
-    if (!quiet&&!this.disabledForTest&&(!this.seriesHeld||!this.seriesIndicator||!this.child)) {
-      try { await this.command('begin', this.config); this.sentShortcut = this.config.stopShortcut; this.sentCursorIndicator = this.config.cursorIndicatorEnabled;this.sentRemoteVisible=this.config.remoteIndicatorVisible; }
+    if (!quiet&&!this.disabledForTest&&(!this.seriesHeld||!this.seriesIndicator||!this.child||this.browserAction)) {
+      try { this.browserAction=null; await this.command('begin', this.config); this.sentShortcut = this.config.stopShortcut; this.sentCursorIndicator = this.config.cursorIndicatorEnabled;this.sentRemoteVisible=this.config.remoteIndicatorVisible; }
       catch (error) { this.fail(error); throw error; }
     }
     if (this.paused) throw new Error(this.pauseMessage);

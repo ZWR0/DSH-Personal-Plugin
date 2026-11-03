@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { TakeoverControl, STOPPED } from './takeover.mjs';
 import { TOOL_NAMES, normalizeEnabledTools, browserRoutingInstructions } from './settings.mjs';
-import { BrowserLane, isBrowserCall, isQuietCall, BACKGROUND_FIRST } from './browser.mjs';
+import { BrowserLane, isBrowserCall, isQuietCall, BACKGROUND_FIRST, defaultProgId, appForProgId } from './browser.mjs';
 
 const MCP_PROTOCOL_VERSION = "2024-11-05";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -89,6 +89,11 @@ const webContentNote = " In a Chromium-based window (Electron, Chrome/Edge, CEF,
 
 const tools = [
   {
+    name: "windows_computer_use_open_browser",
+    description: "Open a website in a new tab. reuseExisting:true uses the normal browser when the user asks; otherwise use an independent DSH browser. Use this for a new web task instead of navigating the DSH control window or launching a browser through desktop keys. Isolated mode returns opened.id for browserTab; existing-browser mode returns native windows for UIA. activate:true shows the tab when the user wants to watch it; false leaves focus alone. The isolated page pointer is independent of the system mouse; native reuse shares Windows focus.",
+    inputSchema: {type:"object",additionalProperties:false,required:["url"],properties:{url:{type:"string",description:"Website URL; use the requested homepage and follow real links instead of guessing a random-video URL"},activate:{type:"boolean",default:false},reuseExisting:{type:"boolean",description:"Reuse the normal Edge/Chrome browser in a new tab, including its signed-in session; returns native windows for UIA instead of browserTab. Use only when the user asks to use their existing browser."}}}
+  },
+  {
     name: "windows_computer_use_launch_app",
     description: "Launch an executable, shortcut or installed application through the interactive Windows desktop Shell. The app outlives the tool call and MCP server; it uses the desktop's environment. Requires Explorer. A successful result means dispatched; verify the intended window with list_windows/wait_for. Applications may activate themselves even with activate:false. Runs no commands: command interpreters and script hosts (cmd, PowerShell, wscript, mshta…) start only without arguments. Does not request elevation.",
     inputSchema: { type: "object", additionalProperties: false, required: ["target"], properties: {
@@ -111,7 +116,7 @@ const tools = [
       type: "object",
       additionalProperties: false,
       properties: {
-        scope: { type: "string", enum: ["active_window", "desktop"], default: "active_window" },
+        scope: { type: "string", enum: ["active_window", "desktop", "browserTab"], default: "active_window" },
         ...windowTargetProperties,
         ...browserTabProperty,
         ...treeViewProperties,
@@ -142,7 +147,7 @@ const tools = [
       type: "object",
       additionalProperties: false,
       properties: {
-        scope: { type: "string", enum: ["active_window", "desktop"], default: "active_window" },
+        scope: { type: "string", enum: ["active_window", "desktop", "browserTab"], default: "active_window" },
         ...windowTargetProperties,
         ...browserTabProperty,
         ...treeViewProperties,
@@ -174,7 +179,7 @@ const tools = [
       required: ["query"],
       properties: {
         query: { type: "string" },
-        scope: { type: "string", enum: ["active_window", "desktop"], default: "active_window" },
+        scope: { type: "string", enum: ["active_window", "desktop", "browserTab"], default: "active_window" },
         ...windowTargetProperties,
         ...browserTabProperty,
         ...treeViewProperties,
@@ -194,6 +199,7 @@ const tools = [
       type: "object",
       additionalProperties: false,
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
@@ -210,6 +216,7 @@ const tools = [
       type: "object",
       additionalProperties: false,
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
@@ -227,6 +234,7 @@ const tools = [
       type: "object",
       additionalProperties: false,
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
@@ -244,6 +252,7 @@ const tools = [
       type: "object",
       additionalProperties: false,
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
@@ -340,6 +349,7 @@ const tools = [
       additionalProperties: false,
       required: ["elementId"],
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties
@@ -354,6 +364,7 @@ const tools = [
       additionalProperties: false,
       required: ["elementId"],
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
@@ -370,6 +381,7 @@ const tools = [
       additionalProperties: false,
       required: ["elementId", "value"],
       properties: {
+        ...browserTabProperty,
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
@@ -424,7 +436,7 @@ const tools = [
     inputSchema: { type: "object", additionalProperties: false, properties: {
       ...windowTargetProperties,
       ...browserTabProperty,
-      scope: { type: "string", enum: ["active_window", "desktop"], default: "active_window" },
+      scope: { type: "string", enum: ["active_window", "desktop", "browserTab"], default: "active_window" },
       maxWidth: { type: "integer", minimum: 0, maximum: 7680, default: 1600 }
     } }
   },
@@ -440,7 +452,7 @@ const tools = [
         condition: { type: "string", enum: ["window", "element", "text"], default: "window" },
         query: { type: "string" },
         controlType: { type: "string" },
-        scope: { type: "string", enum: ["active_window", "desktop"], default: "active_window" },
+        scope: { type: "string", enum: ["active_window", "desktop", "browserTab"], default: "active_window" },
         ...treeViewProperties,
         treeTimeoutMs: { type: "integer", minimum: 100, maximum: 30000, default: 1000 },
         maxDepth: { type: "integer", minimum: 0, maximum: 12, default: 8, description: maxDepthDescription },
@@ -479,6 +491,7 @@ const tools = [
 // Keep execution/validation schemas intact; only the model-facing prose is
 // shortened. The discovery tool returns the original definition on demand.
 const conciseDescriptions = {
+  open_browser: 'Open an independent browser tab. url is the website address; activate:true presents it, false keeps background focus. Returns opened.id for browserTab.',
   launch_app: 'Launch an executable, shortcut or installed app through the desktop Shell; survives tool/server exit. Verify the intended window afterward; apps may activate themselves. No arguments for command interpreters or script hosts.',
   health: 'Check Windows backend availability.',
   snapshot: 'Screenshot and UIA tree. Partial trees report truncation; use OCR for sparse UIA. browserTab: page outline and viewport.',
@@ -533,7 +546,7 @@ const toolMode = process.env.WCU_TOOL_MODE || 'full';
 if (!['lite', 'full', 'lazy'].includes(toolMode)) throw new Error('WCU_TOOL_MODE must be lite, full or lazy');
 const prefix = 'windows_computer_use_';
 const discoveryName = prefix + 'tools';
-const liteNames = ['list_windows', 'find', 'click', 'scroll', 'type_text', 'keypress', 'ocr', 'screenshot', 'wait_for', 'launch_app'];
+const liteNames = ['open_browser', 'list_windows', 'find', 'click', 'scroll', 'type_text', 'keypress', 'ocr', 'screenshot', 'wait_for', 'launch_app'];
 if (JSON.stringify([...TOOL_NAMES].sort()) !== JSON.stringify([...tools.map(tool=>tool.name.slice(prefix.length)),'tools'].sort())) throw new Error('Tool settings catalogue does not match the MCP tool definitions');
 const configuredSelection = process.env.WCU_ENABLED_TOOLS === undefined ? null : normalizeEnabledTools(JSON.parse(process.env.WCU_ENABLED_TOOLS));
 const selectionMode = toolMode === 'lazy' ? 'lazy' : configuredSelection === null ? toolMode : configuredSelection.length === TOOL_NAMES.length ? 'full' : 'custom';
@@ -668,6 +681,7 @@ const takeover = new TakeoverControl({ powershell, config: process.env.WCU_SETTI
 } });
 
 const browserLane = new BrowserLane();
+browserLane.presentationSettings = () => takeover.config;
 // A tab DSH works in keeps its badge until the host ends the operation series.
 browserLane.seriesActive = () => takeover.seriesHeld && !takeover.paused;
 
@@ -909,6 +923,20 @@ async function callTool(name, args, request) {
   if (!definition) throw new Error(`Unknown tool: ${name}`);
   args = validateArguments(definition.inputSchema, args);
   const actionName = name.replace("windows_computer_use_", "");
+  if(args.scope==='browserTab'&&!isBrowserCall(args))throw new Error('INVALID_ARGUMENTS: scope browserTab requires a browserTab id.');
+  if(actionName==='open_browser'){
+    if(args.reuseExisting??takeover.config.browserReuseExisting){
+      const url=new URL(args.url);
+      if(!['https:','http:'].includes(url.protocol))throw new Error('INVALID_ARGUMENTS: Existing-browser navigation requires an http or https URL.');
+      const app=browserLane.app==='default'?(appForProgId(await defaultProgId())??'edge'):browserLane.app;
+      const target=app==='chrome'?'chrome.exe':app==='firefox'?'firefox.exe':'msedge.exe';
+      const launched=await runBackend('launch_app',{target,arguments:'"'+url.href+'"',activate:args.activate,waitMs:1500},30000,request);
+      const observed=await runBackend('list_windows',{},undefined,request);
+      return {content:[{type:'text',text:safeJson({...launched,action:'open_browser',channel:'desktop',reuseExisting:true,url:url.href,windows:observed.windows,note:'A new tab was requested in the normal browser. Identify its actual window by title and inspect it through native UIA. Do not use browserTab or overwrite the DSH control tab. Use real observed links; do not guess video URLs.'})}]};
+    }
+    if(args.activate&&process.env.WCU_BROWSER_HEADLESS==='1')throw new Error('BROWSER_WINDOW_HIDDEN: Enable Show the browser window before requesting visible playback.');
+    return runBrowser('set_value',{elementId:'new-tab',value:args.url,activate:args.activate},request);
+  }
   const browser = isBrowserCall(args);
   // A browser tab alone names the page, which is what scroll needs.
   if (["click", "double_click", "move", "scroll", "element_info"].includes(actionName) && !args.elementId && (args.x === undefined || args.y === undefined) && !(browser && actionName === "scroll")) throw new Error("INVALID_ARGUMENTS: provide elementId or both x and y");
@@ -940,7 +968,7 @@ async function callTool(name, args, request) {
     case "windows_computer_use_list_windows": {
       const result = await runBackend("list_windows", args, undefined, request);
       try { await browserLane.annotateWindows(result); } catch (error) { result.browserLane = { error: error.message }; }
-      return { content: [{ type: "text", text: safeJson(result) }] };
+      return { content: [{ type: "text", text: safeJson({browserLane:result.browserLane,...result}) }] };
     }
     case "windows_computer_use_find":
       return observationText("find", args, request);

@@ -211,7 +211,7 @@ node tools/check.mjs
 
 | 插件 | 测试脚本（位于 `tools/`） |
 | --- | --- |
-| 灵犀御机 | `aurum-desktop-client-test.mjs`、`aurum-desktop-pointer-smoke.mjs`、`aurum-desktop-shortcut-smoke.mjs` |
+| 灵犀御机 | `aurum-desktop-client-test.mjs`、`aurum-desktop-protocol-test.mjs`、`aurum-desktop-visibility-test.mjs`、`aurum-desktop-pointer-smoke.mjs`、`aurum-desktop-shortcut-smoke.mjs` |
 | 行囊宝匣 | `local-vault-host-test.mjs`、`local-vault-connection-test.mjs`、`local-vault-client-test.mjs` |
 | 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
 | 暗金主题 | `aurum-actions-browser-test.mjs`、`aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |

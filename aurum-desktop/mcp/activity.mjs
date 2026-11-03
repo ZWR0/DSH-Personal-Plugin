@@ -1,5 +1,5 @@
 import {atomicJson} from './takeover.mjs';
-import {isQuietCall} from './browser.mjs';
+import {isBrowserCall,isQuietCall} from './browser.mjs';
 
 export function isDesktopTool(name=''){
   return /^(?:mcp__wincu__)?windows_computer_use_(?!health$|tools$)[a-z_]+$/.test(name);
@@ -25,10 +25,10 @@ export function readableAbort(exec,result){
 
 // The host knows turn boundaries; the stdio worker only knows individual calls.
 // Keep this lease outside the worker so tool-list reloads preserve the series.
-export function installActivity(ctx,file,{idleMs=ACTIVITY_IDLE_MS}={}){
+export function installActivity(ctx,file,{idleMs=ACTIVITY_IDLE_MS,reuseExisting=()=>false}={}){
   let owner,closed=false,needsPublish=true;
   const expireIdle=()=>{if(owner&&owner.pending===0&&Date.now()-owner.lastActive>=idleMs)owner=undefined;};
-  const publish=()=>{needsPublish=true;expireIdle();atomicJson(file,{active:!!owner,sessionId:owner?.id??null,turn:owner?.turn??null,indicator:!!owner?.desktop,expiresAt:owner?Date.now()+5000:0});needsPublish=false;};
+  const publish=()=>{needsPublish=true;expireIdle();atomicJson(file,{active:!!owner,sessionId:owner?.id??null,turn:owner?.turn??null,indicator:!!owner?.desktop,action:owner?(owner.pending===0?'waiting':owner.action):null,browserAction:owner?.browserAction?(owner.pending===0?'waiting':owner.browserAction):null,expiresAt:owner?Date.now()+5000:0});needsPublish=false;};
   publish();
   ctx.on('tools/execute',async(exec,next)=>{
     if(!isDesktopTool(exec.name))return next();
@@ -38,12 +38,14 @@ export function installActivity(ctx,file,{idleMs=ACTIVITY_IDLE_MS}={}){
     if(session&&turn!==undefined){
       expireIdle();
       if(owner&&owner.id!==session.id)throw Error('COMPUTER_USE_BUSY: Another conversation is using the desktop. Wait for that operation series to finish or stop it before retrying.');
-      const current=owner??={id:session.id,turn,pending:0,lastActive:Date.now(),desktop:false};
-      if(current.turn!==turn){current.turn=turn;current.desktop=false;}
-      // Browser-lane calls run in the background, and listing windows or waiting
-      // touches nothing: they keep the series and its turn, but only a desktop
-      // call turns on the screen indicator.
-      if(!isQuietCall(exec.name.replace(/^(?:mcp__wincu__)?windows_computer_use_/,''),callArguments(exec.arguments)))current.desktop=true;
+      const current=owner??={id:session.id,turn,pending:0,lastActive:Date.now(),desktop:false,browserAction:null,action:null};
+      if(current.turn!==turn){current.turn=turn;current.desktop=false;current.browserAction=null;}
+      const args=callArguments(exec.arguments), action=exec.name.replace(/^(?:mcp__wincu__)?windows_computer_use_/,'');
+      current.action=action;
+      const effectiveArgs=action==='open_browser'?{...args,reuseExisting:args.reuseExisting??reuseExisting()}:args;
+      // Browser status never borrows the system pointer or stop shortcuts.
+      if((action==='open_browser'&&!effectiveArgs.reuseExisting)||isBrowserCall(effectiveArgs))current.browserAction=exec.name.replace(/^(?:mcp__wincu__)?windows_computer_use_/,'');
+      if(!isQuietCall(action,effectiveArgs))current.desktop=true;
       current.pending++;publish();
       try{return readableAbort(exec,await next());}
       finally{current.pending--;current.lastActive=Date.now();if(owner===current)publish();}
