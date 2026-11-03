@@ -883,6 +883,7 @@ async function runBackendOnce(action, args, timeoutMs, request, quiet) {
   const prepared = takeoverSetup.then(async () => {
     if (request?.cancelled) throw new Error(request.stoppedByUser ? STOPPED : 'COMPUTER_USE_CANCELLED');
     if (changesDesktop) { await takeover.begin({ quiet }); acquired = true; }
+    if(takeover.config.cursorIndicatorEnabled&&['click','double_click','move','drag','scroll','focus','invoke','set_value'].includes(action))await takeover.command('target_config',takeover.config);
   });
   takeoverSetup = prepared.catch(() => {});
   try {
@@ -890,7 +891,7 @@ async function runBackendOnce(action, args, timeoutMs, request, quiet) {
     if (request?.cancelled) throw new Error(request.stoppedByUser ? STOPPED : 'COMPUTER_USE_CANCELLED');
     // The series lets typing without a window target follow the window the
     // series last gave input to, after the user got the foreground back.
-    return await dispatchBackend(action, { ...args, _wcuCornerFailsafe: false, _wcuTakeoverPid: takeover.child?.pid ?? 0, _wcuSeries: takeover.seriesKey ?? null }, timeoutMs, request);
+    return await dispatchBackend(action, { ...args, _wcuCornerFailsafe: false, _wcuTakeoverPid: takeover.child?.pid ?? 0, _wcuPointerHwnd:takeover.config.cursorIndicatorEnabled?takeover.targetWindowHandle??0:0, _wcuPointerAnimationMs:takeover.config.pointerAnimationMs, _wcuSeries: takeover.seriesKey ?? null }, timeoutMs, request);
   } finally { if (acquired) await takeover.end({ quiet }); }
 }
 

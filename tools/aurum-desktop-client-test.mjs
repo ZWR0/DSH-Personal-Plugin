@@ -77,6 +77,15 @@ try {
   assert.equal(snapshot.value.browserReuseExisting,true)
   assert(document.querySelector('[id$="-browserSignIn"]').disabled)
   assert(document.querySelector('[id$="-browserVisible"]').disabled)
+  const motion = document.querySelector('[id$="-pointerMotion"]')
+  await change(motion, '1001')
+  const beforeMotion = patches.length
+  await act(async()=>button('save').click())
+  assert.equal(patches.length, beforeMotion)
+  assert(document.body.textContent.includes(t('invalidMotion')))
+  await change(motion, '400')
+  await act(async()=>button('save').click())
+  assert.equal(snapshot.value.pointerAnimationMs, 400)
   console.log('PASS: tool search, filtered group selection, global disable, banner validation, save and discard')
 } finally {
   await act(async () => root.unmount())

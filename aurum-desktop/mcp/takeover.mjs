@@ -171,7 +171,7 @@ export class TakeoverControl {
           const at = buffer.indexOf('\n'); if (at < 0) break;
           const line = buffer.slice(0, at).trim(); buffer = buffer.slice(at + 1); if (!line) continue;
           let message; try { message = JSON.parse(line); } catch { continue; }
-          if (message.kind === 'ready') { ready = true; clearTimeout(deadline); resolve(); }
+          if (message.kind === 'ready') { this.targetWindowHandle=message.targetWindowHandle; ready = true; clearTimeout(deadline); resolve(); }
           else if (message.kind === 'stopped') this.fail(new Error(STOPPED));
           else {
             const pending = this.waiters.get(message.id); if (!pending) continue;

@@ -117,8 +117,20 @@ namespace DshTakeover {
     internal static void KeepOnTop(IntPtr window) { SetWindowPos(window,new IntPtr(-1),0,0,0,0,0x213); }
   }
 
+  // Only the owning backend receives this hidden window handle.
+  internal sealed class PointerDispatcher : Control {
+    internal Func<int,int,int,bool> Target;
+    protected override void WndProc(ref Message message) {
+      int phase=message.Msg==0x8025?0:message.Msg==0x8026?1:message.Msg==0x8027?2:-1;
+      if(phase>=0&&Target!=null) {
+        bool moved=Target(unchecked((int)message.WParam.ToInt64()),unchecked((int)message.LParam.ToInt64()),phase);
+        message.Result=new IntPtr(moved?2:1);return;
+      }
+      base.WndProc(ref message);
+    }
+  }
   internal sealed class Controller : ApplicationContext {
-    readonly Control dispatcher = new Control();
+    readonly PointerDispatcher dispatcher = new PointerDispatcher();
     readonly EventWaitHandle cancel;
     readonly Native.Hook callback;
     readonly IntPtr hook;
@@ -127,6 +139,12 @@ namespace DshTakeover {
     readonly List<Frame> frames = new List<Frame>();
     PointerFrame pointer;
     Native.Point? testPointerPoint;
+    Native.Point targetPoint, targetFrom, renderedPoint;
+    bool hasTarget;
+    int pointerAnimationMs=240, activeAnimationMs;
+    string targetPhase="none";
+    DateTime targetExpires=DateTime.MinValue;
+    readonly System.Diagnostics.Stopwatch targetClock=new System.Diagnostics.Stopwatch();
     Rectangle[] displays=new Rectangle[0],testDisplays;
     string displaySignature="";
     DateTime nextDisplayPoll=DateTime.MinValue;
@@ -145,6 +163,7 @@ namespace DshTakeover {
     internal Controller(string eventName, bool tests) {
       testMode = tests;
       cancel = new EventWaitHandle(false, EventResetMode.ManualReset, eventName);
+      dispatcher.Target=SetTarget;
       var handle = dispatcher.Handle;
       callback = OnKey;
       hook = Native.SetWindowsHookEx(13, callback, Native.GetModuleHandle(null), 0);
@@ -162,7 +181,7 @@ namespace DshTakeover {
       SystemEventsSubscribe();
       new Thread(ReadCommands) { IsBackground = true, Name = "DSH takeover control" }.Start();
       RefreshDisplays(true);
-      Emit(new { kind = "ready", hookActive = true, monitors = displays.Length });
+      Emit(new { kind = "ready", hookActive = true, targetWindowHandle=handle.ToInt64(), monitors = displays.Length });
     }
 
     void SystemEventsSubscribe() { Microsoft.Win32.SystemEvents.DisplaySettingsChanged += DisplaysChanged; Microsoft.Win32.SystemEvents.SessionSwitch += SessionChanged; Microsoft.Win32.SystemEvents.UserPreferenceChanged += PreferencesChanged; }
@@ -227,7 +246,17 @@ namespace DshTakeover {
           if (!indicator) HideFrames();
           else if (rebuild&&!displaysRebuilt) { HideFrames(); ShowFrames(); }
           else foreach (var frame in frames) frame.Present(255);
+          if(action=="preview") { Native.Point point; if(Native.GetCursorPos(out point))SetTarget(point.x,point.y,2); }
           UpdatePointer(255);
+        } else if(action=="target_config") {
+          cursorIndicator=Get(command,"cursorIndicatorEnabled",true);
+          pointerAnimationMs=Math.Max(0,Math.Min(1000,Get(command,"pointerAnimationMs",240)));
+          idleMs=Math.Max(200,Math.Min(3000,Get(command,"indicatorIdleMs",800)));
+          ConfigureVisibility(Get(command,"remoteIndicatorVisible",true));UpdatePointer(255);
+        } else if(action=="pointer_target") {
+          SetTarget(Get(command,"x",0),Get(command,"y",0),Get(command,"click",false)?1:Get(command,"immediate",false)?2:0);
+        } else if(action=="pointer_clear") {
+          hasTarget=false;targetPhase="none";HidePointer();
         } else if (action == "configure") {
           ConfigureShortcut(Get(command, "stopShortcut", ""));
           ConfigureVisibility(Get(command,"remoteIndicatorVisible",remoteVisible));
@@ -250,7 +279,7 @@ namespace DshTakeover {
             image.Save(Get(command, "path", ""), ImageFormat.Png);
           }
         } else if (action == "test_pointer_source" && testMode) {
-          testPointerPoint=new Native.Point(Get(command,"x",200),Get(command,"y",200)); UpdatePointer(255);
+          testPointerPoint=new Native.Point(Get(command,"x",200),Get(command,"y",200)); SetTarget(testPointerPoint.Value.x,testPointerPoint.Value.y,2);
         } else if (action == "test_pointer_layout" && testMode) {
           var bounds = PointerFrame.LayoutForPoint(new Native.Point(Get(command,"x",0),Get(command,"y",0)), new Rectangle(Get(command,"left",0),Get(command,"top",0),Get(command,"width",1920),Get(command,"height",1080)), (float)Get(command,"scale",1.0));
           Emit(new { id=id,ok=true,left=bounds.X,top=bounds.Y,width=bounds.Width,height=bounds.Height }); return;
@@ -263,7 +292,7 @@ namespace DshTakeover {
           testDisplays=null;nextDisplayPoll=DateTime.MinValue;
         } else if (action != "status") throw new InvalidOperationException("Unknown takeover command");
         Native.Point livePoint; bool liveCursorAvailable=Native.GetCursorPos(out livePoint);
-        Emit(new { id = id, ok = true, armed = armed, statusOnly = statusOnly, indicatorText = text, paused = paused, cancelled = cancel.WaitOne(0), consumed = consumed, stopShortcut = stopShortcut, windows = frames.Count, remoteIndicatorVisible=remoteVisible, overlayCaptureExcluded=frames.Count>0&&frames.TrueForAll(frame=>frame.CaptureExcluded), overlayClickThrough=frames.Count>0&&frames.TrueForAll(frame=>frame.ClickThrough), displayRevision=displayRevision, displays=Array.ConvertAll(displays,r=>new {left=r.Left,top=r.Top,width=r.Width,height=r.Height}), overlayBounds=frames.ConvertAll(frame=>new {left=frame.DisplayBounds.Left,top=frame.DisplayBounds.Top,width=frame.DisplayBounds.Width,height=frame.DisplayBounds.Height}), cursorError = cursorError, liveCursorAvailable = liveCursorAvailable, pointerSource = testPointerPoint.HasValue ? "test-seam" : "windows", pointerVisible = pointer != null, pointerClickThrough = pointer != null && pointer.ClickThrough, pointerCaptureExcluded = pointer != null && pointer.CaptureExcluded, foreground = Native.GetForegroundWindow().ToInt64() });
+        Emit(new { id = id, ok = true, armed = armed, statusOnly = statusOnly, indicatorText = text, paused = paused, cancelled = cancel.WaitOne(0), consumed = consumed, stopShortcut = stopShortcut, windows = frames.Count, remoteIndicatorVisible=remoteVisible, overlayCaptureExcluded=frames.Count>0&&frames.TrueForAll(frame=>frame.CaptureExcluded), overlayClickThrough=frames.Count>0&&frames.TrueForAll(frame=>frame.ClickThrough), displayRevision=displayRevision, displays=Array.ConvertAll(displays,r=>new {left=r.Left,top=r.Top,width=r.Width,height=r.Height}), overlayBounds=frames.ConvertAll(frame=>new {left=frame.DisplayBounds.Left,top=frame.DisplayBounds.Top,width=frame.DisplayBounds.Width,height=frame.DisplayBounds.Height}), cursorError = cursorError, liveCursorAvailable = liveCursorAvailable, liveCursorX=livePoint.x, liveCursorY=livePoint.y, targetWindowHandle=dispatcher.Handle.ToInt64(), pointerX=renderedPoint.x, pointerY=renderedPoint.y, targetX=targetPoint.x, targetY=targetPoint.y, targetPhase=targetPhase, pointerSource = testPointerPoint.HasValue ? "test-seam" : "agent-target", pointerVisible = pointer != null, pointerClickThrough = pointer != null && pointer.ClickThrough, pointerCaptureExcluded = pointer != null && pointer.CaptureExcluded, foreground = Native.GetForegroundWindow().ToInt64() });
       } catch (Exception error) { Emit(new { id = id, ok = false, error = error.Message }); }
     }
     IntPtr OnKey(int code, IntPtr message, IntPtr data) {
@@ -324,14 +353,24 @@ namespace DshTakeover {
       foreach (var bounds in displays) { var frame = new Frame(bounds, statusOnly?text:(text+" · "+(String.IsNullOrEmpty(stopShortcut)?"Esc":stopShortcut)), position,remoteVisible,statusOnly); frames.Add(frame); frame.Show(); frame.Present(255); }
     }
     void HideFrames() { foreach (var frame in frames) frame.Dispose(); frames.Clear(); }
+    bool SetTarget(int x,int y,int phase) {
+      if(paused||!cursorIndicator)return false;
+      bool moved=!hasTarget||targetPoint.x!=x||targetPoint.y!=y;
+      targetFrom=hasTarget?renderedPoint:new Native.Point(x,y);
+      targetPoint=new Native.Point(x,y);hasTarget=true;
+      activeAnimationMs=moved&&phase==0?pointerAnimationMs:0;
+      targetPhase=phase==1?"click":"move";targetClock.Restart();
+      targetExpires=DateTime.UtcNow.AddMilliseconds(activeAnimationMs+idleMs);
+      UpdatePointer(255);return moved;
+    }
     void UpdatePointer(byte alpha) {
-      if (!armed || paused || statusOnly || !cursorIndicator) { HidePointer(); return; }
-      Native.Point point;
-      if(testMode&&testPointerPoint.HasValue)point=testPointerPoint.Value;
-      else if (!Native.GetCursorPos(out point)) { cursorError=Marshal.GetLastWin32Error(); HidePointer(); return; }
+      if(paused||!cursorIndicator||!hasTarget||DateTime.UtcNow>=targetExpires) { HidePointer(); return; }
+      double progress=activeAnimationMs==0?1:Math.Min(1,targetClock.Elapsed.TotalMilliseconds/activeAnimationMs);
+      double eased=progress*progress*(3-2*progress);
+      renderedPoint=new Native.Point((int)Math.Round(targetFrom.x+(targetPoint.x-targetFrom.x)*eased),(int)Math.Round(targetFrom.y+(targetPoint.y-targetFrom.y)*eased));
       cursorError=0;
-      if (pointer == null) { pointer = new PointerFrame(remoteVisible); pointer.Update(point, alpha); pointer.Show(); }
-      else pointer.Update(point, alpha);
+      if(pointer==null) { pointer=new PointerFrame(remoteVisible);pointer.Update(renderedPoint,alpha,targetPhase=="click");pointer.Show(); }
+      else pointer.Update(renderedPoint,alpha,targetPhase=="click");
     }
     void HidePointer() { if (pointer != null) { pointer.Dispose(); pointer = null; } }
     protected override void Dispose(bool disposing) {
@@ -347,12 +386,12 @@ namespace DshTakeover {
     }
   }
 
-  // A small cursor-following layer. The system cursor, theme and input state
+  // An explicit agent-target layer. The system cursor, theme and input state
   // remain owned by Windows; closing/crashing this process leaves no cursor changes.
   internal sealed class PointerFrame : Form {
     IntPtr dc, bitmap, previous;
     float scale;
-    bool flipX, flipY;
+    bool flipX, flipY, lastClicked;
     Rectangle lastBounds;
     byte lastAlpha;
     SizeF lastExtent;
@@ -372,7 +411,7 @@ namespace DshTakeover {
     internal void SetRemoteVisible(bool visible) {remoteVisible=visible;if(IsHandleCreated)Native.SetWindowDisplayAffinity(Handle,visible?0u:0x11u);}
     internal bool ClickThrough { get { return (Native.GetWindowLong(Handle,-20)&0x08080020)==0x08080020; } }
     internal bool CaptureExcluded { get { uint affinity; return Native.GetWindowDisplayAffinity(Handle,out affinity)&&affinity==0x11; } }
-    // Fixed pointer canvas in 96-DPI units; the arrow tip remains the input hotspot.
+    // Fixed marker canvas in 96-DPI units; the reticle names the actual input hotspot.
     static float CanvasWidth(SizeF extent) { return 80f; }
     static float CanvasHeight(SizeF extent) { return 80f; }
     static bool FlipX(Native.Point point, Rectangle screen, float zoom, SizeF extent) { return screen.Right-point.x < (CanvasWidth(extent)-24)*zoom; }
@@ -426,21 +465,21 @@ namespace DshTakeover {
         if(info.color!=IntPtr.Zero)Native.DeleteObject(info.color);
       }
     }
-    internal void Update(Native.Point point, byte alpha) {
+    internal void Update(Native.Point point, byte alpha,bool clicked=false) {
       var screen=Native.DisplayFromPoint(point);
       uint dpiX=96,dpiY=96; try { if(Native.GetDpiForMonitor(Native.MonitorFromPoint(point,2),0,out dpiX,out dpiY)!=0)dpiX=96; } catch(EntryPointNotFoundException) { }
       float zoom=Math.Max(1f,Math.Min(3f,dpiX/96f));
       var extent=PointerExtent();
       bool nextFlipX=FlipX(point,screen,zoom,extent),nextFlipY=FlipY(point,screen,zoom,extent);
-      bool redraw=bitmap==IntPtr.Zero||Math.Abs(scale-zoom)>.01f||flipX!=nextFlipX||flipY!=nextFlipY||extent!=lastExtent;
+      bool redraw=bitmap==IntPtr.Zero||lastClicked!=clicked||Math.Abs(scale-zoom)>.01f||flipX!=nextFlipX||flipY!=nextFlipY||extent!=lastExtent;
       if(redraw) {
-        using(var image=Draw(zoom,nextFlipX,nextFlipY,extent)) {
+        using(var image=Draw(zoom,nextFlipX,nextFlipY,extent,clicked)) {
           IntPtr next=image.GetHbitmap(Color.FromArgb(0));
           IntPtr selected=Native.SelectObject(dc,next);
           if(bitmap==IntPtr.Zero)previous=selected; else Native.DeleteObject(bitmap);
           bitmap=next;
         }
-        scale=zoom;flipX=nextFlipX;flipY=nextFlipY;lastExtent=extent;
+        scale=zoom;flipX=nextFlipX;flipY=nextFlipY;lastExtent=extent;lastClicked=clicked;
       }
       var bounds=LayoutForPoint(point,screen,zoom,extent);
       if(!redraw&&bounds==lastBounds&&alpha==lastAlpha)return;
@@ -450,12 +489,20 @@ namespace DshTakeover {
       lastBounds=bounds;lastAlpha=alpha;
     }
     internal static Bitmap Draw(float zoom,bool left,bool up) { return Draw(zoom,left,up,SizeF.Empty); }
-    internal static Bitmap Draw(float zoom,bool left,bool up,SizeF extent) {
+    internal static Bitmap Draw(float zoom,bool left,bool up,SizeF extent,bool clicked=false) {
       float canvasWidth=CanvasWidth(extent),canvasHeight=CanvasHeight(extent);
       var image=new Bitmap((int)Math.Ceiling(canvasWidth*zoom),(int)Math.Ceiling(canvasHeight*zoom),PixelFormat.Format32bppPArgb);
       using(var g=Graphics.FromImage(image)) {
         g.Clear(Color.Transparent);g.SmoothingMode=SmoothingMode.AntiAlias;g.TextRenderingHint=TextRenderingHint.AntiAliasGridFit;g.ScaleTransform(zoom,zoom);
-        float x=left?canvasWidth-32:32,y=up?canvasHeight-32:32;
+        float targetX=left?canvasWidth-32:32,targetY=up?canvasHeight-32:32;
+        using(var aim=new Pen(Color.FromArgb(clicked?255:200,217,183,109),clicked?2f:1f)) {
+          float gap=clicked?7:5;
+          g.DrawLine(aim,targetX-gap,targetY-2,targetX-gap,targetY-gap);g.DrawLine(aim,targetX-gap,targetY-gap,targetX-2,targetY-gap);
+          g.DrawLine(aim,targetX+gap,targetY+2,targetX+gap,targetY+gap);g.DrawLine(aim,targetX+gap,targetY+gap,targetX+2,targetY+gap);
+          g.DrawLine(aim,targetX-7,targetY-8,targetX-3,targetY-3);
+        }
+        // Offset from the Windows hotspot instead of drawing a second arrow over it.
+        float x=targetX-22,y=targetY-26;
         using(var arrow=new GraphicsPath()) {
           arrow.AddLine(x+2,y+1,x+14,y+5);
           arrow.AddBezier(x+14,y+5,x+16,y+5.7f,x+16,y+7,x+14,y+8);

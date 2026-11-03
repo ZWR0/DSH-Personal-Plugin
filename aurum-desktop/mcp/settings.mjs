@@ -15,7 +15,7 @@ export const BROWSER_APPS = Object.freeze(['default', 'edge', 'chrome', 'firefox
 export const DEFAULT_SETTINGS = Object.freeze({
   browserFirst: true, browserReuseExisting: false, browserVisible: true, browserApp: 'default', browserSignIn: false,
   mode: 'full', toolPreset: 'auto', enabledTools: TOOL_NAMES, indicatorEnabled: true, cursorIndicatorEnabled: true, remoteIndicatorVisible: true, indicatorText: '灵犀御机正在操控电脑',
-  indicatorPosition: 'top', indicatorIdleMs: 800, stopShortcut: '',
+  pointerAnimationMs: 240, indicatorPosition: 'top', indicatorIdleMs: 800, stopShortcut: '',
   resumeToken: 0, previewToken: 0
 });
 
@@ -75,6 +75,7 @@ export function normalizeSettings(input = {}) {
   }
   if (!['top', 'bottom'].includes(value.indicatorPosition)) throw new Error('indicatorPosition must be top or bottom');
   if (!Number.isInteger(value.indicatorIdleMs) || value.indicatorIdleMs < 200 || value.indicatorIdleMs > 3000) throw new Error('indicatorIdleMs must be 200–3000');
+  if(!Number.isInteger(value.pointerAnimationMs)||value.pointerAnimationMs<0||value.pointerAnimationMs>1000)throw new Error('pointerAnimationMs must be 0–1000');
   value.stopShortcut = normalizeStopShortcut(value.stopShortcut);
   for (const key of ['resumeToken', 'previewToken']) {
     if (!Number.isSafeInteger(value[key]) || value[key] < 0) throw new Error(`${key} must be a nonnegative integer`);

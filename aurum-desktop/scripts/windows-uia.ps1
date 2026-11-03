@@ -269,6 +269,12 @@ public static class WindowsComputerUseNative {
   [DllImport("user32.dll", SetLastError=true)]
   public static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, UIntPtr wParam,
     IntPtr lParam, uint flags, uint timeout, out UIntPtr result);
+  public static int AgentTarget(long hwnd,int x,int y,int phase) {
+    UIntPtr result;
+    uint message=phase==1?0x8026u:phase==2?0x8027u:0x8025u;
+    return SendMessageTimeout(new IntPtr(hwnd),message,new UIntPtr(unchecked((uint)x)),new IntPtr(y),2,1000,out result)==IntPtr.Zero?0:unchecked((int)result.ToUInt64());
+  }
+
   public static bool IsResponsive(IntPtr hwnd) {
     UIntPtr result;
     // WM_NULL, SMTO_BLOCK | SMTO_ABORTIFHUNG. Never enter the UIA provider here.
@@ -1902,13 +1908,37 @@ function Click-At {
     finally {
       if ([WindowsComputerUseNative]::SendMouseEvent(0, 0, [uint32]$flags[1], 0) -ne 1) { throw 'COMPUTER_USE_INPUT_UNAVAILABLE: Windows rejected mouse release.' }
     }
+    Show-AgentTarget -X $X -Y $Y -Clicked
     Start-Sleep -Milliseconds 60
   }
+}
+
+# Target feedback uses the resolved action coordinates, never the user's cursor.
+function Show-AgentTarget {
+  param([int]$X,[int]$Y,[switch]$Clicked,[switch]$Immediate)
+  if(-not $script:WcuPointerHwnd) { return }
+  [void](Test-Failsafe)
+  $script:WcuLastAgentTarget=@{x=$X;y=$Y;phase=if($Clicked){'click'}else{'move'}}
+  $phase=if($Clicked){1}elseif($Immediate -or $script:WcuAction -eq 'drag'){2}else{0}
+  $reply=[WindowsComputerUseNative]::AgentTarget($script:WcuPointerHwnd,$X,$Y,$phase)
+  if($reply -eq 0) { throw 'COMPUTER_USE_INDICATOR_UNAVAILABLE: Target feedback failed. A click-feedback failure may follow dispatched input; observe the app before retrying.' }
+  if($reply -eq 2 -and $phase -eq 0) {
+    $clock=[Diagnostics.Stopwatch]::StartNew()
+    while($clock.ElapsedMilliseconds -lt $script:WcuPointerAnimationMs) { [void](Test-Failsafe);Start-Sleep -Milliseconds 15 }
+  }
+}
+function Show-AgentElement {
+  param($Element,[switch]$Clicked)
+  if(-not $script:WcuPointerHwnd) { return }
+  if($Clicked -and $null -ne $script:WcuLastAgentTarget) { Show-AgentTarget -X $script:WcuLastAgentTarget.x -Y $script:WcuLastAgentTarget.y -Clicked;return }
+  $rect=Convert-Rect (Invoke-Safe { $Element.Current.BoundingRectangle } $null)
+  if($null -ne $rect -and $rect.width -gt 0 -and $rect.height -gt 0 -and -not (Invoke-Safe { $Element.Current.IsOffscreen } $true)) { Show-AgentTarget -X $rect.centerX -Y $rect.centerY -Clicked:$Clicked }
 }
 
 function Move-ToPoint {
   param([int]$X, [int]$Y)
   [void](Test-Failsafe)
+  Show-AgentTarget -X $X -Y $Y
   if (-not [WindowsComputerUseNative]::SetCursorPos($X, $Y)) { throw 'COMPUTER_USE_INPUT_UNAVAILABLE: Windows rejected cursor positioning. Restore the interactive desktop before retrying.' }
 }
 
@@ -2628,6 +2658,10 @@ function Invoke-LaunchApp {
 function Invoke-Action {
   param([string]$Action, [object]$inputObject = $null)
 
+  $script:WcuLastAgentTarget=$null
+  $script:WcuAction=$Action
+  $script:WcuPointerHwnd=[long](Get-Prop $inputObject '_wcuPointerHwnd' 0)
+  $script:WcuPointerAnimationMs=[int](Get-Prop $inputObject '_wcuPointerAnimationMs' 240)
   $script:WcuCornerFailsafe = [bool](Get-Prop $inputObject '_wcuCornerFailsafe' $true)
   # Set by the server: a background attempt (no indicator, no Esc stop) and the
   # operation series (host turn) this call belongs to.
@@ -2790,8 +2824,10 @@ function Invoke-Action {
       $useBackground = ($dispatch -eq "background") -or (($dispatch -eq "auto") -and ($null -ne $point.elementId) -and $button -eq 'left' -and -not [bool](Get-Prop $inputObject 'activate' $false))
       if ($useBackground) {
         if ($null -ne $point.elementId -and $button -eq 'left') {
+          Show-AgentTarget -X $point.x -Y $point.y
           $patternMethod = Invoke-ElementPattern $point.element
           if ($null -ne $patternMethod) {
+            Show-AgentTarget -X $point.x -Y $point.y -Clicked
             $result["method"] = "background:$patternMethod"
             Add-BackgroundReport $result
             return $result
@@ -2803,9 +2839,11 @@ function Invoke-Action {
         if (-not ($hwnd -and $hwnd -ne 0)) {
           throw "background_unavailable: no window handle to post to. Retry with dispatch:'foreground'."
         }
+        Show-AgentTarget -X $point.x -Y $point.y
         if (-not (Post-BackgroundClick -Hwnd $hwnd -X $point.x -Y $point.y -Button $button -Count 1)) {
           throw "background_unavailable: PostMessage was refused. Retry with dispatch:'foreground'."
         }
+        Show-AgentTarget -X $point.x -Y $point.y -Clicked
         $result["method"] = "postmessage"
         $result["verified"] = $false
         $result["note"] = "Background click queued, delivery unverified. Chromium/Electron/UWP content may ignore PostMessage; if nothing happened, retry with dispatch:'foreground'."
@@ -2848,11 +2886,13 @@ function Invoke-Action {
         if (-not ($hwnd -and $hwnd -ne 0)) {
           throw "background_unavailable: no window handle to post to. Retry with dispatch:'foreground'."
         }
+        Show-AgentTarget -X $point.x -Y $point.y
         if (-not (Post-BackgroundClick -Hwnd $hwnd -X $point.x -Y $point.y -Button $button -Count 2)) {
           throw "background_unavailable: PostMessage was refused. Retry with dispatch:'foreground'."
         }
         $result["method"] = "postmessage"
         $result["verified"] = $false
+        Show-AgentTarget -X $point.x -Y $point.y -Clicked
         $result["note"] = "Background double-click queued, delivery unverified (WM_LBUTTONDBLCLK). Retry with dispatch:'foreground' if nothing happened."
         return $result
       }
@@ -2940,6 +2980,7 @@ function Invoke-Action {
         $point.y = $homed.y
       }
       $result = [ordered]@{ ok = $true; action = "scroll"; x = $point.x; y = $point.y; deltaX = $deltaX; deltaY = $deltaY; elementId = $point.elementId; homed = if ($null -ne $homed) { $homed.homed } else { $null } }
+      Show-AgentTarget -X $point.x -Y $point.y
       # An element scrolls in the background first (Invoke-ElementScroll); the
       # wheel at its center, with real input, is the fallback.
       if (($deltaY -ne 0 -or $deltaX -ne 0) -and $null -ne $point.element -and -not [bool](Get-Prop $inputObject 'activate' $false)) {
@@ -3108,6 +3149,7 @@ function Invoke-Action {
       # and typing without a target goes to this window again.
       $result = [ordered]@{ ok = $true; action = "focus"; elementId = $elementId }
       $state = Start-Input -InputObject $inputObject -Hwnd (Get-ElementWindow $el) -NoActivate
+      Show-AgentElement $el
       try { $el.SetFocus() } finally { Complete-Input $state $result }
       return $result
     }
@@ -3117,11 +3159,15 @@ function Invoke-Action {
       $kind = [string](Get-Prop $inputObject "action" "default")
       $el = Resolve-Element $elementId $inputObject
       if ($kind -ne 'default') {
+        Show-AgentElement $el
         $result = [ordered]@{ ok = $true; action = "invoke"; elementId = $elementId; elementAction = $kind; method = (Invoke-ElementAction $el $kind) }
+        Show-AgentElement $el -Clicked
         Add-BackgroundReport $result
         return $result
       }
+      Show-AgentElement $el
       $method = Invoke-ElementPattern $el
+      if($null -ne $method) { Show-AgentElement $el -Clicked }
       $result = [ordered]@{ ok = $true; action = "invoke"; elementId = $elementId; method = $method }
       Add-BackgroundReport $result
       if ($null -eq $method -and $fallback) {
@@ -3147,6 +3193,7 @@ function Invoke-Action {
       $fallback = [bool](Get-Prop $inputObject "fallbackType" $true)
       $restore = [bool](Get-Prop $inputObject "restoreClipboard" $true)
       $el = Resolve-Element $elementId $inputObject
+      Show-AgentElement $el
       $method = Set-ElementValue $el -Value $value
       $result = [ordered]@{ ok = $true; action = "set_value"; elementId = $elementId; method = $method; length = $value.Length }
       Add-BackgroundReport $result
@@ -3460,6 +3507,7 @@ if ($Persistent) {
         scriptStackTrace = $_.ScriptStackTrace
       }
     }
+    if($null -ne $script:WcuLastAgentTarget) { $result['agentTarget']=$script:WcuLastAgentTarget }
     $result["id"] = $id
     Write-BackendStage 'response-serialize-start'
     Write-Host ($result | ConvertTo-Json -Depth 50 -Compress)

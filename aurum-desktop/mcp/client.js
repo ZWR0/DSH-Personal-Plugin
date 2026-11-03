@@ -42,7 +42,7 @@ window.__ModuleLoader__.load({
       ]]
     ];
     const liteToolNames='open_browser list_windows find click scroll type_text keypress ocr screenshot wait_for launch_app tools'.split(' ');
-    const defaults = {browserFirst:true,browserReuseExisting:false,browserVisible:true,browserApp:'default',browserSignIn:false,toolPreset:'full',enabledTools:allToolNames,indicatorEnabled:true,cursorIndicatorEnabled:true,remoteIndicatorVisible:true,indicatorText:'灵犀御机正在操控电脑',indicatorPosition:'top',indicatorIdleMs:800,stopShortcut:''};
+    const defaults = {browserFirst:true,browserReuseExisting:false,browserVisible:true,browserApp:'default',browserSignIn:false,toolPreset:'full',enabledTools:allToolNames,indicatorEnabled:true,cursorIndicatorEnabled:true,remoteIndicatorVisible:true,indicatorText:'灵犀御机正在操控电脑',indicatorPosition:'top',indicatorIdleMs:800,pointerAnimationMs:240,stopShortcut:''};
     const equal=(left,right)=>JSON.stringify(left)===JSON.stringify(right);
     const dictionaries = {
       zh: {nav:'电脑操控',title:'Windows 桌面操作',intro:'查看接管提示，使用 Esc 停止桌面操作。',mode:'工具模式',lite:'精简模式',full:'全能模式',modeHint:'精简模式保留常用工具，其余按需加载。切换模式会在当前动作结束后重载工具。',indicator:'显示接管提示',indicatorHint:'显示屏幕边缘光晕和提示条；关闭后仍可按 Esc 停止。',text:'提示文字',position:'提示位置',top:'屏幕顶部',bottom:'屏幕底部',delay:'操作结束后隐藏延时（毫秒）',delayHint:'连续动作共用提示，避免每次点击都闪烁。范围 200–3000 毫秒。',corner:'用鼠标停止操作',cornerHint:'鼠标停在屏幕左上角约 500 毫秒可拒绝后续输入；普通鼠标移动不会停止。',stop:'停止与恢复',stopHint:'用户按 Esc 后保持暂停。普通鼠标和其他按键不触发停止，程序发送的 Esc 也不触发停止。恢复前请确认 agent 的任务仍符合你的意图。',resume:'恢复桌面控制',resumed:'已请求恢复桌面控制',preview:'预览接管提示',previewed:'已请求预览；如果之前按 Esc 暂停，请先恢复控制。',save:'保存',discard:'取消修改',saved:'已保存',failed:'保存失败',unavailable:'当前宿主未提供可写设置，请在本机 DSH 中打开此页面。',invalid:'请填写 1–120 字的单行提示文字，并将隐藏延时设为 200–3000 的整数。',persistFailed:'宿主未确认设置已保存，请刷新后重试。'},
@@ -411,6 +411,7 @@ window.__ModuleLoader__.load({
         finally{setSaving(false);}
       };
       const save = async () => {
+        if(!Number.isInteger(draft.pointerAnimationMs)||draft.pointerAnimationMs<0||draft.pointerAnimationMs>1000){setMessage(t('invalidMotion'));setTone('error');return;}
         if(!draft.indicatorText.trim()||draft.indicatorText.length>120||/[\r\n\x00-\x1f]/.test(draft.indicatorText)||!Number.isInteger(draft.indicatorIdleMs)||draft.indicatorIdleMs<200||draft.indicatorIdleMs>3000){setMessage(t('invalid'));setTone('error');return;}
         const patch=Object.fromEntries(Object.keys(defaults).filter(key=>!equal(draft[key],saved[key])).map(key=>[key,draft[key]]));
         if(await run(patch,'saved'))setDirty(false);
@@ -487,6 +488,7 @@ window.__ModuleLoader__.load({
               field(title(t('text'),null,{htmlFor:idPrefix+'-indicatorText'}),h('input',{className:'wcu-control',id:idPrefix+'-indicatorText',type:'text',maxLength:120,value:draft.indicatorText,disabled:indicatorDisabled,onChange:e=>change('indicatorText',e.target.value)})),
               field(title(t('position'),null,{id:idPrefix+'-position-label'}),h('div',{className:'wcu-segment',role:'radiogroup','aria-labelledby':idPrefix+'-position-label'},radio('indicatorPosition','top',t('top')),radio('indicatorPosition','bottom',t('bottom')))),
               field(title(t('delay'),'delayHint',{htmlFor:idPrefix+'-delay'}),h('div',{className:'wcu-number'},h('input',{className:'wcu-control',id:idPrefix+'-delay',type:'number',min:200,max:3000,step:100,value:draft.indicatorIdleMs,disabled:indicatorDisabled,onChange:e=>change('indicatorIdleMs',Number(e.target.value))}),h('span',null,t('ms')))),
+              field(title(t('pointerMotion'),'pointerMotionHint',{htmlFor:idPrefix+'-pointerMotion'}),h('div',{className:'wcu-number'},h('input',{className:'wcu-control',id:idPrefix+'-pointerMotion',type:'number',min:0,max:1000,step:20,value:draft.pointerAnimationMs,disabled:disabled||!draft.cursorIndicatorEnabled,onChange:e=>change('pointerAnimationMs',Number(e.target.value))}),h('span',null,t('ms')))),
               field(title(t('remoteVisible'),'remoteVisibleHint',{htmlFor:idPrefix+'-remoteIndicatorVisible'}),toggle('remoteIndicatorVisible','remoteVisible'))))),
         h('section',{className:'wcu-section','aria-labelledby':idPrefix+'-stop-title'},
           head(idPrefix+'-stop-title','stop',null,button('clearShortcut',{className:'wcu-small',disabled:disabled||!draft.stopShortcut,onClick:()=>{change('stopShortcut','');setRecordMessage('');}})),
@@ -511,6 +513,8 @@ window.__ModuleLoader__.load({
     Object.assign(dictionaries.en,{browserReuseExisting:'Reuse the existing browser',browserReuseHint:'Request a new tab in the normal Edge/Chrome browser and preserve DSH. Uses that browser’s sign-ins and shared desktop focus. Turn off for an independent browser and page pointer.'});
     Object.assign(dictionaries.zh,{browserInfo:'可复用已有浏览器的新标签页，或使用独立的 DSH 浏览器。复用模式沿用正常浏览器的登录状态和桌面焦点；独立模式可显示不占用系统鼠标的页面指针。',browserFirstHint:'网页任务优先使用所选浏览器入口；原生控件或不支持的内容再用桌面操作。',browserVisibleHint:'控制独立 DSH 浏览器的窗口显示。复用已有浏览器时保持可见。'});
     Object.assign(dictionaries.en,{browserInfo:'Reuse a normal browser in a new tab, or use an independent DSH browser. Reuse shares the normal browser’s sign-ins and desktop focus; isolated mode supports a page pointer independent of your mouse.',browserFirstHint:'Prefer the selected browser entry for web tasks. Use desktop input for native controls or unsupported content.',browserVisibleHint:'Show the independent DSH browser window. Reused browsers remain visible.'});
+    Object.assign(dictionaries.zh,{cursorIndicatorHint:'标记 Agent 的实际操作目标，显示移动轨迹与点击反馈；不跟随用户鼠标。桌面箭头避开系统箭头，准星表示实际目标。',pointerMotion:'目标移动动画',pointerMotionHint:'0–1000 毫秒。设为 0 立即显示目标；较长动画便于观察，操作也会相应等待。',invalidMotion:'目标移动动画须为 0–1000 的整数毫秒'});
+    Object.assign(dictionaries.en,{cursorIndicatorHint:'Mark actual agent targets with movement and click feedback, independently of your pointer. The desktop arrow is offset; the reticle marks the target.',pointerMotion:'Target movement animation',pointerMotionHint:'0–1000 ms. Zero shows the target immediately. Longer animation is easier to follow and delays the action accordingly.',invalidMotion:'Use an integer target animation duration from 0 to 1000 ms.'});
     function apply(ctx) {
       ctx.effect(()=>ctx.locale.register(NS,dictionaries));
 

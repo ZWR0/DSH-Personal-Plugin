@@ -142,13 +142,13 @@ const INDICATOR_SCRIPT = '(' + function () {
   host.style.cssText = 'all:initial!important;position:fixed!important;inset:0!important;margin:0!important;border:0!important;padding:0!important;width:100vw!important;height:100vh!important;background:transparent!important;z-index:2147483647!important;pointer-events:none!important;user-select:none!important;contain:strict!important;';
   const shadow = host.attachShadow({ mode: 'closed' });
   shadow.innerHTML = '<style>.layer{position:absolute;inset:0;overflow:hidden}.layer.capture{display:none}' +
-    '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
+    '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform var(--motion,240ms) cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
     '.status{position:absolute;top:18px;left:50%;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 14px;border:1px solid #b18b3266;border-radius:999px;background:#1d1e20ee;color:#f6edd6;font:13px/1.5 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}.status.on{display:block}' +
-    '.pointer.on{opacity:1}.pointer svg{position:relative;display:block;margin:-2px 0 0 -2px;filter:drop-shadow(0 0 3px #a87a2290) drop-shadow(0 0 8px #a87a2250) drop-shadow(0 0 14px #a87a2228)}' +
-    '.ring{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;border:2px solid #d9b75d;opacity:0}' +
-    '.ring.go{display:none}@keyframes ring{from{opacity:.95;transform:scale(.35)}to{opacity:0;transform:scale(1.4)}}' +
-    '@media (prefers-reduced-motion:reduce){.pointer{transition:opacity .2s}.ring.go{animation:none}}</style>' +
-    '<div class="layer"><div class="status"></div><div class="pointer"><div class="ring"></div><svg width="20" height="22" viewBox="0 0 20 22"><path d="M4 3 16 7C18 7.7 18 9 16 10C13.5 10.5 10 9.5 9.8 13.4C9.6 14.7 9.2 16 8.5 17.5C7.6 19.2 6 19 5.5 16.5L2 5C1.5 3 2.5 2.5 4 3Z" fill="#1b2221" stroke="#d9b76d" stroke-width=".85" stroke-linejoin="round"/></svg></div></div>';
+    '.pointer.on{opacity:1}.pointer svg{position:relative;display:block;margin:-26px 0 0 -22px;filter:drop-shadow(0 0 3px #a87a2290) drop-shadow(0 0 8px #a87a2250) drop-shadow(0 0 14px #a87a2228)}' +
+    '.ring{position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:3px;border:1px solid #d9b75d;opacity:.75}' +
+    '.ring.go{animation:ring .55s ease-out}.trace{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.trace polyline{fill:none;stroke:#d9b75d;stroke-width:1.4;stroke-dasharray:3 4;opacity:0}.trace.go polyline{animation:trace .9s ease-out}@keyframes trace{from{opacity:.65}to{opacity:0}}@keyframes ring{from{opacity:1;transform:scale(.75)}to{opacity:.75;transform:scale(1)}}' +
+    '@media (prefers-reduced-motion:reduce){.pointer{transition:opacity .2s}.ring.go,.trace.go polyline{animation:none}}</style>' +
+    '<div class="layer"><svg class="trace"><polyline/></svg><div class="status"></div><div class="pointer"><div class="ring"></div><svg width="20" height="22" viewBox="0 0 20 22"><path d="M4 3 16 7C18 7.7 18 9 16 10C13.5 10.5 10 9.5 9.8 13.4C9.6 14.7 9.2 16 8.5 17.5C7.6 19.2 6 19 5.5 16.5L2 5C1.5 3 2.5 2.5 4 3Z" fill="#1b2221" stroke="#d9b76d" stroke-width=".85" stroke-linejoin="round"/></svg></div></div>';
   const layer = shadow.querySelector('.layer'), pointer = shadow.querySelector('.pointer'), ring = shadow.querySelector('.ring');
   // The tab icon: the page's own icon links point at the badge while DSH works
   // and get their addresses back afterwards. A link added for a page without
@@ -168,7 +168,7 @@ const INDICATOR_SCRIPT = '(' + function () {
     }
   };
   let state = 'idle', options = {indicatorEnabled:true,cursorIndicatorEnabled:true}, lastPoint = null;
-  const status = shadow.querySelector('.status');
+  const status = shadow.querySelector('.status'), trace=shadow.querySelector('.trace'), polyline=trace.querySelector('polyline');
   const labels = {waiting:'等待下一步',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',set_value:'打开页面或填写内容',type_text:'输入文字',keypress:'发送按键',snapshot:'查看页面',tree:'读取页面',find:'查找控件',activate_window:'展示浏览器'};
   const mount = () => {
     const parent=document.fullscreenElement??document.documentElement;
@@ -181,6 +181,7 @@ const INDICATOR_SCRIPT = '(' + function () {
   // show the pointer around a screenshot.
   globalThis.__dshStatus = (next, point, presentation) => {
     if(presentation)options=presentation;
+    pointer.style.setProperty('--motion',(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:options.pointerAnimationMs??240)+'ms');
     if (next === 'capture' || next === 'captured') { layer.classList.toggle('capture', next === 'capture'); return; }
     state = next;
     mount();
@@ -189,15 +190,16 @@ const INDICATOR_SCRIPT = '(' + function () {
     status.classList.toggle('on',state==='working'&&options.indicatorEnabled);
     pointer.classList.toggle('on',state==='working'&&options.cursorIndicatorEnabled&&!!lastPoint);
     if (point && state === 'working' && options.cursorIndicatorEnabled) {
+      if(lastPoint&&(lastPoint.x!==point.x||lastPoint.y!==point.y)){polyline.setAttribute('points',`${lastPoint.x},${lastPoint.y} ${point.x},${point.y}`);trace.classList.remove('go');void trace.getBoundingClientRect();trace.classList.add('go');}
       lastPoint=point;
       pointer.style.setProperty('--x', `${Math.round(point.x)}px`); pointer.style.setProperty('--y', `${Math.round(point.y)}px`);
       pointer.classList.add('on');
       if (point.click) { ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go'); }
     }
-    if (state !== 'working') pointer.classList.remove('on');
+    if (state !== 'working'){pointer.classList.remove('on');trace.classList.remove('go');} if(!options.cursorIndicatorEnabled)trace.classList.remove('go');
   };
   globalThis.__dshIndicator = () => ({ state, pointer: pointer.classList.contains('on'), x: parseFloat(pointer.style.getPropertyValue('--x')), y: parseFloat(pointer.style.getPropertyValue('--y')),
-    badge: Boolean(saved), status:status.classList.contains('on'), text:status.textContent, fullscreen:!!document.fullscreenElement, mountedInFullscreen:!document.fullscreenElement||host.parentNode===document.fullscreenElement, capture: layer.classList.contains('capture') });
+    trail:polyline.getAttribute('points')??'',clicking:ring.classList.contains('go'),badge: Boolean(saved), status:status.classList.contains('on'), text:status.textContent, fullscreen:!!document.fullscreenElement, mountedInFullscreen:!document.fullscreenElement||host.parentNode===document.fullscreenElement, capture: layer.classList.contains('capture') });
   globalThis.__dshStatus('idle');
   document.addEventListener('DOMContentLoaded', () => globalThis.__dshStatus(state), { once: true });
 }.toString() + ')();';
@@ -1188,7 +1190,11 @@ export class BrowserLane {
 
   // The pointer goes to where the action lands; click plays a ring there.
   async pointAt(tab, point, click = false) {
-    if (point && this.showsIndicator(tab) && tab.indicator === 'working') await this.updateIndicator(tab, { x: point.x, y: point.y, click });
+    if (point && this.showsIndicator(tab) && tab.indicator === 'working') {
+      await this.updateIndicator(tab, { x: point.x, y: point.y, click });
+      const settings=this.presentationSettings();
+      if(settings.cursorIndicatorEnabled!==false)await sleep(settings.pointerAnimationMs??240);
+    }
   }
 
   // The center of an element's first box, for the pointer only (no hit test).

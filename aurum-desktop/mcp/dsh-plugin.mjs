@@ -28,6 +28,7 @@ const fields = {
   remoteIndicatorVisible: z.boolean().default(true).description('远程与录屏可见 / Visible in remote sessions and recordings'),
   indicatorText: z.string().default(DEFAULT_SETTINGS.indicatorText).description('提示文字 / Banner text'),
   indicatorPosition: z.union([z.const('top'),z.const('bottom')]).default('top').description('提示位置 / Banner position'),
+  pointerAnimationMs: z.number().min(0).max(1000).default(240).description('鼠标目标动画时长（毫秒） / Pointer target animation (ms)'),
   indicatorIdleMs: z.number().min(200).max(3000).default(800).description('结束后隐藏延时（毫秒） / Hide delay (ms)'),
   stopShortcut: z.string().pattern(STOP_SHORTCUT_PATTERN).default('').description('自定义停止快捷键 / Custom stop shortcut'),
   resumeToken: z.number().min(0).default(0),
