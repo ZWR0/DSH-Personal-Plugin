@@ -1,15 +1,16 @@
 # 暗金工坊 · DSH Web UI 本地插件套件
 
-本仓库包含 **9 个 DSH 插件**，覆盖本地插件管理、会话清理、主题、引用、提问、上下文管理与保护、远程登录和移动工作台。安装时以所下载目录中的 `package.json` 为准。
+本仓库包含 **10 个 DSH 插件**，覆盖本地插件管理、会话清理、主题、引用、提问、上下文管理与保护、远程登录和移动工作台。安装时以所下载目录中的 `package.json` 为准。
 
 版本核对日期：**2026-11-03**。插件统一使用四字中文名，名称不附加功能或英文后缀。包名、插件 ID 和配置路径保持兼容。当前版本见下表。仓库另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
 
-插件使用 `@local/*` 包名，安装在 DSH profile 中。其余八个插件不直接修改官方包；远行之钥依赖匹配的 DSH 认证层扩展，仓库提供独立兼容补丁，不能只复制界面插件就获得固定 Token 能力。
+插件使用 `@local/*` 包名，安装在 DSH profile 中。其余九个插件不直接修改官方包；远行之钥依赖匹配的 DSH 认证层扩展，仓库提供独立兼容补丁，不能只复制界面插件就获得固定 Token 能力。
 
 ## 插件一览
 
 | 插件 | 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
+| 灵犀御机 | 0.1.0 | `@local/dsh-aurum-desktop` · [aurum-desktop](aurum-desktop/README.md) | Windows 桌面操控、实时金色鼠标与控件操作 |
 | 行囊宝匣 | 0.6.1 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 扫描本机插件目录，批量安装选中项 |
 | 会话清道 | 0.4.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 预览确认并批量清理已停止会话 |
 | 暗金主题 | 0.4.7 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
@@ -210,6 +211,7 @@ node tools/check.mjs
 
 | 插件 | 测试脚本（位于 `tools/`） |
 | --- | --- |
+| 灵犀御机 | `aurum-desktop-client-test.mjs`、`aurum-desktop-pointer-smoke.mjs`、`aurum-desktop-shortcut-smoke.mjs` |
 | 行囊宝匣 | `local-vault-host-test.mjs`、`local-vault-connection-test.mjs`、`local-vault-client-test.mjs` |
 | 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
 | 暗金主题 | `aurum-actions-browser-test.mjs`、`aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |

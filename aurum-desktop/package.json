@@ -1,0 +1,60 @@
+{
+  "name": "@local/dsh-aurum-desktop",
+  "version": "0.1.0",
+  "description": "灵犀御机：暗金桌面操控、实时金色鼠标、截图与控件操作",
+  "type": "module",
+  "main": "mcp/dsh-plugin.mjs",
+  "files": [
+    "mcp/",
+    "scripts/",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY.md",
+    "locale/*.json"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "exports": {
+    ".": "./mcp/dsh-plugin.mjs",
+    "./client": "./mcp/client.js",
+    "./mcp/server.mjs": "./mcp/server.mjs",
+    "./mcp/dsh-plugin.mjs": "./mcp/dsh-plugin.mjs",
+    "./package.json": "./package.json",
+    "./*": "./*",
+    "./icon": "./icon.svg",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "win32"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-mcp-client": ">=0.1.0-rc.2 || >=0.2.0-rc.2",
+    "@deepseek-ai/schemastery": ">=3.18.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-mcp-client": {
+      "optional": true
+    }
+  },
+  "private": true
+}
