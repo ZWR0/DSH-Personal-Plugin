@@ -672,9 +672,14 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
   .au-metrics { gap: 12px; }
 }
 @media (max-width: 560px) {
-  .au-row { flex-wrap: wrap; }
-  .au-metrics { flex-basis: 100%; order: 1; }
-  .au-ring { margin: 0 auto; }
+  .au-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px 8px; padding: 6px 10px 8px; }
+  .au-brand .au-word { display: inline; }
+  .au-brand { min-width: 0; letter-spacing: normal; }
+  .au-ring { margin: 0; justify-self: center; gap: 5px; }
+  .au-row > .au-toggle { grid-column: 3; grid-row: 1; justify-self: end; min-height: 32px; }
+  .au-metrics { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; padding-top: 6px; border-top: 1px solid var(--au-cell-line); }
+  .au-metric { gap: 2px; }
+  .au-metric small { letter-spacing: normal; }
   .au-divider { display: none; }
   .au-expand, .au-turn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

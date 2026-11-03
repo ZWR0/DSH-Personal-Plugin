@@ -112,5 +112,19 @@ try {
  if (process.env.AURUM_SCREENSHOT) await page.screenshot({path:process.env.AURUM_SCREENSHOT})
  await page.evaluate(()=>draw(0,false,'b'));await page.waitForTimeout(50)
  assert.equal(await page.locator('.au-speed-line').count(),0)
+ await page.locator('.au-row > .au-toggle').click()
+ await page.setViewportSize({width:390,height:700})
+ await page.evaluate(()=>{
+  window.usageNodes=[{kind:'assistant',turn:0,blocks:[],usage:{inputTokens:34400,totalTokens:37110,outputTokens:2710}}]
+  draw(0,false,'mobile')
+ })
+ const mobileRow=page.locator('.au-row')
+ assert.equal(await page.locator('.au-word').isVisible(),true)
+ const mobileBoxes=await page.locator('.au-metric').evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right}}))
+ assert(mobileBoxes.every(box=>Math.abs(box.y-mobileBoxes[0].y)<1))
+ assert(mobileBoxes.slice(1).every((box,index)=>box.x>=mobileBoxes[index].right))
+ assert((await mobileRow.boundingBox()).height<100)
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true)
+ if (process.env.AURUM_MOBILE_SCREENSHOT) await page.screenshot({path:process.env.AURUM_MOBILE_SCREENSHOT})
  console.log('HISTORY OK: compact paired usage, peak isolation, centered equal spacing;  module reload restores curves; interruption and session isolation; four turns retained; idle excluded')
 } finally {await browser.close()}
