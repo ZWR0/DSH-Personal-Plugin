@@ -212,7 +212,7 @@ const tools = [
   },
   {
     name: "windows_computer_use_click",
-    description: "Click a screen coordinate or the center of a UI Automation element. dispatch:'auto' (default) = a left click on an element runs in the background (BM_CLICK on a Win32 button, else its UIA Invoke/Toggle pattern); a coordinate click is real SendInput input: the target comes forward for it, a point that shows another window is refused (POINT_COVERED), then the pointer and the foreground go back; dispatch:'background' = PostMessage into the target window's queue (no foreground steal, delivery unverified — Chromium/Electron/UWP may drop it, then retry with foreground); dispatch:'foreground' = always foreground SendInput. Raw-coordinate clicks home-correct if the target window moved since it was observed (reported as 'homed'). A browser-lane page element id (t1a2b:57) is clicked inside the page itself, in the background; a covered element is refused and the covering element is named.",
+    description: "Click a screen coordinate or the center of a UI Automation element. dispatch:'auto' (default) = a left click on an element runs in the background (BM_CLICK on a Win32 button, else its UIA Invoke/Toggle pattern); a coordinate left click first tries the UIA control at that point without moving the system cursor; if unsupported it uses real SendInput input: the target comes forward for it, a point that shows another window is refused (POINT_COVERED), then the pointer and the foreground go back; dispatch:'background' = PostMessage into the target window's queue (no foreground steal, delivery unverified — Chromium/Electron/UWP may drop it, then retry with foreground); dispatch:'foreground' = always foreground SendInput. Raw-coordinate clicks home-correct if the target window moved since it was observed (reported as 'homed'). A browser-lane page element id (t1a2b:57) is clicked inside the page itself, in the background; a covered element is refused and the covering element is named.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -248,7 +248,7 @@ const tools = [
   },
   {
     name: "windows_computer_use_move",
-    description: "Move the mouse pointer to a screen coordinate or the center of an element. A browser-lane page element id hovers it inside the page without moving the desktop pointer.",
+    description: "Move the independent Agent indicator to a screen coordinate or element center without moving the system cursor (default pointerMode:virtual). This is visual movement only, not native hover. Use pointerMode:system only when actual desktop hover is required; it moves the shared Windows cursor. Browser-lane elements hover inside the page without moving the system cursor.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -258,7 +258,8 @@ const tools = [
         ...windowTargetProperties,
         ...treeViewProperties,
         x: { type: "integer" },
-        y: { type: "integer" }
+        y: { type: "integer" },
+        pointerMode: { type: "string", enum: ["virtual", "system"], default: "virtual" }
       }
     }
   },

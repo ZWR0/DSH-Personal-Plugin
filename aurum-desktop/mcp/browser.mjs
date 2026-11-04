@@ -170,7 +170,6 @@ const INDICATOR_SCRIPT = '(' + function () {
   };
   let state = 'idle', options = {indicatorEnabled:true,cursorIndicatorEnabled:true}, lastPoint = null;
   const status = shadow.querySelector('.status'), trace=shadow.querySelector('.trace'), polyline=trace.querySelector('polyline');
-  const labels = {waiting:'等待模型',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',set_value:'打开页面或填写内容',type_text:'输入文字',keypress:'发送按键',snapshot:'查看页面',tree:'读取页面',find:'查找控件',activate_window:'展示浏览器'};
   const mount = () => {
     const parent=document.fullscreenElement??document.documentElement;
     if(parent&&host.parentNode!==parent)parent.append(host);
@@ -191,8 +190,8 @@ const INDICATOR_SCRIPT = '(' + function () {
     state = next;
     mount();
     badge(state === 'working' && options.indicatorEnabled);
-    status.textContent=(labels[options.action]??'准备操作')+' · DSH 停止';
-    status.classList.toggle('on',state==='working'&&options.indicatorEnabled);
+    status.textContent='';
+    status.classList.remove('on');
     pointer.classList.toggle('on',state==='working'&&options.cursorIndicatorEnabled&&!!lastPoint);
     if (point && state === 'working' && options.cursorIndicatorEnabled) {
       if(lastPoint&&(lastPoint.x!==point.x||lastPoint.y!==point.y)){pointer.style.setProperty('--lean',(point.x>=lastPoint.x?16:-16)+'deg');pointer.classList.remove('sway');void pointer.offsetWidth;pointer.classList.add('sway');polyline.setAttribute('points',`${lastPoint.x},${lastPoint.y} ${point.x},${point.y}`);trace.classList.remove('go');void trace.getBoundingClientRect();trace.classList.add('go');}

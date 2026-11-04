@@ -877,28 +877,18 @@ function Complete-Input {
   $Result['foreground'] = if ([WindowsComputerUseNative]::GiveForeground([IntPtr]$State.user)) { 'returned' } else { 'kept in front: Windows refused to switch back' }
 }
 
-# A background element action whose UIA provider may take the foreground or
-# the pointer on its own: whatever it took is given back, except while a menu
-# or list the call opened is showing. The report goes to $script:BackgroundReport.
+# Restore foreground taken by a UIA provider, except for opened menus/dialogs.
+# Cursor changes cannot be attributed to the provider and are left untouched.
+# The report goes to $script:BackgroundReport.
 function Invoke-Guarded {
   param([scriptblock]$Call, [object]$Element)
   $front = [WindowsComputerUseNative]::GetForegroundWindow().ToInt64()
-  $cursor = New-Object WindowsComputerUseNative+POINT
-  [void][WindowsComputerUseNative]::GetCursorPos([ref]$cursor)
   $procId = [uint32](Invoke-Safe { $Element.Current.ProcessId } 0)
   $popups = @([WindowsComputerUseNative]::VisiblePopups($procId))
   $script:BackgroundReport = [ordered]@{}
   try { return (& $Call) }
   finally {
-    $now = New-Object WindowsComputerUseNative+POINT
-    [void][WindowsComputerUseNative]::GetCursorPos([ref]$now)
-    if ($now.x -ne $cursor.x -or $now.y -ne $cursor.y) {
-      $box = Convert-Rect (Invoke-Safe { $Element.Current.BoundingRectangle } $null)
-      if ($null -ne $box -and $now.x -ge $box.x - 2 -and $now.y -ge $box.y - 2 -and $now.x -le $box.x + $box.width + 2 -and $now.y -le $box.y + $box.height + 2) {
-        [void][WindowsComputerUseNative]::SetCursorPos($cursor.x, $cursor.y)
-        $script:BackgroundReport['pointer'] = 'returned (the app moved it)'
-      }
-    }
+    # UIA does not identify who moved the cursor; never undo user movement.
     $after = [WindowsComputerUseNative]::GetForegroundWindow().ToInt64()
     if ($after -ne $front -and $procId -and (Get-WindowProcessId $after) -eq $procId -and $front -and [WindowsComputerUseNative]::IsWindow([IntPtr]$front)) {
       $opened = @([WindowsComputerUseNative]::VisiblePopups($procId) | Where-Object { $popups -notcontains $_ })
@@ -1897,9 +1887,9 @@ function Get-ButtonFlags {
 }
 
 function Click-At {
-  param([int]$X, [int]$Y, [string]$Button = "left", [int]$Count = 1)
+  param([int]$X, [int]$Y, [string]$Button = "left", [int]$Count = 1, [switch]$Prepared)
   $flags = Get-ButtonFlags $Button
-  Move-ToPoint -X $X -Y $Y
+  Move-ToPoint -X $X -Y $Y -Immediate:$Prepared
   Start-Sleep -Milliseconds 40
   for ($i = 0; $i -lt $Count; $i++) {
     [void](Test-Failsafe)
@@ -1936,9 +1926,9 @@ function Show-AgentElement {
 }
 
 function Move-ToPoint {
-  param([int]$X, [int]$Y)
+  param([int]$X, [int]$Y, [switch]$Immediate)
   [void](Test-Failsafe)
-  Show-AgentTarget -X $X -Y $Y
+  Show-AgentTarget -X $X -Y $Y -Immediate:$Immediate
   if (-not [WindowsComputerUseNative]::SetCursorPos($X, $Y)) { throw 'COMPUTER_USE_INPUT_UNAVAILABLE: Windows rejected cursor positioning. Restore the interactive desktop before retrying.' }
 }
 
@@ -2820,6 +2810,23 @@ function Invoke-Action {
         if ($null -ne $homed.homed) { $result["homed"] = $homed.homed }
       }
 
+      # Resolve the observed point without moving the shared system cursor.
+      if ($dispatch -eq 'auto' -and $button -eq 'left' -and $null -eq $point.element -and -not [bool](Get-Prop $inputObject 'activate' $false)) {
+        $root = if (Has-WindowTarget $inputObject) { [int64](Get-ObservationWindow $inputObject).nativeWindowHandle } else { Get-RootWindowAt $point.x $point.y }
+        Assert-PointOnTarget $point.x $point.y $root
+        $candidate = Invoke-Safe { [System.Windows.Automation.AutomationElement]::FromPoint((New-Object System.Windows.Point($point.x, $point.y))) } $null
+        if ($null -ne $candidate -and (Get-ElementWindow $candidate) -eq $root) {
+          Show-AgentTarget -X $point.x -Y $point.y
+          $patternMethod = Invoke-ElementPattern $candidate
+          if ($null -ne $patternMethod) {
+            Show-AgentTarget -X $point.x -Y $point.y -Clicked
+            $result['method'] = "background:$patternMethod"
+            Add-BackgroundReport $result
+            return $result
+          }
+        }
+      }
+
       # Dispatch layering (cua-style): a left click on an element tries the
       # element itself first (BM_CLICK or a UIA pattern, in the background);
       # raw coordinates and other buttons need the system input queue
@@ -2860,11 +2867,12 @@ function Invoke-Action {
       # which it brings forward itself. Pointer and foreground are given back.
       $targeted = (Has-WindowTarget $inputObject) -or ($null -ne $point.element)
       $hwnd = if (Has-WindowTarget $inputObject) { [int64](Get-ObservationWindow $inputObject).nativeWindowHandle } elseif ($null -ne $point.element) { Get-ElementWindow $point.element } else { Get-RootWindowAt $point.x $point.y }
+      Show-AgentTarget -X $point.x -Y $point.y
       $state = Start-Input -InputObject $inputObject -Hwnd $hwnd -NoActivate:(-not $targeted)
       try {
         if ($targeted) { Assert-PointOnTarget $point.x $point.y $hwnd }
         $state.moved = @{ x = $point.x; y = $point.y }
-        Click-At -X $point.x -Y $point.y -Button $button -Count 1
+        Click-At -X $point.x -Y $point.y -Button $button -Count 1 -Prepared
         $result["method"] = "sendinput"
       } finally { Complete-Input $state $result }
       return $result
@@ -2902,11 +2910,12 @@ function Invoke-Action {
       }
       $targeted = (Has-WindowTarget $inputObject) -or ($null -ne $point.element)
       $hwnd = if (Has-WindowTarget $inputObject) { [int64](Get-ObservationWindow $inputObject).nativeWindowHandle } elseif ($null -ne $point.element) { Get-ElementWindow $point.element } else { Get-RootWindowAt $point.x $point.y }
+      Show-AgentTarget -X $point.x -Y $point.y
       $state = Start-Input -InputObject $inputObject -Hwnd $hwnd -NoActivate:(-not $targeted)
       try {
         if ($targeted) { Assert-PointOnTarget $point.x $point.y $hwnd }
         $state.moved = @{ x = $point.x; y = $point.y }
-        Click-At -X $point.x -Y $point.y -Button $button -Count 2
+        Click-At -X $point.x -Y $point.y -Button $button -Count 2 -Prepared
         $result["method"] = "sendinput"
       } finally { Complete-Input $state $result }
       return $result
@@ -2915,7 +2924,9 @@ function Invoke-Action {
       [void](Test-Failsafe)
       $point = Get-PointFromArgs $inputObject
       $result = [ordered]@{ ok = $true; action = "move"; x = $point.x; y = $point.y; elementId = $point.elementId }
-      Activate-TargetIfRequested $inputObject
+      $pointerMode = [string](Get-Prop $inputObject "pointerMode" "virtual")
+      if ($pointerMode -notin @("virtual", "system")) { throw "INVALID_ARGUMENTS: pointerMode must be virtual or system." }
+      if ($pointerMode -eq "system") { Activate-TargetIfRequested $inputObject }
       if ((Has-WindowTarget $inputObject) -and ($null -eq $point.elementId)) {
         $target = Get-ObservationWindow $inputObject
         Assert-WindowIdentity $inputObject $target
@@ -2924,7 +2935,11 @@ function Invoke-Action {
         $point.y = $homed.y
         if ($null -ne $homed.homed) { $result["homed"] = $homed.homed }
       }
-      Move-ToPoint -X $point.x -Y $point.y
+      if ($pointerMode -eq "system") { Move-ToPoint -X $point.x -Y $point.y }
+      else { Show-AgentTarget -X $point.x -Y $point.y }
+      $result["pointerMode"] = $pointerMode
+      $result["systemCursorMoved"] = ($pointerMode -eq "system")
+      $result["hoverDispatched"] = ($pointerMode -eq "system")
       return $result
     }
     "drag" {
