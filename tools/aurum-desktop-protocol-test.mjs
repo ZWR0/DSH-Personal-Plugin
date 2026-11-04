@@ -27,4 +27,11 @@ assert(open.inputSchema.properties.reuseExisting)
 const [disabled] = run([{ id: 2, method: 'tools/call', params: { name: 'windows_computer_use_open_browser', arguments: { url: 'https://example.com' } } }], ['tools'])
 assert.equal(disabled.result.isError, true)
 assert.match(JSON.stringify(disabled), /TOOL_DISABLED_IN_SETTINGS/)
-console.log('PASS: MCP page-action schemas, browser observation scope, existing-browser option and disabled-tool enforcement')
+
+for(const args of [{keys:['F11']},{keys:['F11'],fullscreenTarget:'player'}]){
+  const [refused]=run([{id:3,method:'tools/call',params:{name:'windows_computer_use_keypress',arguments:args}}])
+  assert.equal(refused.result.isError,true)
+  assert.match(JSON.stringify(refused),/VIDEO_PLAYER_FULLSCREEN_REQUIRED/)
+}
+
+console.log('PASS: MCP schemas, browser scope, disabled tools and rejection of F11 as video player fullscreen')

@@ -324,7 +324,7 @@ const tools = [
   },
   {
     name: "windows_computer_use_keypress",
-    description: "Press a key or key chord, such as Ctrl+L, Enter, Alt+F4, or Shift+Tab. The Windows key is blocked by design. The keys go to the target (or active) window, which comes forward for them and then gives the foreground back, unless a menu or dialog they opened is showing. dispatch:'background' supports only a single printable character (posted as WM_CHAR into the target window, no foreground steal); chords and functional keys must use dispatch:'foreground' (SendKeys). With browserTab, the key goes to that page inside the browser: Alt+Left/Alt+Right/F5 go back/forward/reload, Enter/Escape answer an open JavaScript dialog, and browser-window shortcuts such as Ctrl+L or Ctrl+T are refused.",
+    description: "Press a key or key chord, such as Ctrl+L, Enter, Alt+F4, or Shift+Tab. F11 only toggles browser UI fullscreen, never video player fullscreen; it requires fullscreenTarget:browser and an explicit user request for browser fullscreen. For fullscreen video viewing, click the observed player fullscreen control and verify playback. The Windows key is blocked by design. The keys go to the target (or active) window, which comes forward for them and then gives the foreground back, unless a menu or dialog they opened is showing. dispatch:'background' supports only a single printable character (posted as WM_CHAR into the target window, no foreground steal); chords and functional keys must use dispatch:'foreground' (SendKeys). With browserTab, the key goes to that page inside the browser: Alt+Left/Alt+Right/F5 go back/forward/reload, Enter/Escape answer an open JavaScript dialog, and browser-window shortcuts such as Ctrl+L or Ctrl+T are refused.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -332,6 +332,7 @@ const tools = [
       properties: {
         ...windowTargetProperties,
         ...browserTabProperty,
+        fullscreenTarget: { type: "string", enum: ["player", "browser"], description: "For F11, browser is required and only valid when the user explicitly requested browser UI fullscreen. Player fullscreen must use the observed video player's control, not F11." },
         keys: {
           type: "array",
           minItems: 1,
@@ -945,6 +946,7 @@ async function callTool(name, args, request) {
     if (args.condition === "window" && !browser && !args.windowTitle?.trim() && !args.processId && !args.nativeWindowHandle) throw new Error("INVALID_ARGUMENTS: window wait requires a target");
     if (args.condition !== "window" && !args.query?.trim()) throw new Error("INVALID_ARGUMENTS: text/element wait requires query");
   }
+  if(actionName==='keypress'&&args.keys.length===1&&/^\{?F11\}?$/i.test(args.keys[0])&&args.fullscreenTarget!=='browser')throw new Error('VIDEO_PLAYER_FULLSCREEN_REQUIRED: F11 changes browser UI fullscreen only; it does not play a video or enter video player fullscreen. For a video viewing task, observe the actual video player, start playback and click its fullscreen control, then verify playback and fullscreen. Do not retry F11 with fullscreenTarget:browser unless the user explicitly asked for browser UI fullscreen.');
   if (actionName === "keypress" && args.keys.filter(key => !/^(ctrl|control|alt|option|shift)$/i.test(key)).length !== 1) throw new Error("INVALID_ARGUMENTS: keypress needs exactly one non-modifier key");
   if (browser) return runBrowser(actionName === "accessibility_tree" ? "tree" : actionName, args, request);
   switch (name) {
@@ -1072,7 +1074,7 @@ async function backendText(action, args, timeoutMs, request) {
   const result = await runBackend(action, args, timeoutMs, request);
   if (inputActions.has(action)) {
     result.verification = result.moved === false || result.posted === false || result.activated === false ? "unconfirmed" : "sent";
-    result.verificationNote = result.verification === "sent" ? "The action was dispatched. Use wait_for or a fresh observation to verify the expected effect." : "Windows did not confirm dispatch. Inspect the warning and observe the target before retrying.";
+    result.verificationNote = action==='keypress'&&args.fullscreenTarget==='browser' ? "Browser UI fullscreen requested only. This does not confirm video playback or video player fullscreen." : result.verification === "sent" ? "The action was dispatched. Use wait_for or a fresh observation to verify the expected effect." : "Windows did not confirm dispatch. Inspect the warning and observe the target before retrying.";
   }
   return { content: [{ type: "text", text: safeJson(stripImagePayload(result)) }] };
 }

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { harnessRequire } from './test-environment.mjs'
 import { browserRoutingInstructions, TOOL_NAMES, LITE_TOOL_NAMES } from '../aurum-desktop/mcp/settings.mjs'
-import { isQuietCall } from '../aurum-desktop/mcp/browser.mjs'
+import { BrowserLane, isQuietCall } from '../aurum-desktop/mcp/browser.mjs'
 import { installActivity } from '../aurum-desktop/mcp/activity.mjs'
 import { TakeoverControl } from '../aurum-desktop/mcp/takeover.mjs'
 
@@ -12,6 +12,7 @@ assert(TOOL_NAMES.includes('open_browser'))
 assert(LITE_TOOL_NAMES.includes('open_browser'))
 assert.equal(isQuietCall('open_browser',{url:'https://example.com',activate:true}),true)
 assert.match(browserRoutingInstructions(),/start with open_browser/)
+for(const reuse of [false,true]){const instructions=browserRoutingInstructions({browserReuseExisting:reuse});assert.match(instructions,/Do not use F11/);assert.match(instructions,/playerFullscreen:true/)}
 assert.doesNotMatch(browserRoutingInstructions({},[]),/start with open_browser/)
 
 const { JSDOM } = harnessRequire('jsdom')
@@ -45,6 +46,15 @@ try {
   assert.equal(dom.window.__dshIndicator().status, false)
   fullscreen = null
   dom.window.document.dispatchEvent(new dom.window.Event('fullscreenchange'))
+  const video=dom.window.document.createElement('video')
+  dom.window.document.getElementById('player').append(video)
+  const media=()=>BrowserLane.prototype.mediaState.call({send:async(_,method,args)=>({result:{value:dom.window.eval(args.expression)}})}, {})
+  fullscreen=dom.window.document.documentElement
+  assert.equal((await media()).playerFullscreen,false,'Whole-page fullscreen is not player fullscreen')
+  fullscreen=dom.window.document.getElementById('player')
+  assert.equal((await media()).playerFullscreen,true)
+  assert.equal((await media()).videos[0].fullscreen,true)
+  fullscreen=null
   dom.window.__dshStatus('idle')
   assert.equal(dom.window.__dshIndicator().status, false)
 } finally { dom.window.close() }
