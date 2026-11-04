@@ -53,3 +53,7 @@ Windows UI Automation 控件读取、截图、OCR、点击、输入、滚动、�
 视频全屏观看要求播放选中的视频并进入播放器全屏；F11 的浏览器全屏不满足此要求。网页观测的 `media.playerFullscreen` 和每段视频的 `fullscreen` 标识视频是否位于全屏播放器内；仍需结合播放状态和时间推进确认播放。状态文字在原边框窗口内更新，避免操作与等待切换时重建边框。
 
 `keypress` 的 F11 操作必须明确传入 `fullscreenTarget:"browser"`，且仅用于用户明确要求的浏览器全屏；视频全屏请求应点击实际播放器控件。浏览器全屏的工具结果明确不代表播放成功或播放器全屏。
+
+播放动作：观察并选定视频播放器后，调用 `invoke`，传入 `action:"play_fullscreen"` 和播放器 `elementId`；原生路径还需传入已观察的窗口 HWND、进程或完整标题。插件会激活目标、确认播放进度、执行播放器全屏并再次确认进度，而不是让模型猜快捷键。原生路径只点击明确的「播放」与「全屏」，不切换含糊的「播放/暂停」，也不使用「网页全屏」；无法确认时停在对应阶段。浏览器路径直接使用该播放器的播放与全屏 API，要求可见浏览器，且重复调用不会误暂停或退出全屏。
+
+`node tools/aurum-desktop-player-workflow-test.mjs` 覆盖流程分支和中断；交互桌面可单独运行 `node tools/aurum-desktop-video-browser-test.mjs` 和 `node tools/aurum-desktop-video-native-test.mjs`，分别通过真实浏览器媒体流和原生播放器验收窗口验证完整动作，关闭自建窗口后清理测试资源。

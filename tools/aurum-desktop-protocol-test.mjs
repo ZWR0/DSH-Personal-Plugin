@@ -22,6 +22,7 @@ for (const name of ['click', 'double_click', 'move', 'element_info', 'focus', 'i
 for (const name of ['snapshot', 'accessibility_tree', 'find', 'screenshot', 'wait_for']) {
   assert(tools.find(tool => tool.name === 'windows_computer_use_' + name).inputSchema.properties.scope.enum.includes('browserTab'))
 }
+assert(tools.find(tool=>tool.name==='windows_computer_use_invoke').inputSchema.properties.action.enum.includes('play_fullscreen'))
 const open = tools.find(tool => tool.name === 'windows_computer_use_open_browser')
 assert(open.inputSchema.properties.reuseExisting)
 const [disabled] = run([{ id: 2, method: 'tools/call', params: { name: 'windows_computer_use_open_browser', arguments: { url: 'https://example.com' } } }], ['tools'])

@@ -14,6 +14,8 @@ assert.equal(isQuietCall('open_browser',{url:'https://example.com',activate:true
 assert.match(browserRoutingInstructions(),/start with open_browser/)
 for(const reuse of [false,true]){const instructions=browserRoutingInstructions({browserReuseExisting:reuse});assert.match(instructions,/Do not use F11/);assert.match(instructions,/playerFullscreen:true/)}
 assert.doesNotMatch(browserRoutingInstructions({},[]),/start with open_browser/)
+assert.match(browserRoutingInstructions({},['open_browser','click']),/workflow is unavailable/)
+assert.doesNotMatch(browserRoutingInstructions({},['open_browser','click']),/use invoke action:play_fullscreen/)
 
 const { JSDOM } = harnessRequire('jsdom')
 const dom = new JSDOM('<div id="player"></div>', { runScripts: 'outside-only' })

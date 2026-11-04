@@ -58,7 +58,7 @@ if (failures || flags.has('--doctor')) process.exit(failures ? 1 : 0)
 const tools = fileURLToPath(new URL('./', import.meta.url))
 // Only reviewed isolated tests run here; local diagnostic files may target live profiles.
 const scripts = [
-  'aurum-desktop-client-test.mjs', 'aurum-desktop-protocol-test.mjs',
+  'aurum-desktop-client-test.mjs', 'aurum-desktop-protocol-test.mjs', 'aurum-desktop-player-workflow-test.mjs',
   ...(process.platform==='win32'?['aurum-desktop-visibility-test.mjs', 'aurum-desktop-pointer-target-test.mjs']:[]),
   'aurum-actions-browser-test.mjs', 'context-guard-test.mjs', 'aurum-history-browser.mjs', 'aurum-navigation-browser.mjs', 'aurum-navigation-test.mjs', 'aurum-theme-smoke.mjs',
   'choice-pilot-test.mjs', 'choice-pilot-timeout-test.mjs', 'choice-pilot-visual-test.mjs', 'compatibility-test.mjs',

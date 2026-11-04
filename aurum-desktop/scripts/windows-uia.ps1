@@ -2545,6 +2545,10 @@ function Get-TreeResult {
     durationMs = [int]$stopwatch.ElapsedMilliseconds; tree = $tree
     treeTimeoutMs = $budgetMs; targetResponsive = $responsive
   }
+  if($Scope -ne 'desktop' -and $window.nativeWindowHandle) {
+    $display=[System.Windows.Forms.Screen]::FromHandle([IntPtr]([int64]$window.nativeWindowHandle)).Bounds
+    $result['displayBounds']=@{x=$display.Left;y=$display.Top;width=$display.Width;height=$display.Height}
+  }
   if ($null -ne $pages) { $result["webContent"] = $pages }
   if ($null -ne $traversal.reason) {
     $result["truncationReason"] = $traversal.reason

@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { playNativeFullscreen } from './player-workflow.mjs';
 import { TakeoverControl, STOPPED } from './takeover.mjs';
 import { TOOL_NAMES, normalizeEnabledTools, browserRoutingInstructions } from './settings.mjs';
 import { BrowserLane, isBrowserCall, isQuietCall, BACKGROUND_FIRST, defaultProgId, appForProgId } from './browser.mjs';
@@ -324,7 +325,7 @@ const tools = [
   },
   {
     name: "windows_computer_use_keypress",
-    description: "Press a key or key chord, such as Ctrl+L, Enter, Alt+F4, or Shift+Tab. F11 only toggles browser UI fullscreen, never video player fullscreen; it requires fullscreenTarget:browser and an explicit user request for browser fullscreen. For fullscreen video viewing, click the observed player fullscreen control and verify playback. The Windows key is blocked by design. The keys go to the target (or active) window, which comes forward for them and then gives the foreground back, unless a menu or dialog they opened is showing. dispatch:'background' supports only a single printable character (posted as WM_CHAR into the target window, no foreground steal); chords and functional keys must use dispatch:'foreground' (SendKeys). With browserTab, the key goes to that page inside the browser: Alt+Left/Alt+Right/F5 go back/forward/reload, Enter/Escape answer an open JavaScript dialog, and browser-window shortcuts such as Ctrl+L or Ctrl+T are refused.",
+    description: "Press a key or key chord, such as Ctrl+L, Enter, Alt+F4, or Shift+Tab. F11 only toggles browser UI fullscreen, never video player fullscreen; it requires fullscreenTarget:browser and an explicit user request for browser fullscreen. For fullscreen video viewing, find the player and use invoke action:play_fullscreen to execute activation, playback and player fullscreen. The Windows key is blocked by design. The keys go to the target (or active) window, which comes forward for them and then gives the foreground back, unless a menu or dialog they opened is showing. dispatch:'background' supports only a single printable character (posted as WM_CHAR into the target window, no foreground steal); chords and functional keys must use dispatch:'foreground' (SendKeys). With browserTab, the key goes to that page inside the browser: Alt+Left/Alt+Right/F5 go back/forward/reload, Enter/Escape answer an open JavaScript dialog, and browser-window shortcuts such as Ctrl+L or Ctrl+T are refused.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -359,7 +360,7 @@ const tools = [
   },
   {
     name: "windows_computer_use_invoke",
-    description: "Invoke a UI Automation element in the background: BM_CLICK on a Win32 button, else its Invoke, Toggle, SelectionItem, or ExpandCollapse pattern, with click fallback. action expands, collapses or scrolls the element into view instead. A browser-lane page element id is clicked inside the page.",
+    description: "Invoke a UI Automation element in the background: BM_CLICK on a Win32 button, else its Invoke, Toggle, SelectionItem, or ExpandCollapse pattern, with click fallback. action expands, collapses or scrolls the element into view instead. A browser-lane page element id is clicked inside the page. For video viewing use action:play_fullscreen on the observed player container: it activates the target, starts playback only when needed, enters player fullscreen and waits for advancing playback. Native mode requires an explicit window target and exposed player progress/controls. Never use F11 as a substitute.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -369,7 +370,8 @@ const tools = [
         elementId: { type: "string" },
         ...windowTargetProperties,
         ...treeViewProperties,
-        action: { type: "string", enum: ["default", "expand", "collapse", "scroll_into_view"], default: "default", description: "default = the first of Invoke, Toggle, SelectionItem, ExpandCollapse the element has. expand/collapse = ExpandCollapse only; an element already in that state is left as is. scroll_into_view = ScrollItem: its container scrolls until the element shows, with no pointer. UI Automation elements only." },
+        action: { type: "string", enum: ["default", "expand", "collapse", "scroll_into_view", "play_fullscreen"], default: "default", description: "default = the first of Invoke, Toggle, SelectionItem, ExpandCollapse the element has. expand/collapse = ExpandCollapse only; an element already in that state is left as is. scroll_into_view = ScrollItem: its container scrolls until the element shows, with no pointer. expand/collapse/scroll_into_view are UIA only; play_fullscreen operates a player in a visible browser or native UIA." },
+        timeoutMs: { type: "integer", minimum: 1000, maximum: 30000, default: 15000, description: "Deadline for play_fullscreen playback and fullscreen observation." },
         fallbackClick: { type: "boolean", default: true }
       }
     }
@@ -946,8 +948,16 @@ async function callTool(name, args, request) {
     if (args.condition === "window" && !browser && !args.windowTitle?.trim() && !args.processId && !args.nativeWindowHandle) throw new Error("INVALID_ARGUMENTS: window wait requires a target");
     if (args.condition !== "window" && !args.query?.trim()) throw new Error("INVALID_ARGUMENTS: text/element wait requires query");
   }
-  if(actionName==='keypress'&&args.keys.length===1&&/^\{?F11\}?$/i.test(args.keys[0])&&args.fullscreenTarget!=='browser')throw new Error('VIDEO_PLAYER_FULLSCREEN_REQUIRED: F11 changes browser UI fullscreen only; it does not play a video or enter video player fullscreen. For a video viewing task, observe the actual video player, start playback and click its fullscreen control, then verify playback and fullscreen. Do not retry F11 with fullscreenTarget:browser unless the user explicitly asked for browser UI fullscreen.');
+  if(actionName==='keypress'&&args.keys.length===1&&/^\{?F11\}?$/i.test(args.keys[0])&&args.fullscreenTarget!=='browser')throw new Error('VIDEO_PLAYER_FULLSCREEN_REQUIRED: F11 changes browser UI fullscreen only; it does not play a video or enter video player fullscreen. For a video viewing task, observe the actual player, then call windows_computer_use_invoke with action:play_fullscreen and its elementId (plus the explicit window target in native UIA). This executes activation, playback and player fullscreen as one workflow. Do not retry F11 with fullscreenTarget:browser unless the user explicitly asked for browser UI fullscreen.');
   if (actionName === "keypress" && args.keys.filter(key => !/^(ctrl|control|alt|option|shift)$/i.test(key)).length !== 1) throw new Error("INVALID_ARGUMENTS: keypress needs exactly one non-modifier key");
+  if(actionName==='invoke'&&args.action==='play_fullscreen'&&!browser){
+    let acquired=false;
+    try {
+      await takeover.begin();acquired=true;
+      const result=await playNativeFullscreen(args,(action,input)=>runBackend(action,input,undefined,request),request);
+      return {content:[{type:'text',text:safeJson(result)}]};
+    } finally {if(acquired)await takeover.end();}
+  }
   if (browser) return runBrowser(actionName === "accessibility_tree" ? "tree" : actionName, args, request);
   switch (name) {
     case "windows_computer_use_launch_app":

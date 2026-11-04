@@ -1546,7 +1546,7 @@ export class BrowserLane {
     if (this.disabled) fail('BROWSER_LANE_UNAVAILABLE', 'the browser lane is turned off (WCU_BROWSER_LANE=off)');
     const conflict = ['windowTitle', 'processId', 'nativeWindowHandle', 'x', 'y'].filter(key => args[key] !== undefined);
     if (conflict.length) fail('INVALID_ARGUMENTS', `browserTab and page element ids target a page; drop ${conflict.join(', ')} and retry the same browser-lane action. Do not switch to desktop navigation for an argument error. For a new tab use only {elementId:"new-tab",value:"https://the-requested-site/"}.`);
-    if (action === 'invoke' && (args.action ?? 'default') !== 'default') fail('INVALID_ARGUMENTS', `invoke action '${args.action}' is for UI Automation elements; in a page, click the element to open or close it, and scroll its list or the page to bring it into view`);
+    if (action === 'invoke' && !['default','play_fullscreen'].includes(args.action ?? 'default')) fail('INVALID_ARGUMENTS', `invoke action '${args.action}' is for UI Automation elements; in a page, click the element to open or close it, and scroll its list or the page to bring it into view`);
     const match = typeof args.elementId === 'string' ? ELEMENT_ID.exec(args.elementId) : null;
     const opener = typeof args.elementId === 'string' ? NEW_TAB.exec(args.elementId) : null;
     if (opener) {
@@ -1647,6 +1647,7 @@ export class BrowserLane {
     try {
       switch (action) {
         case 'click': case 'double_click': case 'invoke': {
+          if(action==='invoke'&&args.action==='play_fullscreen')return await this.playFullscreen(tab,node,args,request);
           if (args.button === undefined || args.button === 'left') {
             const chosen = await this.chooseOption(tab, node);
             if (chosen) { Object.assign(detail, chosen); break; }
@@ -1772,6 +1773,57 @@ export class BrowserLane {
     const outline = await this.outline(tab);
     const change = this.changes(tab, outline);
     return this.page({ ok: true, action, target, ...detail, media:await this.mediaState(tab), verification: 'sent', verificationNote: ['Sent inside the page without the desktop pointer or keyboard. The page state after the action follows; check it for the expected effect.', ...notes].join(' '), pageChange: change.mode }, change.text, outline);
+  }
+
+  /**
+   * Show and play one observed player; failed stages never replay input.
+   * @param {object} tab Selected browser tab.
+   * @param {number} node Observed backend node identifying the player or its control.
+   * @param {object} args Validated invocation and deadline.
+   * @param {object} request MCP cancellation state.
+   * @returns {Promise<object>} Observed fullscreen and advancing media state.
+   */
+  async playFullscreen(tab,node,args,request){
+    if(tab.browser.headless)fail('BROWSER_WINDOW_HIDDEN','Visible video viewing requires a visible browser window.');
+    const deadline=Date.now()+args.timeoutMs;
+    const playerDocument=tab.document,playerUrl=tab.url;
+    const check=()=>{if(request?.cancelled)fail('COMPUTER_USE_CANCELLED','video viewing was cancelled');if(tab.document!==playerDocument||tab.url!==playerUrl)fail('VIDEO_PLAYER_CHANGED','The selected page changed. Read the player again; earlier playback may already have started.');if(Date.now()>=deadline)fail('VIDEO_WORKFLOW_TIMEOUT','Deadline expired; observe before retrying because an earlier action may have taken effect.');};
+    check();
+    await this.refuseDisabled(tab,node,'Selected player/control');
+    await tab.browser.cdp.send('Target.activateTarget',{targetId:tab.targetId});
+    await this.send(tab,'Page.bringToFront');
+    const objectId=await this.resolveElement(tab,node);
+    const perform=async operation=>{
+      check();
+      const {result,exceptionDetails}=await this.send(tab,'Runtime.callFunctionOn',{objectId,functionDeclaration:`async function(operation){
+        if(!this.isConnected||this===document.body||this===document.documentElement)throw Error('VIDEO_PLAYER_REQUIRED: select the specific player container or video');
+        let player=this;
+        while(player&&player!==document.body&&player!==document.documentElement&&!(player instanceof HTMLVideoElement)&&player.querySelectorAll('video').length===0)player=player.parentElement;
+        if(!player||player===document.body||player===document.documentElement)throw Error('VIDEO_PLAYER_REQUIRED: no specific player around this control');
+        const videos=player instanceof HTMLVideoElement?[player]:[...player.querySelectorAll('video')];
+        if(videos.length!==1)throw Error('VIDEO_PLAYER_AMBIGUOUS: select a container with exactly one video');
+        const video=videos[0],rect=video.getBoundingClientRect();
+        if(!rect.width||!rect.height)throw Error('VIDEO_PLAYER_NOT_VISIBLE');
+        if(operation==='play'&&video.paused)await video.play();
+        if(operation==='fullscreen'&&!(document.fullscreenElement===player||document.fullscreenElement?.contains(video)))await player.requestFullscreen();
+        return {paused:video.paused,ended:video.ended,currentTime:video.currentTime,playerFullscreen:!!document.fullscreenElement&&(document.fullscreenElement===video||document.fullscreenElement.contains(video)),title:document.title};
+      }`,arguments:[{value:operation}],awaitPromise:true,returnByValue:true,userGesture:true},Math.max(1,deadline-Date.now()));
+      check();
+      if(exceptionDetails)fail('VIDEO_WORKFLOW_FAILED',exceptionDetails.exception?.description??exceptionDetails.text);
+      return result.value;
+    };
+    const steps=['activated'];
+    let state=await perform('inspect');
+    const start=state.currentTime;
+    if(state.paused){await this.pointAt(tab,await this.centerOf(tab,node));state=await perform('play');steps.push('play-requested');}
+    while((state.paused||state.ended||state.currentTime<=start)&&Date.now()<deadline){await sleep(150);state=await perform('inspect');}
+    if(state.paused||state.ended||state.currentTime<=start)fail('VIDEO_PLAYBACK_UNCONFIRMED','Playback did not advance; fullscreen was not requested.');
+    steps.push('playback-observed');
+    if(!state.playerFullscreen){await this.pointAt(tab,await this.centerOf(tab,node));state=await perform('fullscreen');steps.push('player-fullscreen-requested');}
+    const afterFull=state.currentTime;
+    while((!state.playerFullscreen||state.paused||state.currentTime<=afterFull)&&Date.now()<deadline){await sleep(150);state=await perform('inspect');}
+    if(!state.playerFullscreen||state.paused||state.currentTime<=afterFull)fail('VIDEO_FULLSCREEN_UNCONFIRMED','Player fullscreen and continuing playback were not both observed. Re-read the player before retrying.');
+    return {meta:{ok:true,action:'play_fullscreen',verification:'observed',channel:'browser',tab:this.describeTab(tab),media:state,steps}};
   }
 
   // Media state is observed independently of a dispatched click.
