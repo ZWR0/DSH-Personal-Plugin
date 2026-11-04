@@ -18,7 +18,7 @@ Windows UI Automation 控件读取、截图、OCR、点击、输入、滚动、�
 
 工具预设、选中项和预览图沿用 Aurum 金色主题令牌，兼容亮暗主题与窄屏。自定义清单支持按名称、用途或工具标识搜索；搜索只筛选显示内容，分组勾选仅作用于当前匹配项，全选与全部关闭仍作用于完整清单。切换预设保留自定义清单，修改后点击保存。
 
-接管提示的「更多选项」支持修改提示文字、位置、保留时间与远程可见性。请先保存，再预览实际效果。
+接管提示的「更多选项」支持修改位置、保留时间与远程可见性。请先保存，再预览实际效果。
 
 `open_browser` 提供明确的网页入口，接收 `url` 和 `activate`，独立模式返回后续操作使用的 `opened.id`。当用户指定复用已有浏览器时，`reuseExisting: true` 通过系统浏览器入口请求新标签页，沿用浏览器登录状态并返回原生窗口列表，后续使用 UIA 操作；不覆盖 DSH 页面。`activate: true` 展示网页，`false` 保持后台焦点。设置页的「复用已有浏览器」决定默认入口，可按任务通过 `reuseExisting` 覆盖。开启时窗口保持可见，独立浏览器的记住登录选项不适用。全能与精简方案包含此工具，自定义清单可单独控制。
 
@@ -36,7 +36,7 @@ Windows UI Automation 控件读取、截图、OCR、点击、输入、滚动、�
 
 2026-11-03 已在现有 DSH web 配置加载，实测左侧插件面板入口、开关关闭和重新启用后的保存与刷新持久性。Windows 后端 self-test 通过，UIA、截图与输入后端可用；原生指示层实际编译并通过显示、关闭、点击穿透检查（cursorError=0）。未将这些检查描述为完整模型端到端任务验收。
 
-桌面接管提示条显示提示文字、当前操作与停止快捷键；未自定义时使用 Esc。修改自定义快捷键后，提示条同步更新。
+桌面接管提示条只显示当前状态与停止快捷键，工具间隙显示「等待模型」；未自定义时使用 Esc。修改自定义快捷键后，提示条同步更新。
 
 2026-11-04 在实际 DSH Web 与本地均衡模型上验证：独立浏览器从 B 站首页点击实际视频链接，工具观测到 `fullscreen: true`、`paused: false`；开启复用已有浏览器后，系统入口在现有 Edge 窗口中新开标签页，保留 DSH，播放页的实际截图显示全屏视频。最后的电脑操作工具因无法可靠确认全屏后的当前网址而中止，未继续人工操控。最新原生状态文案编译通过，须在下一次插件重载后启用。
 
@@ -44,6 +44,8 @@ Windows UI Automation 控件读取、截图、OCR、点击、输入、滚动、�
 
 此个人插件目录是唯一源码目录，本地 Web 配置直接链接这里。同步 GitHub 时提交插件源码、说明与 `tools/aurum-desktop-*.mjs` 验收脚本；`node_modules/`、本机设置、日志与验收图片由个人仓库 `.gitignore` 排除。
 
-从个人仓库根目录运行 `node tools/aurum-desktop-client-test.mjs`，验证工具搜索、筛选后分组勾选、保存与放弃修改，以及提示文字校验。`node tools/aurum-desktop-protocol-test.mjs` 验证实际 MCP 参数声明与禁用工具拒绝。Windows 交互式桌面上可运行 `node tools/aurum-desktop-pointer-smoke.mjs` 和 `node tools/aurum-desktop-shortcut-smoke.mjs` 检查原生指示层；图片写入 `tools/.test-tmp/aurum-desktop/`。`node tools/aurum-desktop-visibility-test.mjs` 检查全屏页面指针、状态开关、浏览器状态条不拦截 Esc，以及切换桌面接管与轮次结束清理。`node tools/aurum-desktop-pointer-target-test.mjs` 验证原生目标坐标、中间移动、点击反馈、等待常驻、下一步连续移动与任务结束隐藏与点击穿透。桌面操作结果中的 `agentTarget` 提供实际指示坐标。这些隔离检查不代表完整模型端到端任务验收。
+从个人仓库根目录运行 `node tools/aurum-desktop-client-test.mjs`，验证工具搜索、筛选后分组勾选、保存与放弃修改，以及隐藏延时校验。`node tools/aurum-desktop-protocol-test.mjs` 验证实际 MCP 参数声明与禁用工具拒绝。Windows 交互式桌面上可运行 `node tools/aurum-desktop-pointer-smoke.mjs` 和 `node tools/aurum-desktop-shortcut-smoke.mjs` 检查原生指示层；图片写入 `tools/.test-tmp/aurum-desktop/`。`node tools/aurum-desktop-visibility-test.mjs` 检查全屏页面指针、状态开关、浏览器状态条不拦截 Esc，以及切换桌面接管与轮次结束清理。`node tools/aurum-desktop-pointer-target-test.mjs` 验证原生目标坐标、中间移动、点击反馈、等待常驻、下一步连续移动与任务结束隐藏与点击穿透。桌面操作结果中的 `agentTarget` 提供实际指示坐标。这些隔离检查不代表完整模型端到端任务验收。
 
 交互桌面实际验收：从个人仓库根目录运行 `node tools/aurum-desktop-live-input-test.mjs`。脚本打开独立验收窗口，通过真实 MCP/UIA 执行后台与前台点击（左右各两次）和三点拖拽，核对进程直接报告的计数与目标坐标，并关闭自建窗口。该测试会短暂使用系统鼠标与焦点，请在桌面空闲时单独运行；不代表完整模型端到端验收。
+
+鼠标起步与刹停使用轻微的左右倾斜回摆，保持原有圆角暗金轮廓；实际目标坐标不随视觉倾斜偏移，停稳后恢复正向。将目标移动动画设为 0 可关闭移动和摆动；网页同时遵循系统减少动态效果偏好。

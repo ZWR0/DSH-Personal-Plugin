@@ -145,9 +145,10 @@ const INDICATOR_SCRIPT = '(' + function () {
     '.pointer{position:absolute;left:0;top:0;opacity:0;transform:translate(var(--x,50vw),var(--y,50vh));transition:transform var(--motion,600ms) cubic-bezier(.2,.8,.2,1),opacity .2s;will-change:transform}' +
     '.status{position:absolute;top:18px;left:50%;transform:translateX(-50%);max-width:calc(100% - 24px);padding:7px 14px;border:1px solid #b18b3266;border-radius:999px;background:#1d1e20ee;color:#f6edd6;font:13px/1.5 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none}.status.on{display:block}' +
     '.pointer.on{opacity:1}.pointer svg{position:relative;display:block;margin:-26px 0 0 -22px;filter:drop-shadow(0 0 3px #a87a2290) drop-shadow(0 0 8px #a87a2250) drop-shadow(0 0 14px #a87a2228)}' +
+    '.pointer svg{transform-origin:4px 3px}.pointer.sway svg{animation:sway var(--motion,600ms) ease-in-out}@keyframes sway{0%,100%{transform:rotate(0deg)}18%{transform:rotate(var(--lean,8deg))}46%{transform:rotate(calc(var(--lean,8deg)*-.65))}72%{transform:rotate(calc(var(--lean,8deg)*.3))}}' +
     '.ring{display:none;position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:3px;border:1px solid #d9b75d;opacity:.75}' +
     '.ring.go{display:block;animation:ring .55s ease-out}.trace{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.trace polyline{fill:none;stroke:#d9b75d;stroke-width:1.4;stroke-dasharray:3 4;opacity:0}.trace.go polyline{animation:trace .9s ease-out}@keyframes trace{from{opacity:.65}to{opacity:0}}@keyframes ring{from{opacity:1;transform:scale(.75)}to{opacity:.75;transform:scale(1)}}' +
-    '@media (prefers-reduced-motion:reduce){.pointer{transition:opacity .2s}.ring.go,.trace.go polyline{animation:none}}</style>' +
+    '@media (prefers-reduced-motion:reduce){.pointer{transition:opacity .2s}.pointer.sway svg,.ring.go,.trace.go polyline{animation:none}}</style>' +
     '<div class="layer"><svg class="trace"><polyline/></svg><div class="status"></div><div class="pointer"><div class="ring"></div><svg width="20" height="22" viewBox="0 0 20 22"><path d="M4 3 16 7C18 7.7 18 9 16 10C13.5 10.5 10 9.5 9.8 13.4C9.6 14.7 9.2 16 8.5 17.5C7.6 19.2 6 19 5.5 16.5L2 5C1.5 3 2.5 2.5 4 3Z" fill="#1b2221" stroke="#d9b76d" stroke-width=".85" stroke-linejoin="round"/></svg></div></div>';
   const layer = shadow.querySelector('.layer'), pointer = shadow.querySelector('.pointer'), ring = shadow.querySelector('.ring');
   // The tab icon: the page's own icon links point at the badge while DSH works
@@ -169,7 +170,7 @@ const INDICATOR_SCRIPT = '(' + function () {
   };
   let state = 'idle', options = {indicatorEnabled:true,cursorIndicatorEnabled:true}, lastPoint = null;
   const status = shadow.querySelector('.status'), trace=shadow.querySelector('.trace'), polyline=trace.querySelector('polyline');
-  const labels = {waiting:'等待下一步',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',set_value:'打开页面或填写内容',type_text:'输入文字',keypress:'发送按键',snapshot:'查看页面',tree:'读取页面',find:'查找控件',activate_window:'展示浏览器'};
+  const labels = {waiting:'等待模型',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',set_value:'打开页面或填写内容',type_text:'输入文字',keypress:'发送按键',snapshot:'查看页面',tree:'读取页面',find:'查找控件',activate_window:'展示浏览器'};
   const mount = () => {
     const parent=document.fullscreenElement??document.documentElement;
     if(parent&&host.parentNode!==parent)parent.append(host);
@@ -190,20 +191,20 @@ const INDICATOR_SCRIPT = '(' + function () {
     state = next;
     mount();
     badge(state === 'working' && options.indicatorEnabled);
-    status.textContent='灵犀御机 · '+(labels[options.action]??'浏览器操作')+' · 页面指针独立于系统鼠标';
+    status.textContent=(labels[options.action]??'准备操作')+' · DSH 停止';
     status.classList.toggle('on',state==='working'&&options.indicatorEnabled);
     pointer.classList.toggle('on',state==='working'&&options.cursorIndicatorEnabled&&!!lastPoint);
     if (point && state === 'working' && options.cursorIndicatorEnabled) {
-      if(lastPoint&&(lastPoint.x!==point.x||lastPoint.y!==point.y)){polyline.setAttribute('points',`${lastPoint.x},${lastPoint.y} ${point.x},${point.y}`);trace.classList.remove('go');void trace.getBoundingClientRect();trace.classList.add('go');}
+      if(lastPoint&&(lastPoint.x!==point.x||lastPoint.y!==point.y)){pointer.style.setProperty('--lean',(point.x>=lastPoint.x?8:-8)+'deg');pointer.classList.remove('sway');void pointer.offsetWidth;pointer.classList.add('sway');polyline.setAttribute('points',`${lastPoint.x},${lastPoint.y} ${point.x},${point.y}`);trace.classList.remove('go');void trace.getBoundingClientRect();trace.classList.add('go');}
       lastPoint=point;
       pointer.style.setProperty('--x', `${Math.round(point.x)}px`); pointer.style.setProperty('--y', `${Math.round(point.y)}px`);
       pointer.classList.add('on');
       if (point.click) { ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go'); }
     }
-    if (state !== 'working'){pointer.classList.remove('on');trace.classList.remove('go');} if(!options.cursorIndicatorEnabled)trace.classList.remove('go');
+    if (state !== 'working'){pointer.classList.remove('on','sway');trace.classList.remove('go');} if(!options.cursorIndicatorEnabled)trace.classList.remove('go');
   };
   globalThis.__dshIndicator = () => ({ state, pointer: pointer.classList.contains('on'), x: parseFloat(pointer.style.getPropertyValue('--x')), y: parseFloat(pointer.style.getPropertyValue('--y')),
-    trail:polyline.getAttribute('points')??'',clicking:ring.classList.contains('go'),badge: Boolean(saved), status:status.classList.contains('on'), text:status.textContent, fullscreen:!!document.fullscreenElement, mountedInFullscreen:!document.fullscreenElement||host.parentNode===document.fullscreenElement, capture: layer.classList.contains('capture') });
+    sway:pointer.classList.contains('sway'),trail:polyline.getAttribute('points')??'',clicking:ring.classList.contains('go'),badge: Boolean(saved), status:status.classList.contains('on'), text:status.textContent, fullscreen:!!document.fullscreenElement, mountedInFullscreen:!document.fullscreenElement||host.parentNode===document.fullscreenElement, capture: layer.classList.contains('capture') });
   globalThis.__dshStatus('idle');
   document.addEventListener('DOMContentLoaded', () => globalThis.__dshStatus(state), { once: true });
 }.toString() + ')();';

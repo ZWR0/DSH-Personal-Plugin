@@ -121,9 +121,9 @@ export class TakeoverControl {
     }
   }
   async presentSeries() {
-    const labels={open_browser:'打开网页',waiting:'等待下一步',set_value:'打开页面或填写内容',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',type_text:'输入文字',keypress:'发送按键',focus:'聚焦控件',invoke:'操作页面',activate_window:'展示浏览器',snapshot:'查看页面',accessibility_tree:'读取页面',find:'查找控件',screenshot:'截取页面',wait_for:'等待页面',close_window:'关闭标签页',element_info:'查看控件'};
-    if(!this.browserAction)return this.command('begin',{...this.config,indicatorText:this.config.indicatorText+(labels[this.operation]?' · '+labels[this.operation]:'')});
-    return this.command('browser_status',{...this.config,cursorIndicatorEnabled:false,indicatorText:'灵犀御机 · '+(labels[this.browserAction]??'浏览器操作')+' · 用 DSH 停止按钮中断'});
+    const labels={open_browser:'打开网页',waiting:'等待模型',set_value:'打开页面或填写内容',click:'点击页面',double_click:'双击页面',move:'移动页面指针',scroll:'滚动页面',type_text:'输入文字',keypress:'发送按键',focus:'聚焦控件',invoke:'操作页面',activate_window:'展示浏览器',snapshot:'查看页面',accessibility_tree:'读取页面',find:'查找控件',screenshot:'截取页面',wait_for:'等待页面',close_window:'关闭标签页',element_info:'查看控件'};
+    if(!this.browserAction)return this.command('begin',{...this.config,statusText:labels[this.operation]??'准备操作'});
+    return this.command('browser_status',{...this.config,cursorIndicatorEnabled:false,statusText:(labels[this.browserAction]??'准备操作')+' · DSH 停止'});
   }
   // Browser leases retain a status pill without arming global stop shortcuts.
   async begin({ quiet = false } = {}) {

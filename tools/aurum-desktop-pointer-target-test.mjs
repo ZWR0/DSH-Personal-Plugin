@@ -13,6 +13,7 @@ const until = async predicate => {
 }
 try {
   const initial = await control.command('begin', { cursorIndicatorEnabled: true, indicatorEnabled: false })
+  assert.equal(initial.indicatorText, '准备操作')
   assert.equal(initial.pointerVisible, true, 'Takeover shows a marker immediately')
   await control.command('target_config', { cursorIndicatorEnabled: true, pointerAnimationMs: 600, indicatorIdleMs: 800 })
   const first = await control.command('pointer_target', { x: 200, y: 200, immediate:true })
@@ -25,8 +26,10 @@ try {
   await control.command('pointer_target', { x:600, y:400 })
   const repeated = await control.command('status')
   assert(repeated.pointerX < 600, 'Repeating an in-flight target cannot snap to its destination')
-  const arrived = await until(value => value.pointerX === 600 && value.pointerY === 400)
+  await until(value => Math.abs(value.pointerTilt) > 1)
+  const arrived = await until(value => value.pointerX === 600 && value.pointerY === 400 && value.pointerTilt === 0)
   assert.equal(arrived.pointerClickThrough, true)
+  assert(Math.abs(arrived.pointerTilt)<0.01, "Pointer settles without tilting the actual target")
   const clicked = await control.command('pointer_target', { x: 600, y: 400, click: true })
   assert.equal(clicked.targetPhase, 'click')
   await new Promise(resolve => setTimeout(resolve, 1100))
