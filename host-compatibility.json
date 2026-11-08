@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "host": {
+    "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "commit": "fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159",
+    "version": "0.2.2-rc.1",
+    "node": ">=24.9.0",
+    "packageManager": "pnpm@11.28.5"
+  },
+  "patches": [
+    {
+      "file": "patches/dsh-persistent-web-token.patch",
+      "sha256": "4ee111ecdeafd3f58715f7d877151287a5f6664a85cd876b3f8a50244c8fd716"
+    },
+    {
+      "file": "patches/dsh-compaction-token-budget.patch",
+      "sha256": "51e632bf30211bd49b9450422b656719f38692a5c13520ee9610a980c2976cc8"
+    }
+  ],
+  "capabilities": {
+    "authentication": [
+      "webAuthStatus",
+      "webAuthToken",
+      "setWebAuthToken",
+      "clearWebAuthToken"
+    ],
+    "compaction": [
+      "compaction/token-budget"
+    ]
+  },
+  "tests": [
+    "packages/client/connection/tests/browser-auth.host.spec.ts",
+    "packages/client/connection/tests/browser-auth-persistent.host.spec.ts",
+    "packages/compaction/compaction-basic/tests/compaction-basic.spec.ts",
+    "packages/compaction/compaction-basic/tests/token-budget.host.spec.ts"
+  ]
+}

@@ -6,7 +6,7 @@
 
 ## 安装前确认
 
-**本插件依赖 DSH 认证层扩展，不是适用于任意原版 DSH 的纯界面插件。** 仓库同时提供 [兼容补丁与基线说明](../patches/README.md)。认证层需提供：
+**本插件依赖 DSH 认证层扩展，不是适用于任意原版 DSH 的纯界面插件。** 新设备按 [安装指南](../INSTALL.md) 准备清单固定的宿主版本；仓库同时提供 [兼容补丁与基线说明](../patches/README.md)。认证层需提供：
 
 - `connection.webAuthStatus()`
 - `connection.webAuthToken()`

@@ -6,7 +6,7 @@
 
 ## 安装与生效
 
-通过行囊宝匣或原生插件管理器安装本目录，重启原 Web Host 后刷新网页。本版还需要 Host 中的 `compaction/token-budget` 扩展接口；源码部署先运行 `pnpm run build`，再重启原 Host。只刷新网页不能更新 Host 压缩逻辑。它独立于暗金主题开关，不需要客户端脚本。
+通过行囊宝匣或原生插件管理器安装本目录。本版需要 Host 中的 `compaction/token-budget` 扩展接口；官方源码和本插件本身不会自动提供调用点。先按 [安装指南](../INSTALL.md) 应用 [压缩预算补丁](../patches/dsh-compaction-token-budget.patch)、构建并验证，再重启原 Web Host 和刷新网页。单独构建未打补丁的官方源码无法补齐接口。它独立于暗金主题开关，不需要客户端脚本。
 
 需要 Web 的 `agentPresets.serviceFor`、`tokenMeter` 与 `llm.resolveModelInfo`。通过公开的预设服务查询接口获得各会话隔离的 `compaction`；不能直接把 Web 已停用的全局压缩器开启。标准、PTC、minimal、cordis 预设自带原生压缩服务；自定义预设缺少服务时明确报错，不静默忽略。
 

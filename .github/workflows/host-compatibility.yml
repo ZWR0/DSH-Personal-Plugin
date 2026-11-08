@@ -1,0 +1,39 @@
+name: Host compatibility
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugins
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - name: Check preparation logic
+        run: node --test plugins/tools/prepare-host.test.mjs
+      - name: Read pinned host revision
+        id: host
+        working-directory: plugins
+        run: node -e "const fs=require('node:fs');const m=require('./host-compatibility.json');fs.appendFileSync(process.env.GITHUB_OUTPUT,'commit='+m.host.commit+'\n')"
+      - uses: actions/checkout@v4
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: ${{ steps.host.outputs.commit }}
+          path: harness
+      - name: Install pinned package manager
+        run: npm install --global pnpm@11.28.5
+      - name: Prepare and validate clean host
+        run: node plugins/tools/prepare-host.mjs --host harness --prepare
+      - name: Plugin compatibility regressions
+        working-directory: harness
+        run: |
+          node ../plugins/tools/compatibility-test.mjs
+          node --import tsx/esm ../plugins/tools/remote-access-host-test.mjs
+          node ../plugins/tools/context-guard-test.mjs

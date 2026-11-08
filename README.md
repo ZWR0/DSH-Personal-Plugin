@@ -4,7 +4,11 @@
 
 版本核对日期：**2026-11-03**。插件统一使用四字中文名，名称不附加功能或英文后缀。包名、插件 ID 和配置路径保持兼容。当前版本见下表。仓库另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
 
-插件使用 `@local/*` 包名，安装在 DSH profile 中。其余九个插件不直接修改官方包；远行之钥依赖匹配的 DSH 认证层扩展，仓库提供独立兼容补丁，不能只复制界面插件就获得固定 Token 能力。
+插件使用 `@local/*` 包名，安装在 DSH profile 中。远行之钥依赖认证扩展，文脉护航依赖压缩预算扩展；仓库提供两项宿主补丁。其他插件仍需匹配的宿主接口。
+
+## 可复现安装与升级
+
+新设备先阅读 [安装与升级指南](INSTALL.md)。支持版本由 [host-compatibility.json](host-compatibility.json) 固定，不跟随官方 master 自动升级。执行 `node tools/prepare-host.mjs --host <DSH源码目录> --prepare` 可检查版本及本地修改、应用完整默认补丁集、安装依赖、构建并验证。个人 YAML 使用 [配置模板](examples/personal-profile.patch.yml) 按需合并，不上传凭据。当前验证范围见 [验证记录](docs/HOST-VALIDATION.md)。
 
 ## 插件一览
 
@@ -189,7 +193,7 @@ $env:DSH_SOURCE = "C:\path\to\deepseek-harness"
 node tools/check.mjs --doctor
 ```
 
-`DSH_SOURCE` 指向 DSH 源码目录，不是插件目录、DSH_HOME 或 profile。源码目录须先安装依赖并完成构建；检查失败时按输出修复。仅安装插件无需运行开发回归测试，但建议迁移源码部署时先做此检查。使用含中文或空格的路径无需改脚本。
+`DSH_SOURCE` 指向 DSH 源码目录，不是插件目录、DSH_HOME 或 profile。首次安装先按 [安装指南](INSTALL.md) 准备固定版本和补丁，再执行开发环境自检；该自检还包含浏览器测试依赖，并非普通插件安装的唯一前提。使用含中文或空格的路径无需改脚本。
 
 检查包含 Node >=24.9、测试依赖、React UMD、浏览器、关键构建文件与固定 Token 源码、构建接口。`DSH_BROWSER_PATH` 可指定测试浏览器的可执行文件绝对路径；脚本不自动安装依赖或浏览器，不修改凭据、认证设置或现有会话。源码接口存在不代表正在运行的旧进程已加载更新。
 

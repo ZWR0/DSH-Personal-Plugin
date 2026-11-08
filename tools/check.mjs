@@ -32,7 +32,7 @@ for (const file of ['vendor/cordis/lib/index.js', 'packages/client/connection/li
   return '存在'
 })
 for (const file of ['packages/compaction/compaction-basic/src/index.ts', 'packages/compaction/compaction-basic/lib/index.js']) check('文脉护航余量接口 ' + file, () => {
-  if (!existsSync(join(env.harnessRoot, file)) || !readFileSync(join(env.harnessRoot, file), 'utf8').includes('compaction/token-budget')) throw new Error('缺少配套余量接口；请更新 DSH 源码并运行 pnpm run build，再重启原 Host。')
+  if (!existsSync(join(env.harnessRoot, file)) || !readFileSync(join(env.harnessRoot, file), 'utf8').includes('compaction/token-budget')) throw new Error('缺少配套余量接口；请按 INSTALL.md 应用固定版本的压缩预算补丁并构建，再重启原 Host。单独更新官方代码或构建无法添加扩展。')
   return '存在；运行中的 Host 仍需重启'
 })
 // This is source evidence, not a claim that an existing Host process loaded it.

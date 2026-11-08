@@ -1,8 +1,7 @@
 diff --git a/packages/client/connection/src/browser-auth.ts b/packages/client/connection/src/browser-auth.ts
-index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420884ac918 100644
 --- a/packages/client/connection/src/browser-auth.ts
 +++ b/packages/client/connection/src/browser-auth.ts
-@@ -6,24 +6,40 @@ import { CONNECT_PATH, type ConnectionInteractions } from './connect-protocol.ts
+@@ -6,24 +6,40 @@
  import { credentialKey } from '@deepseek-ai/dsh-credentials'
  import type { CredentialProvider, CredentialRecord } from '@deepseek-ai/dsh-credentials'
  import type {
@@ -47,7 +46,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
  }
  
  interface BrowserCookiePayload {
-@@ -58,14 +74,54 @@ function decodeBase64Url(value: string): Buffer | undefined {
+@@ -58,13 +74,53 @@
    return encodeBase64Url(decoded) === value ? decoded : undefined
  }
  
@@ -61,17 +60,17 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
    if (existing !== undefined) return existing
 -  const created = encodeBase64Url(randomBytes(SECRET_BYTES))
 +  const created = issueLaunchToken()
-+  PROCESS_LAUNCH_TOKENS.set(owner, created)
-+  return created
-+}
+   PROCESS_LAUNCH_TOKENS.set(owner, created)
+   return created
+ }
 +
 +/** Replace the process token so a revoked one cannot be replayed from a stale URL. */
 +function regenerateProcessToken(owner: object): string {
 +  const created = issueLaunchToken()
-   PROCESS_LAUNCH_TOKENS.set(owner, created)
-   return created
- }
- 
++  PROCESS_LAUNCH_TOKENS.set(owner, created)
++  return created
++}
++
 +/** Validate an operator-supplied or stored token; the message names the rule that failed. */
 +function assertLaunchToken(value: unknown, label = 'web launch token'): string {
 +  if (typeof value !== 'string') throw new Error(`client-connection: ${label} must be a string`)
@@ -99,11 +98,10 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
 +  return createHmac('sha256', secret).update(`epoch:${String(epoch)}`).digest()
 +}
 +
-+
+ 
  function header(
    headers: ConnectionTrustRequest['headers'],
-   name: string,
-@@ -94,17 +150,32 @@ function canonicalSecret(value: unknown): Buffer | undefined {
+@@ -94,17 +150,32 @@
    return decoded
  }
  
@@ -139,7 +137,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
  }
  
  function tokenMatches(actual: string, expected: string): boolean {
-@@ -179,47 +250,71 @@ function decodeCookie(value: string, secret: Buffer): CookiePayload | undefined
+@@ -179,46 +250,70 @@
    return { version: 2, ...payload, id: decoded.id as PeerId }
  }
  
@@ -202,6 +200,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
        || !Number.isSafeInteger(Date.now() + this.maxAgeMilliseconds)) {
        throw new Error('client-connection: cookieMaxAgeDays exceeds the safe timestamp range')
      }
+-  }
 +    this.cookieKey = sessionKey(state.secret, state.epoch)
 +    this.rotatedAt = state.rotatedAt
 +    const envToken = (process.env[TOKEN_ENV] ?? '').trim()
@@ -215,14 +214,13 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
 +      this.tokenValue = processLaunchToken(processOwner)
 +      this.mode = 'ephemeral'
 +    }
-   }
- 
-+  private readonly maxAgeMilliseconds: number
++  }
 +
++  private readonly maxAgeMilliseconds: number
+ 
    /**
     * Initialize browser authentication and create its durable signing secret
-    * when this Harness home has none.
-@@ -233,7 +328,87 @@ export class BrowserAuth {
+@@ -233,7 +328,87 @@
      credentials: CredentialProvider,
      maxAgeDays: number,
    ): Promise<BrowserAuth> {
@@ -311,7 +309,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
    }
  
    /**
-@@ -243,7 +418,7 @@ export class BrowserAuth {
+@@ -243,7 +418,7 @@
     */
    authenticatedUrl(baseUrl: string): string {
      const url = new URL(baseUrl)
@@ -320,7 +318,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
      return url.href
    }
  
-@@ -267,7 +442,7 @@ export class BrowserAuth {
+@@ -267,7 +442,7 @@
      if (tokens.length > 0) {
        const authority = requestAudience(req.headers, secure)
        if (req.method === 'GET' && url.pathname === '/' && tokens.length === 1
@@ -329,7 +327,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
          const issuedAt = Date.now()
          const expiresAt = issuedAt + this.maxAgeMilliseconds
          const value = encodeCookie({
-@@ -275,7 +450,7 @@ export class BrowserAuth {
+@@ -275,7 +450,7 @@
            authority,
            issuedAt,
            expiresAt,
@@ -338,7 +336,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
          res.writeHead(303, {
            'cache-control': 'no-store',
            'location': './',
-@@ -328,14 +503,14 @@ export class BrowserAuth {
+@@ -328,14 +503,14 @@
      const tokens = url.searchParams.getAll(TOKEN_QUERY)
      const authority = requestAudience(req.headers, secure)
      if (req.method !== 'GET' || url.pathname !== CONNECT_PATH || tokens.length !== 1
@@ -355,7 +353,7 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
      res.writeHead(302, {
        'cache-control': 'no-store',
        'location': './api/remote.mux',
-@@ -374,7 +549,7 @@ export class BrowserAuth {
+@@ -374,7 +549,7 @@
      if (authority === undefined || rawCookie === undefined) return undefined
      const value = cookieValue(rawCookie, cookieName(authority))
      if (value === undefined) return undefined
@@ -365,10 +363,9 @@ index 5c8594df6f6c8269dfef5db1faebe4da3f9e9f26..726e483fc0abbcc67ab5189720f96420
      const now = Date.now()
      if (payload.issuedAt > now || payload.expiresAt <= now || payload.expiresAt <= payload.issuedAt
 diff --git a/packages/client/connection/src/index.ts b/packages/client/connection/src/index.ts
-index d563cd40e83f6048dd993f297650f821f6921d62..7a1709f20fb2d599018839f7a9bb7106dd425ec2 100644
 --- a/packages/client/connection/src/index.ts
 +++ b/packages/client/connection/src/index.ts
-@@ -39,6 +39,7 @@ export type {
+@@ -39,6 +39,7 @@
    ServerResponse,
  } from './rpc.ts'
  export type { PeerId, PeerScope, Principal, RemoteInvocation } from '@deepseek-ai/dsh-typert-protocol'
@@ -377,10 +374,9 @@ index d563cd40e83f6048dd993f297650f821f6921d62..7a1709f20fb2d599018839f7a9bb7106
  export { Peer } from './peer.ts'
  export type { PeerOptions } from './peer.ts'
 diff --git a/packages/client/connection/src/rpc-host.ts b/packages/client/connection/src/rpc-host.ts
-index 88e7b48baa54df58392b0f1bcec6d4416cb30c7a..db94937f050cf5e184aaea53b4c8b6f19e5783f4 100644
 --- a/packages/client/connection/src/rpc-host.ts
 +++ b/packages/client/connection/src/rpc-host.ts
-@@ -13,7 +13,7 @@ import { clientRequestSchema } from './rpc-schema.ts'
+@@ -13,7 +13,7 @@
  import { bridge } from './http-bridge.ts'
  import { isRemoteAuthority, isTrustedApiRequest } from './api-request-trust.ts'
  import { API_PATH } from './api-path.ts'
@@ -389,10 +385,12 @@ index 88e7b48baa54df58392b0f1bcec6d4416cb30c7a..db94937f050cf5e184aaea53b4c8b6f1
  import { Peer } from './peer.ts'
  import type {
    PeerAdmission,
-@@ -199,6 +199,26 @@ export class HostConnectionService extends Service implements HostConnectionHand
+@@ -197,6 +197,26 @@
+   /** Add this process's launch token to the clean application URL. */
+   authenticatedUrl(baseUrl: string): string {
      return this.browserAuth.authenticatedUrl(baseUrl)
-   }
- 
++  }
++
 +  /** Describe the effective launch token without revealing it. */
 +  webAuthStatus(): BrowserAuthStatus {
 +    return this.browserAuth.status()
@@ -411,19 +409,17 @@ index 88e7b48baa54df58392b0f1bcec6d4416cb30c7a..db94937f050cf5e184aaea53b4c8b6f1
 +  /** Return to ephemeral mode with a fresh token and no persisted value. */
 +  clearWebAuthToken(): Promise<BrowserAuthStatus> {
 +    return this.browserAuth.clearPersistentToken()
-+  }
-+
+   }
+ 
    /**
-    * Compose one shared-channel Fetch handler from exact routes and its interceptor.
-    * @param channel - shared channel mounted by Connection.
 diff --git a/packages/client/connection/src/rpc.ts b/packages/client/connection/src/rpc.ts
-index aec79d07285e43d9bc0659499dbec18cf0940d98..2cccc91df712137f76698559aec8c3e2b096de37 100644
 --- a/packages/client/connection/src/rpc.ts
 +++ b/packages/client/connection/src/rpc.ts
-@@ -3,6 +3,23 @@
+@@ -2,6 +2,23 @@
+ 
  import type { Branded } from '@deepseek-ai/dsh-brand'
  import type { PeerScope, Principal } from '@deepseek-ai/dsh-typert-protocol'
- 
++
 +/** Which layer currently supplies the Web launch token. */
 +export type LaunchTokenMode = 'ephemeral' | 'persistent' | 'environment'
 +
@@ -440,11 +436,10 @@ index aec79d07285e43d9bc0659499dbec18cf0940d98..2cccc91df712137f76698559aec8c3e2
 +  /** When the persisted token was last written; `0` while none is stored. */
 +  readonly rotatedAt: number
 +}
-+
+ 
  /** Correlation id minted by a caller and echoed by the Connection response. */
  export type RpcId = Branded<'rpc-id'>
- 
-@@ -271,6 +288,32 @@ export interface HostConnectionHandle {
+@@ -271,6 +288,32 @@
     * @returns tokenized URL for initial login; a mount proxy strips its prefix before {@link authorizeIndex}.
     */
    authenticatedUrl(baseUrl: string): string
@@ -477,6 +472,8 @@ index aec79d07285e43d9bc0659499dbec18cf0940d98..2cccc91df712137f76698559aec8c3e2
  }
  
  /** Transport-independent Fetch handler used by HTTP and worker carriers. */
+diff --git a/packages/client/connection/tests/browser-auth-persistent.host.spec.ts b/packages/client/connection/tests/browser-auth-persistent.host.spec.ts
+new file mode 100644
 --- /dev/null
 +++ b/packages/client/connection/tests/browser-auth-persistent.host.spec.ts
 @@ -0,0 +1,236 @@

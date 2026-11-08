@@ -1,0 +1,21 @@
+# Merge selected entries into the original profile's cordis.patch.yml.
+# This template is not installed automatically. No tokens or machine paths belong here.
+- id: llm-pi-ai
+  config:
+    providers:
+      local-ollama:
+        displayName: 本地模型
+        api: openai-completions
+        baseURL: http://localhost:11434/v1
+        models:
+          - id: YOUR_MODEL_ID
+            name: 本地模型
+            contextWindow: 32768
+            maxTokens: 4096
+            input:
+              - text
+- id: agent-default-model
+  name: '@deepseek-ai/dsh-agent-default-model'
+  config:
+    provider: local-ollama
+    model: YOUR_MODEL_ID
