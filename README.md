@@ -15,7 +15,7 @@
 | 插件 | 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
 | 灵犀御机 | 0.1.0 | `@local/dsh-aurum-desktop` · [aurum-desktop](aurum-desktop/README.md) | Windows 桌面操控、实时金色鼠标与控件操作 |
-| 行囊宝匣 | 0.6.1 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 扫描本机插件目录，批量安装选中项 |
+| 行囊宝匣 | 0.7.0 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 插件本体管理、宿主补丁状态与受管撤销重启 |
 | 会话清道 | 0.4.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 预览确认并批量清理已停止会话 |
 | 暗金主题 | 0.4.7 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
 | 引文速递 | 0.3.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
@@ -54,7 +54,7 @@
 
 暗金主题 0.4.2 在开启时让助手回复底部只保留复制按钮。新增的文脉护航 0.1.4 独立于主题，复用每个会话预设的原生 80% 压缩策略，在原生压缩后检查包含待发送消息的请求预算，不足时通过同一服务强制压缩一次历史并重新计量，仍不足才停止本次模型请求；不覆盖预设配置，也不创建第二个压缩器。详细设置、限制与错误恢复见[文脉护航说明](context-guard/README.md)。
 
-文脉护航 0.1.4 需要 Host 的 `compaction/token-budget` 接口；更新配套宿主源码并运行 `pnpm run build` 后重启原 Host。插件限制额外输入余量和摘要输出预算，实际触发仍受模型窗口与输出预留约束。安装文脉护航后需重启原 Host；暗金主题样式更新后强制刷新网页。单次输出 token 上限仍需按输出设置处理，不能靠压缩历史保证消除。
+文脉护航 0.1.4 需要 Host 的 `compaction/token-budget` 接口；按 [安装指南](INSTALL.md) 应用压缩预算补丁、构建并重启原 Host。单独拉取官方源码不会添加该接口。插件限制额外输入余量和摘要输出预算，实际触发仍受模型窗口与输出预留约束。安装文脉护航后需重启原 Host；暗金主题样式更新后强制刷新网页。单次输出 token 上限仍需按输出设置处理，不能靠压缩历史保证消除。
 
 ## 获取源码
 

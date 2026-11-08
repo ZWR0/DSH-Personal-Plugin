@@ -3,6 +3,7 @@ import { readFile, readdir, stat, realpath, mkdir, writeFile, rename } from 'nod
 import { resolve, join, relative, isAbsolute } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
+import { maintenanceBridge } from './maintenance.js'
 
 function localPath(spec) {
   if (typeof spec !== 'string') return null
@@ -14,7 +15,7 @@ function localPath(spec) {
 // Exact Fetch routes share Connection's authenticated /api carrier.
 export const inject = ['connection', 'pluginManager', 'profileContext']
 const ROUTE = '/api/local-vault/'
-const ENDPOINTS = ['settings', 'scan', 'save', 'install']
+const ENDPOINTS = ['settings', 'scan', 'save', 'install', 'patch-status', 'patch-remove']
 const IGNORED = new Set(['node_modules', '.git', '.dsh', '.codex', '.agents', 'dist', 'build'])
 const inside = (root, path) => { const value = relative(root, path); return value === '' || (!value.startsWith('..') && !isAbsolute(value)) }
 const message = error => error instanceof Error ? error.message : String(error)
@@ -104,6 +105,7 @@ export function compatibilityIssues(name, ctx) {
 }
 
 export function apply(ctx) {
+  const maintenance = maintenanceBridge(ctx)
   const settingsFile = join(ctx.profileContext.dir, 'local-vault.json')
   const recoveryFile = join(ctx.profileContext.dir, 'local-vault-recovery.json')
   async function recovery() {
@@ -139,6 +141,14 @@ export function apply(ctx) {
   }
   async function handle(endpoint, payload, signal) {
     try {
+      if (endpoint === 'patch-status') return { ok: true, value: await maintenance.status() }
+      if (endpoint === 'patch-remove') {
+        if (locked) throw new Error('正在安装或迁移插件，请稍后维护')
+        if (payload?.confirm !== true || typeof payload.patch !== 'string') throw new Error('请明确确认撤销补丁并重启')
+        locked = true
+        try { return { ok: true, value: await maintenance.remove(payload.patch) } }
+        catch (error) { locked = false; throw error }
+      }
       if (endpoint === 'settings') return { ok: true, value: await settings() }
       if (endpoint === 'scan') {
         const { directory } = await settings()

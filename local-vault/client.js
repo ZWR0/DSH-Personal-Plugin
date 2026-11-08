@@ -16,6 +16,12 @@ window.__ModuleLoader__.load({
     const NS = 'localVault'
 
     const zh = {
+      hostPatches: '宿主补丁', patchRefresh: '检查补丁状态', patchExplanation: '插件本体与宿主补丁分别管理。撤销保留插件包及个人设置，由受管启动器完成停机、备份、撤销、重建和重启。',
+      unsupportedHost: '清单外版本，请先适配验证', patchState: '源码补丁状态', removePatch: '撤销补丁并重启', confirmPatchRemove: '确认停机并撤销',
+      patchConfirmation: '所有任务必须已停止。此操作会中断页面连接；重建失败时尝试恢复补丁并重新构建，仍失败则保留停机。认证补丁撤销后需要重新登录。',
+      patchWaiting: '维护中，正在等待宿主重新上线。认证变更可能需要从启动终端的新链接重新登录；失败详情及进度见受管启动终端。',
+      patchApplied: '已应用', patchPending: '未应用', patchConflict: '冲突，需人工适配', patchUnmanaged: '未由受管启动器检查',
+      patchPhaseRunning: '运行中', patchPhaseStopping: '正在停机', patchPhaseBackup: '正在备份', patchPhaseRemoving: '正在撤销', patchPhaseBuilding: '正在重建', patchPhaseRollback: '正在恢复补丁', patchPhaseRemoved: '撤销完成，已重新启动', patchPhaseRestored: '撤销失败，已恢复补丁并重新启动', patchPhaseFailed: '维护失败，请查看启动终端',
       help: '使用说明', selectVisible: '选择可卸载项', clearSelection: '清空选择', uninstall: '卸载选中（{count}）', confirmBatch: '确认卸载（{count}）', removing: '正在卸载', removed: '已卸载', removeFailed: '卸载失败', batchDone: '已完成', results: '处理结果',
       buildBlocked: '安装脚本需要在原生插件管理页单独处理',
       changeOverridden: '已安装，但启用状态被更高优先级配置覆盖',
@@ -84,6 +90,12 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
+      hostPatches: 'Host patches', patchRefresh: 'Check patch status', patchExplanation: 'Plugins and Host patches are separate. Removal keeps plugin packages and personal settings; the managed launcher stops, backs up, removes, rebuilds and restarts the Host.',
+      unsupportedHost: 'Unlisted revision; adaptation required', patchState: 'Source patch state', removePatch: 'Remove patch and restart', confirmPatchRemove: 'Confirm shutdown and removal',
+      patchConfirmation: 'Stop all tasks first. The page will disconnect. A failed rebuild attempts to restore the patch and rebuild; if that fails, the Host stays stopped. Removing authentication requires a new login.',
+      patchWaiting: 'Waiting for the Host to restart. Authentication changes may require the new login link from the launcher terminal. Check that terminal for progress and failures.',
+      patchApplied: 'Applied', patchPending: 'Not applied', patchConflict: 'Conflict; adaptation required', patchUnmanaged: 'Not inspected by managed launcher',
+      patchPhaseRunning: 'Running', patchPhaseStopping: 'Stopping', patchPhaseBackup: 'Backing up', patchPhaseRemoving: 'Removing', patchPhaseBuilding: 'Rebuilding', patchPhaseRollback: 'Restoring patch', patchPhaseRemoved: 'Removed and restarted', patchPhaseRestored: 'Removal failed; patch restored and restarted', patchPhaseFailed: 'Maintenance failed; check launcher terminal',
       help: 'Instructions', selectVisible: 'Select removable', clearSelection: 'Clear selection', uninstall: 'Uninstall selected ({count})', confirmBatch: 'Confirm uninstall ({count})', removing: 'Uninstalling', removed: 'Uninstalled', removeFailed: 'Uninstall failed', batchDone: 'Finished', results: 'Results',
       buildBlocked: 'Handle build script permissions in the native Plugins page',
       changeOverridden: 'Installed, but a higher-priority configuration overrides activation',
@@ -274,6 +286,73 @@ window.__ModuleLoader__.load({
 .lv-install-row .lv-body{gap:1px}.lv-install-row small{font-size:11px;color:var(--dsw-alias-label-secondary)}
 .lv-install button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
 `
+
+    function PatchManager(props) {
+      const [state, setState] = useState(null)
+      const [error, setError] = useState('')
+      const [confirm, setConfirm] = useState(null)
+      const [busy, setBusy] = useState(false)
+      const [waiting, setWaiting] = useState(false)
+      const alive = useRef(true)
+      const load = async function () {
+        try {
+          const next = await props.vaultCall('patch-status', {})
+          if (alive.current) { setState(next); setError(''); return next }
+        } catch (failure) { if (alive.current) setError(failure.message) }
+      }
+      useEffect(function () {
+        alive.current = true; void load()
+        return function () { alive.current = false }
+      }, [])
+      useEffect(function () {
+        if (!waiting) return
+        const started = Date.now()
+        let checking = false
+        const timer = setInterval(async function () {
+          if (checking) return
+          if (Date.now() - started > 10 * 60 * 1000) { clearInterval(timer); setWaiting(false); return }
+          checking = true
+          try {
+            const next = await load()
+            if (next?.job && ['restarted-without-patch', 'restarted-with-patch', 'failed'].includes(next.job.phase)) setWaiting(false)
+          } finally { checking = false }
+        }, 2500)
+        return function () { clearInterval(timer) }
+      }, [waiting])
+      async function remove(file) {
+        if (busy || waiting || props.externalBusy) return
+        setBusy(true); setError('')
+        try {
+          const result = await props.vaultCall('patch-remove', { patch: file, confirm: true })
+          if (alive.current) { setState(old => ({ ...old, job: { phase: 'stopping', message: result.message } })); setWaiting(true); setConfirm(null) }
+        } catch (failure) { if (alive.current) setError(failure.message) }
+        finally { if (alive.current) setBusy(false) }
+      }
+      const disabled = busy || waiting || props.externalBusy
+      const phases = { running: 'patchPhaseRunning', stopping: 'patchPhaseStopping', 'backing-up': 'patchPhaseBackup', removing: 'patchPhaseRemoving', building: 'patchPhaseBuilding', 'rolling-back': 'patchPhaseRollback', 'restarted-without-patch': 'patchPhaseRemoved', 'restarted-with-patch': 'patchPhaseRestored', failed: 'patchPhaseFailed' }
+      const states = { applied: 'patchApplied', pending: 'patchPending', conflict: 'patchConflict', unmanaged: 'patchUnmanaged' }
+      return h('section', { className: 'lv-install', 'aria-label': props.t('hostPatches') },
+        h('style', null, '.lv-patch-card{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid rgba(158,132,70,.24);border-radius:10px;overflow-wrap:anywhere}.lv-patch-card p{margin:0}.lv-patch-card button{align-self:flex-start}.lv-patch-card+.lv-patch-card{margin-top:12px}'),
+        h('h3', null, props.t('hostPatches')),
+        h('p', { className: 'lv-hint' }, props.t('patchExplanation')),
+        h('button', { className: 'lv-btn', type: 'button', disabled: disabled, onClick: function () { void load() } }, props.t('patchRefresh')),
+        state?.message ? h('p', { className: 'lv-hint' }, state.message) : null,
+        state?.revision ? h('p', { className: 'lv-hint' }, 'DSH ' + state.revision + (state.supported ? '' : ' · ' + props.t('unsupportedHost'))) : null,
+        (state?.patches || []).map(function (patch) {
+          return h('div', { key: patch.file, className: 'lv-patch-card' },
+            h('strong', null, patch.title), h('p', null, patch.plugin),
+            h('p', null, props.t('patchState') + ': ' + props.t(states[patch.state] || patch.state)),
+            h('p', { className: 'lv-hint' }, patch.fallback),
+            confirm === patch.file ? h('div', null,
+              h('p', { role: 'alert' }, props.t('patchConfirmation')),
+              h('button', { type: 'button', className: 'lv-btn', disabled: disabled, onClick: function () { void remove(patch.file) } }, props.t('confirmPatchRemove')),
+              h('button', { type: 'button', className: 'lv-btn', disabled: disabled, onClick: function () { setConfirm(null) } }, props.t('cancel')))
+              : h('button', { type: 'button', className: 'lv-btn', disabled: disabled || !patch.removable, onClick: function () { setConfirm(patch.file) } }, props.t('removePatch')))
+        }),
+        state?.job ? h('p', { role: 'status' }, props.t(phases[state.job.phase] || state.job.phase) + ' · ' + (state.job.message || '')) : null,
+        waiting ? h('p', { role: 'status' }, props.t('patchWaiting')) : null,
+        error ? h('p', { className: 'lv-error', role: 'alert' }, error) : null)
+    }
 
     function DirectoryInstaller(props) {
       const t = props.t
@@ -587,6 +666,7 @@ window.__ModuleLoader__.load({
           h('h2', { className: 'lv-title' }, t('title')),
           h('p', { className: 'lv-sub' }, t('subtitle'))),
         h(DirectoryInstaller, { t: t, vaultCall: props.vaultCall, pickDirectory: props.pickDirectory, externalBusy: busy !== null, onBusyChange: setBulkBusy, onInstalled: load }),
+        h(PatchManager, { t: t, vaultCall: props.vaultCall, externalBusy: busy !== null || bulkBusy }),
         h('div', { className: 'lv-stats' },
           h(Stat, { value: personal.length, label: t('statBundles') }),
           h(Stat, { value: enabledCount, label: t('statEnabled') }),

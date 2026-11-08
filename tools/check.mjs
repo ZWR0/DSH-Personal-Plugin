@@ -64,6 +64,7 @@ const scripts = [
   'choice-pilot-test.mjs', 'choice-pilot-timeout-test.mjs', 'choice-pilot-visual-test.mjs', 'compatibility-test.mjs',
   'context-library-client-test.mjs', 'context-library-core-test.mjs', 'context-library-import-test.mjs', 'context-library-integration-test.mjs',
   'local-vault-client-test.mjs', 'local-vault-connection-test.mjs', 'local-vault-host-test.mjs',
+  'local-vault-patches-client-test.mjs',
   'mobile-deck-client-test.mjs', 'mobile-deck-host-test.mjs', 'mobile-deck-startup-test.mjs', 'mobile-deck-visual-test.mjs',
   'shared-features-host-test.mjs', 'quote-relay-test.mjs', 'remote-access-client-test.mjs', 'remote-access-host-test.mjs',
   'session-reaper-client-test.mjs', 'session-reaper-lifecycle-test.mjs', 'suite-experience-visual-test.mjs',

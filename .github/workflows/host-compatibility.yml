@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: '24.16.0'
       - name: Check preparation logic
-        run: node --test plugins/tools/prepare-host.test.mjs
+        run: node --test plugins/tools/prepare-host.test.mjs plugins/tools/maintenance.test.mjs
       - name: Read pinned host revision
         id: host
         working-directory: plugins
@@ -37,3 +37,13 @@ jobs:
           node ../plugins/tools/compatibility-test.mjs
           node --import tsx/esm ../plugins/tools/remote-access-host-test.mjs
           node ../plugins/tools/context-guard-test.mjs
+          node ../plugins/tools/local-vault-host-test.mjs
+          node ../plugins/tools/local-vault-client-test.mjs
+          node ../plugins/tools/local-vault-patches-client-test.mjs
+      - name: Verify clean offline patch removal and rebuild
+        working-directory: harness
+        run: |
+          git apply --reverse --check ../plugins/patches/dsh-compaction-token-budget.patch ../plugins/patches/dsh-persistent-web-token.patch
+          git apply --reverse ../plugins/patches/dsh-compaction-token-budget.patch ../plugins/patches/dsh-persistent-web-token.patch
+          pnpm run build:artifacts
+          pnpm run build:check
