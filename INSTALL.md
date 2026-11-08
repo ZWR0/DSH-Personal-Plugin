@@ -52,7 +52,7 @@ node DSH-Personal-Plugin/tools/managed-host.mjs --host deepseek-harness --home "
 
 撤销后构建失败会尝试重新应用原补丁并重新构建；恢复或再次构建失败时保持停机，终端显示原因。页面断线后尝试读取重启结果，最多等待十分钟；Host 无法启动时以启动终端和 `DSH_HOME/host-maintenance/state.json` 为准。没有失败后无限重启或强制覆盖。
 
-备份存于 `DSH_HOME/host-maintenance/backups/`，包含补丁、受影响源码及存在的 `.credentials.yaml`。这是私人备份，不能提交或分享。认证补丁撤销后原 Cookie 和固定登录链接可能失效，须从启动终端重新登录。保留插件包不代表保留固定 Token 功能；重新应用补丁也不会自动恢复被旧认证代码更新过的凭据，不自动覆盖凭据备份。
+备份存于 `DSH_HOME/host-maintenance/backups/`，包含补丁、受影响源码及存在的 `.credentials.yaml`。这是私人备份，不能提交或分享。认证补丁写入的 v2 浏览器记录不能直接交给原版宿主；构建成功后，启动器在凭据文件原生写锁下仅将 `client-connection/browser-session` 转为 v1，生成新签名密钥，保留其他凭据与文档注释。旧 Cookie 和固定链接失效，须从启动终端重新登录。迁移检查运行时记录指纹，记录已变化、未知格式或非默认本地凭据后端时拒绝自动处理，并尝试恢复补丁。保留插件包不代表保留固定 Token 功能；重新应用补丁不会自动恢复旧 Token，也不自动覆盖凭据备份。
 
 文脉护航撤销预算补丁后保留请求前预算保护与一次原生历史压缩补救，失去额外预留量和摘要输出限制。远行之钥的固定 Token 和二维码登录依赖认证补丁，撤销后这些操作不可用，地址等设置与插件包仍保留。
 

@@ -39,10 +39,26 @@ test('failed restoration leaves the Host stopped', async () => {
   await assert.rejects(performRemoval(ops), /restore conflict/)
   assert(!calls.includes('restart'))
 })
+test('failed credential migration restores the patch before restart', async () => {
+  const { ops, calls } = operations()
+  ops.prepareRestart = async () => { calls.push('migration'); throw new Error('credential changed') }
+  assert.deepEqual(await performRemoval(ops), { rolledBack: true })
+  assert.deepEqual(calls, ['stopped', 'preflight', 'backup', 'remove', 'build', 'migration', 'restore', 'build', 'restart'])
+})
 test('ordinary startup cannot trigger patch removal', async () => {
   const bridge = maintenanceBridge({}, { env: {} })
   assert.equal((await bridge.status()).managed, false)
   await assert.rejects(bridge.remove('patch'), /未由受管/)
+})
+test('authentication removal refuses unknown credential backends before sending IPC', async () => {
+  const proc = new EventEmitter()
+  proc.env = { DSH_MANAGED_NONCE: 'fixture' }; proc.connected = true
+  proc.send = () => assert.fail('must not request removal')
+  const disposers = []
+  const ctx = { profileContext: { home: '/fixture' }, get: name => name === 'appExit' ? () => assert.fail('must not exit') : name === 'agents' ? { list: () => [] } : {}, effect: fn => disposers.push(fn()) }
+  const bridge = maintenanceBridge(ctx, proc)
+  try { await assert.rejects(bridge.remove('patches/dsh-persistent-web-token.patch'), /默认本地凭据/) }
+  finally { for (const dispose of disposers) dispose() }
 })
 test('bridge rejects active tasks, validates IPC replies, and removes listeners', async () => {
   const proc = new EventEmitter()

@@ -1,5 +1,12 @@
 /** Owner-only IPC bridge to the optional external Host supervisor. */
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
+import { resolve, join } from 'node:path'
+
+export function recordDigest(record) {
+  const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value
+  return createHash('sha256').update(JSON.stringify(canonical(record ?? null))).digest('hex')
+}
 
 export const patchCatalog = {
   'patches/dsh-persistent-web-token.patch': { title: '远行之钥 · 固定登录', plugin: '@local/dsh-remote-access', fallback: '保留插件包与地址设置；固定 Token、二维码登录不可用。旧登录 Cookie 失效，需从启动终端重新登录。凭据文件将私下备份。' },
@@ -28,11 +35,11 @@ export function maintenanceBridge(ctx, proc = process) {
       requests.clear()
     }
   }, 'local-vault: maintenance IPC')
-  const request = (action, patch) => new Promise((resolve, reject) => {
+  const request = (action, patch, credentialDigest) => new Promise((resolve, reject) => {
     const id = randomUUID()
     const timer = setTimeout(() => { requests.delete(id); reject(new Error('Maintenance supervisor timed out')) }, 15000)
     requests.set(id, { resolve, reject, timer })
-    proc.send({ type: 'vault-maintenance', nonce, id, action, patch }, error => {
+    proc.send({ type: 'vault-maintenance', nonce, id, action, patch, credentialDigest }, error => {
       if (!error) return
       const pending = requests.get(id)
       if (pending) { requests.delete(id); clearTimeout(timer); reject(error) }
@@ -49,9 +56,20 @@ export function maintenanceBridge(ctx, proc = process) {
       const agents = ctx.get?.('agents')
       if (!agents || typeof agents.list !== 'function') throw new Error('无法确认运行中会话，禁止停机')
       if (agents.list().some(agent => agent.status !== 'idle')) throw new Error('请先停止所有运行或收尾中的任务')
+      let credentialDigest
+      if (patch === 'patches/dsh-persistent-web-token.patch') {
+        const credentials = ctx.get?.('credentials')
+        const home = ctx.profileContext.home
+        const config = credentials?.config
+        if (credentials?.constructor?.name !== 'LocalCredentialProvider' || !config
+          || resolve(config.path ?? join(config.dshHome ?? home, '.credentials.yaml')) !== resolve(home, '.credentials.yaml')) {
+          throw new Error('自动撤销认证补丁仅支持原 DSH_HOME 的默认本地凭据文件；其他后端请人工迁移')
+        }
+        credentialDigest = recordDigest(await credentials.readRecord('client-connection/browser-session'))
+      }
       stopping = true
       try {
-        const result = await request('remove', patch)
+        const result = await request('remove', patch, credentialDigest)
         // Supervisor has checked the plan; block new turns before acknowledging shutdown.
         ctx.on('agent/pre-step', () => { throw new Error('宿主正在停机维护，请等待重启') }, { prepend: true })
         setTimeout(() => exit(0), 500)

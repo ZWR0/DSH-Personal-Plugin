@@ -6,6 +6,7 @@ import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { inspectHost, manifest } from './prepare-host.mjs'
 import { patchCatalog as descriptions } from '../local-vault/maintenance.js'
+import { downgradeBrowserAuth } from './browser-auth-downgrade.mjs'
 
 
 /** No forced merge or source replacement: an exact reverse check must succeed. */
@@ -28,7 +29,7 @@ export async function performRemoval(operations) {
   await operations.preflight()
   await operations.backup()
   await operations.remove()
-  try { await operations.build() }
+  try { await operations.build(); await operations.prepareRestart?.() }
   catch (error) {
     await operations.restore()
     await operations.build()
@@ -116,6 +117,9 @@ async function main() {
       let plan
       try { plan = removalPlan(root, message.patch) }
       catch (error) { reply(undefined, error.message); return }
+      if (message.patch === 'patches/dsh-persistent-web-token.patch' && !/^[a-f0-9]{64}$/.test(message.credentialDigest || '')) {
+        reply(undefined, '需要新版行囊宝匣提供浏览器凭据迁移检查'); return
+      }
       transaction = true
       const shutdown = stopped
       reply({ accepted: true, message: '正在停止宿主、备份、撤销、重建并重启。连接将暂时断开；失败详情见受管启动终端。' })
@@ -155,6 +159,12 @@ async function main() {
               await command('git', ['apply', '--reverse', plan.selected.path], root)
             },
             build,
+            prepareRestart: async () => {
+              if (message.patch === 'patches/dsh-persistent-web-token.patch') {
+                await publish('migrating-auth', '已备份；仅迁移浏览器登录记录，旧登录将失效。')
+                await downgradeBrowserAuth(root, home, message.credentialDigest)
+              }
+            },
             restore: async () => {
               await publish('rolling-back', '撤销后构建失败，恢复补丁并重建；不恢复或覆盖凭据。')
               await command('git', ['apply', '--check', plan.selected.path], root)

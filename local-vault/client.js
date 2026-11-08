@@ -329,7 +329,7 @@ window.__ModuleLoader__.load({
         finally { if (alive.current) setBusy(false) }
       }
       const disabled = busy || waiting || props.externalBusy
-      const phases = { running: 'patchPhaseRunning', stopping: 'patchPhaseStopping', 'backing-up': 'patchPhaseBackup', removing: 'patchPhaseRemoving', building: 'patchPhaseBuilding', 'rolling-back': 'patchPhaseRollback', 'restarted-without-patch': 'patchPhaseRemoved', 'restarted-with-patch': 'patchPhaseRestored', failed: 'patchPhaseFailed' }
+      const phases = { running: 'patchPhaseRunning', stopping: 'patchPhaseStopping', 'backing-up': 'patchPhaseBackup', removing: 'patchPhaseRemoving', building: 'patchPhaseBuilding', 'migrating-auth': 'patchPhaseBackup', 'rolling-back': 'patchPhaseRollback', 'restarted-without-patch': 'patchPhaseRemoved', 'restarted-with-patch': 'patchPhaseRestored', failed: 'patchPhaseFailed' }
       const states = { applied: 'patchApplied', pending: 'patchPending', conflict: 'patchConflict', unmanaged: 'patchUnmanaged' }
       return h('section', { className: 'lv-install', 'aria-label': props.t('hostPatches') },
         h('style', null, '.lv-patch-card{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid rgba(158,132,70,.24);border-radius:10px;overflow-wrap:anywhere}.lv-patch-card p{margin:0}.lv-patch-card button{align-self:flex-start}.lv-patch-card+.lv-patch-card{margin-top:12px}'),

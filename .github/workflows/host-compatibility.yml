@@ -40,6 +40,7 @@ jobs:
           node ../plugins/tools/local-vault-host-test.mjs
           node ../plugins/tools/local-vault-client-test.mjs
           node ../plugins/tools/local-vault-patches-client-test.mjs
+          node ../plugins/tools/browser-auth-downgrade-test.mjs
       - name: Verify clean offline patch removal and rebuild
         working-directory: harness
         run: |
@@ -47,3 +48,4 @@ jobs:
           git apply --reverse ../plugins/patches/dsh-compaction-token-budget.patch ../plugins/patches/dsh-persistent-web-token.patch
           pnpm run build:artifacts
           pnpm run build:check
+          node ../plugins/tools/browser-auth-downgrade-test.mjs
