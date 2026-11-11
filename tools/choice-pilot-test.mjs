@@ -55,37 +55,48 @@ const props = { sessionId: 's', t: key => key, useChat: selector => selector(cha
   setDraft() { assert.fail('a followup must never overwrite the draft') },
 } }
 await React.act(async () => root.render(React.createElement(Followups, props)))
-assert.equal(document.querySelectorAll('.cp-followups button').length, 2)
+assert.equal(document.querySelectorAll('.cp-followup-options button').length, 2)
 assert.equal(insertions, 0, 'rendering suggestions does not choose or insert one')
-await React.act(async () => document.querySelector('.cp-followups button').click())
+await React.act(async () => document.querySelector('.cp-followup-options button').click())
 assert.match(draft, /已有.*请检查本地模型架构.*草稿/s)
 assert.equal(persists, 1)
-assert.equal(document.querySelector('.cp-followups button').disabled, true)
-await React.act(async () => document.querySelector('.cp-followups button').click())
+assert.equal(document.querySelector('.cp-followup-options button').disabled, true)
+const toggle = document.querySelector('.cp-followup-toggle')
+const options = document.getElementById(toggle.getAttribute('aria-controls'))
+await React.act(async () => toggle.click())
+assert.equal(toggle.getAttribute('aria-expanded'), 'false')
+assert.equal(options.hidden, true)
+await React.act(async () => toggle.click())
+assert.equal(toggle.getAttribute('aria-expanded'), 'true')
+assert.equal(options.hidden, false)
+assert.equal(options.querySelector('button').disabled, true, 'reopening preserves the used option')
+await React.act(async () => document.querySelector('.cp-followup-options button').click())
 assert.equal(insertions, 1, 'repeat clicks do not duplicate text')
 refuseInsertion = true
-await React.act(async () => document.querySelectorAll('.cp-followups button')[1].click())
+await React.act(async () => document.querySelectorAll('.cp-followup-options button')[1].click())
 assert.equal(document.querySelector('.cp-followups [role=alert]').textContent, 'insertFailed')
 refuseInsertion = false
 props.inputActions.persistDraft = () => { throw new Error('storage unavailable') }
-await React.act(async () => document.querySelectorAll('.cp-followups button')[1].click())
+await React.act(async () => document.querySelectorAll('.cp-followup-options button')[1].click())
 assert.equal(document.querySelector('.cp-followups [role=alert]').textContent, 'saveFailed')
-assert.equal(document.querySelectorAll('.cp-followups button')[1].disabled, true, 'a save failure must not duplicate an inserted prompt')
+assert.equal(document.querySelectorAll('.cp-followup-options button')[1].disabled, true, 'a save failure must not duplicate an inserted prompt')
 assert.equal(sends, 0, 'existing drafts are never sent by a suggestion')
 draft = ''
 props.inputActions.persistDraft = () => { persists++ }
 await React.act(async () => root.render(React.createElement(Followups, { ...props, sessionId: 'empty' })))
-await React.act(async () => document.querySelector('.cp-followups button').click())
+await React.act(async () => document.querySelector('.cp-followup-options button').click())
 assert.equal(sends, 1, 'an explicit click with an empty composer submits through the native action')
 assert.match(draft, /请检查本地模型架构/)
 draft = ''; attachmentIds = ['attachment']
 await React.act(async () => root.render(React.createElement(Followups, { ...props, sessionId: 'attachment' })))
-await React.act(async () => document.querySelector('.cp-followups button').click())
+await React.act(async () => document.querySelector('.cp-followup-options button').click())
 assert.equal(sends, 1, 'existing attachments require review instead of being sent with a suggestion')
 const child = { ...followup.data.root, meta: undefined, callId: 'ptc-child', call: { argsRaw: JSON.stringify({ suggestions }) } }
+await React.act(async () => toggle.click())
 chat = { order: ['p'], nodes: new Map([['p', { kind: 'tool-call', data: { root: { kind: 'tool-result', name: 'run_code', subCalls: [child] } } }]]) }
-await React.act(async () => root.render(React.createElement(Followups, props)))
-assert.equal(document.querySelectorAll('.cp-followups button').length, 2, 'successful PTC children expose the same suggestions')
+await React.act(async () => root.render(React.createElement(Followups, { ...props, sessionId: 'attachment' })))
+assert.equal(toggle.getAttribute('aria-expanded'), 'true', 'a new suggestion set opens in the same session')
+assert.equal(document.querySelectorAll('.cp-followup-options button').length, 2, 'successful PTC children expose the same suggestions')
 chat = { order: ['p'], nodes: new Map([['p', { kind: 'tool-call', data: { root: { ...child, isError: true } } }]]) }
 await React.act(async () => root.render(React.createElement(Followups, props)))
 assert.equal(document.querySelector('.cp-followups'), null, 'failed tools never offer suggested prompts')

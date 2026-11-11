@@ -9,7 +9,7 @@ export function registerFollowups(ctx) {
   }
   ctx.tools.register({
     name: 'suggest_followups',
-    description: 'Offer 1–4 clickable next-turn requests after delivering the current result. Include all context needed to execute without copying the conversation. Ends this turn without selecting anything. A user click sends the request when the composer is empty; with existing text or attachments it only appends a draft for review. Use ask_user_question for decisions required by the current task.',
+    description: 'Offer 1–4 clickable next-turn requests after delivering the current result. Use this in place of a closing yes/no offer about concrete optional work. Include both choices when an explicit yes or no is useful. Include all context needed to execute without copying the conversation. Ends this turn without selecting anything. A user click sends the request when the composer is empty; with existing text or attachments it only appends a draft for review. Use ask_user_question for decisions required by the current task.',
     parameters: schema,
     output: {
       schema,
