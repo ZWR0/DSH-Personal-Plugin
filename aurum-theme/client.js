@@ -1555,7 +1555,7 @@ body[data-ds-aurum-theme] [data-turn-tail] [data-clock="end"] > button:not(:firs
         return ctx.slots.register({
           name: 'conversation.input.dock',
           id: 'aurum-theme',
-          order: 20,
+          order: 30,
           locale: NS,
           label: function () { return t('title') },
         }, TelemetryRail)

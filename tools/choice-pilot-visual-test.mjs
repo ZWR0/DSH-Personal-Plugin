@@ -16,7 +16,7 @@ try {
   const page = await browser.newPage()
   await page.setContent(`<style>
      :root{--dsw-radius-md:10px}*{box-sizing:border-box}body{margin:0;padding:24px;font:14px/1.6 system-ui;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}
-    section{max-width:700px;margin:auto;padding:20px;border:1px solid var(--dsw-alias-border-l2);border-radius:20px;background:var(--dsw-alias-bg-layer-1)}
+    [data-question-key]{max-width:700px;margin:auto;padding:20px;border:1px solid var(--dsw-alias-border-l2);border-radius:20px;background:var(--dsw-alias-bg-layer-1)}
     h2{font-size:16px;font-weight:500;margin:0 0 6px}p{margin:0 0 16px;color:var(--dsw-alias-label-secondary)}
     [data-option-row]>button{width:100%;padding:12px;text-align:left;border:0;background:transparent;font:inherit;cursor:pointer;border-radius:inherit}
     [data-option-description]{display:block;font-size:13px;padding-left:24px}footer{margin-top:16px;color:var(--dsw-alias-label-secondary)}
@@ -28,26 +28,67 @@ try {
   const nativeBefore = await page.locator('[data-option-row]').first().evaluate(el => ({ background: getComputedStyle(el).backgroundColor, radius: getComputedStyle(el).borderRadius, padding: getComputedStyle(el).padding }))
   await page.addScriptTag({ path: dependencyPath('react/umd/react.development.js') })
   await page.addScriptTag({ path: dependencyPath('react-dom/umd/react-dom.development.js') })
-  await page.evaluate(() => { window.__ModuleLoader__ = { load(entry) { window.plugin = entry.factory(() => React) } } })
+  await page.evaluate(() => { window.plugins = []; window.__ModuleLoader__ = { load(entry) { window.plugins.push(entry) } } })
   await page.addScriptTag({ content: source })
+  await page.addScriptTag({ content: theme })
   await page.evaluate(() => {
-    let dictionaries
-    let Followups
-    window.plugin.apply({ locale: {register(_name, value){dictionaries=value;return()=>{}}}, slots:{inject(_name, start){start()},register(options, component){if(options.id==='choice-pilot-followups')Followups=component}}, effect(start) { window.disposeStyle = start() } })
+    const entries = []
+    for (const plugin of window.plugins) {
+      let dictionaries
+      plugin.factory(name => name === 'react' ? React : ReactDOM).apply({
+        locale: {
+          register(_name, value) { dictionaries = value; return () => {} },
+          bind() { return key => dictionaries.zh[key] },
+        },
+        slots: {
+          inject(_name, start) { start() },
+          register(options, component) {
+            if (options.name === 'conversation.input.dock' && options.id !== 'aurum-navigation') {
+              entries.push({ order: options.order, component, t: key => dictionaries.zh[key] })
+            }
+            return () => {}
+          },
+        },
+        theme: { overrideTokens() { return () => {} } },
+        effect(start) {
+          const dispose = start()
+          if (plugin.id === '@local/dsh-choice-pilot' && document.querySelector('style[data-dsh-plugin="choice-pilot"]')) window.disposeStyle = dispose
+        },
+      })
+    }
     const mount = document.createElement('div')
-    mount.style.cssText = 'max-width:700px;margin:16px auto'
-    document.body.appendChild(mount)
+    mount.style.display = 'contents'
+    const stack = document.createElement('div')
+    stack.style.cssText = 'max-width:700px;margin:16px auto;display:flex;flex-direction:column;gap:6px'
+    document.body.appendChild(stack)
     const input = document.createElement('textarea')
     input.setAttribute('aria-label', 'Draft')
-    input.style.cssText = 'display:block;width:100%;max-width:700px;margin:auto;min-height:100px;font:inherit'
+    input.style.cssText = 'display:block;width:100%;max-width:700px;margin:0 auto;min-height:100px;font:inherit'
     input.value = '已有草稿，请保留'
-    document.body.appendChild(input)
+    stack.append(mount, input)
     const chat = { order:['f'], nodes:new Map([['f',{kind:'tool-call',data:{root:{kind:'tool-result',name:'suggest_followups',seq:3,callId:'f',isError:false,subCalls:[],meta:{choicePilotFollowups:[{label:'检查本地模型配置',prompt:'请检查本地模型的架构与速度差异，不修改配置。'},{label:'解读我提供的配置',prompt:'我会提供配置片段，请据此分析模型架构。'}]}}}}]]) }
-    ReactDOM.createRoot(mount).render(React.createElement(Followups, {sessionId:'preview',t:key=>dictionaries.zh[key],useChat:selector=>selector(chat),useInput:selector=>selector({phase:'plain',draft:input.value,attachmentIds:[]}),inputActions:{captureInsertion:()=>({start:input.value.length,end:input.value.length,draftRev:1}),insertText(text){input.value+=text;return true},persistDraft(){},submit(){throw Error('Must not send')}}}))
+    const snapshot = { ...chat, legacy: { nodes: [], runningCalls: [], partial: null } }
+    const stats = { turns: 1, steps: 1, llmMs: 3000, toolMs: 0, decodeMs: 1000, decodeTokens: 100 }
+    const props = {
+      sessionId: 'preview',
+      useChat: selector => selector(snapshot),
+      useSession: selector => selector({ running: false }),
+      useProjection: key => key === 'sessionStats' ? stats : undefined,
+      useInput: selector => selector({ phase: 'plain', draft: input.value, attachmentIds: [] }),
+      inputActions: {
+        captureInsertion: () => ({ start: input.value.length, end: input.value.length, draftRev: 1 }),
+        insertText(text) { input.value += text; return true },
+        persistDraft() {},
+        submit() { throw Error('Must not send') },
+      },
+    }
+    entries.sort((a, b) => a.order - b.order)
+    ReactDOM.createRoot(mount).render(entries.map(({ component, t, order }) => React.createElement(component, { ...props, key: order, t })))
   })
   await page.locator('.cp-followup-options button').first().waitFor()
   for (const dark of [false, true]) {
     await page.evaluate(({ tokens, dark }) => {
+      document.body.toggleAttribute('data-ds-dark-theme', dark)
       for (const [, key, light, night] of tokens) document.body.style.setProperty(key, dark ? night : light)
     }, { tokens, dark })
     for (const width of [390, 1280]) {
@@ -56,17 +97,36 @@ try {
       const selected = page.locator('[data-option-row]').first()
       assert.deepEqual(await selected.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, radius: getComputedStyle(el).borderRadius, padding: getComputedStyle(el).padding })), nativeBefore, 'Choice Pilot does not override the official question card')
       assert.ok((await page.locator('.cp-followup-options button').first().boundingBox()).height >= 44)
-      assert.notEqual(await page.locator('.cp-followup-options button').first().evaluate(el => getComputedStyle(el).boxShadow), 'none')
+      const card = page.locator('.cp-followups')
+      const rail = page.locator('.au-strip')
+      const cardBox = await card.boundingBox()
+      const railBox = await rail.boundingBox()
+      assert.ok(cardBox.y + cardBox.height <= railBox.y)
+      assert.equal(cardBox.x, railBox.x)
+      assert.equal(cardBox.width, railBox.width)
+      const inputGap = await rail.evaluate(el => document.querySelector('textarea[aria-label="Draft"]').getBoundingClientRect().top - el.getBoundingClientRect().bottom)
+      assert.equal(inputGap, 6)
+      const surface = locator => locator.evaluate(el => {
+        el.getAnimations().forEach(animation => animation.finish())
+        const { backgroundImage, borderColor, boxShadow } = getComputedStyle(el)
+        return { backgroundImage, borderColor, boxShadow }
+      })
+      assert.notEqual((await surface(rail)).backgroundImage, 'none')
+      assert.deepEqual(await surface(card), await surface(rail))
       await page.screenshot({ path: fileURLToPath(new URL(`${dark ? 'dark' : 'light'}-${width}.png`, out)), fullPage: true })
       const toggle = page.getByRole('button', { name: '收起', exact: true })
       const expanded = await page.locator('.cp-followups').boundingBox()
       await toggle.focus()
       await toggle.press('Enter')
       assert.equal(await page.getByRole('button', { name: '展开建议' }).getAttribute('aria-expanded'), 'false')
-      assert.equal(await page.locator('.cp-followup-options').isVisible(), false)
+      assert.equal(await page.locator('.cp-followup-options button').first().isVisible(), false)
+      const collapsed = await page.getByRole('button', { name: '展开建议' }).boundingBox()
+      assert.ok(Math.abs(collapsed.x + collapsed.width / 2 - width / 2) < 1)
+      assert.ok(collapsed.y + collapsed.height <= (await rail.boundingBox()).y)
       assert.ok((await page.locator('.cp-followups').boundingBox()).height < expanded.height)
+      await page.screenshot({ path: fileURLToPath(new URL(`collapsed-${dark ? 'dark' : 'light'}-${width}.png`, out)), fullPage: true })
       await page.getByRole('button', { name: '展开建议' }).press('Space')
-      assert.equal(await page.locator('.cp-followup-options').isVisible(), true)
+      assert.equal(await page.locator('.cp-followup-options button').first().isVisible(), true)
     }
   }
   assert.equal(await page.getByRole('textbox', {name:'Draft'}).inputValue(), '已有草稿，请保留')

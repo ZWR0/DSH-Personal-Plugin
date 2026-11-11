@@ -131,7 +131,7 @@ if (!registrations.some(item => item.options.id === 'aurum-navigation')) throw n
 if (!row) throw new Error('settings row was never registered')
 if (!dock) throw new Error('rail was never registered')
 if (row.options.order !== 50) throw new Error(`settings row order ${row.options.order}`)
-if (dock.options.order !== 20) throw new Error(`rail order ${dock.options.order}`)
+if (dock.options.order !== 30) throw new Error(`rail order ${dock.options.order}`)
 
 // --- render smoke ----------------------------------------------------------
 const projections = {

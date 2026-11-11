@@ -11,35 +11,38 @@ window.__ModuleLoader__.load({
     Object.assign(en, { next: 'Next-step suggestions', expand: 'Show suggestions', collapse: 'Collapse', inserted: 'Added to your draft. Review it and send when ready.', insertFailed: 'Could not insert into the draft. Try again when editing is available.', saveFailed: 'Text was inserted, but saving the draft failed. Check the input and keep a copy.', filled: 'Selected', submitted: 'Submitted. If sending fails, retry from the composer.' })
     const CSS = `
 .cp-followups {
-  display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px;
-  width:100%;max-width:var(--dsh-composer-card-max-width,780px);margin:6px auto;padding:8px;
-  border:1px solid var(--dsw-alias-border-l2);border-radius:var(--dsw-radius-panel,12px);
-  background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-shadow-lv2);
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;
+  width:100%;max-width:var(--dsh-composer-card-max-width,780px);margin:0 auto;padding:8px;
+  border:1px solid var(--au-line,var(--dsw-alias-border-l2));border-radius:var(--dsw-radius-panel,12px);
+  background:var(--au-card,var(--dsw-alias-bg-layer-1));box-shadow:var(--au-card-glow,var(--dsw-shadow-lv2));
   box-sizing:border-box;color:var(--dsw-alias-label-primary);font-size:13px
 }
 .cp-followups[data-collapsed=true] {
-  justify-content:flex-end;padding:0;border:0;background:transparent;box-shadow:none
+  padding:0;border:0;background:transparent;box-shadow:none
 }
-.cp-followup-options {display:flex;flex:1 1 220px;min-width:0;flex-wrap:wrap;gap:8px}
+.cp-followup-options {display:contents}
 .cp-followup-options[hidden] {display:none}
 .cp-followups button {
-  min-height:44px;max-width:100%;padding:8px 12px;border:1px solid var(--dsw-alias-border-l2);
-  border-radius:var(--dsw-radius-md,10px);font:inherit;text-align:left;overflow-wrap:anywhere;
-  color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);cursor:pointer
+  min-height:44px;max-width:100%;padding:8px 12px;border:1px solid var(--au-line,var(--dsw-alias-border-l2));
+  border-radius:8px;font:inherit;text-align:center;overflow-wrap:anywhere;
+  color:var(--au-gold,var(--dsw-alias-label-primary));background:transparent;cursor:pointer
 }
-.cp-followup-options button {box-shadow:var(--dsw-shadow-lv1)}
-.cp-followups .cp-followup-toggle {margin-inline-start:auto;background:transparent}
+.cp-followups[data-collapsed=true] .cp-followup-toggle {
+  background:var(--au-card,var(--dsw-alias-bg-layer-1));box-shadow:var(--au-card-glow,var(--dsw-shadow-lv1))
+}
 .cp-followups button:disabled {opacity:.6;cursor:default}
-.cp-followups button:focus-visible {outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
-.cp-followups p {flex-basis:100%;margin:0;color:var(--dsw-alias-label-secondary);line-height:1.5}
+.cp-followups button:focus-visible {outline:2px solid var(--au-gold,var(--dsw-alias-state-business-primary));outline-offset:2px}
+.cp-followups p {flex-basis:100%;margin:0;text-align:center;color:var(--dsw-alias-label-secondary);line-height:1.5}
 .cp-followups [role=alert] {color:var(--dsw-alias-state-error-primary)}
 @media(hover:hover) {
-  .cp-followups button:hover:not(:disabled) {border-color:var(--dsw-alias-state-business-primary)}
-  .cp-followup-options button:hover:not(:disabled) {box-shadow:var(--dsw-shadow-lv2)}
+  .cp-followups button:hover:not(:disabled) {
+    border-color:var(--au-gold,var(--dsw-alias-state-business-primary));
+    background-color:var(--au-gold-soft,var(--dsw-alias-bg-layer-2))
+  }
 }
 @media(prefers-reduced-motion:no-preference) {
-  .cp-followup-options button {transition:border-color 140ms ease,box-shadow 140ms ease,transform 140ms ease}
-  .cp-followup-options button:active:not(:disabled) {transform:translateY(1px)}
+  .cp-followups button {transition:border-color 200ms ease,background-color 200ms ease,transform 100ms ease}
+  .cp-followups button:active:not(:disabled) {transform:translateY(1px)}
 }
 `
     /** Read only successful structured suggestions, including native calls nested inside PTC. */
@@ -120,7 +123,7 @@ window.__ModuleLoader__.load({
       inject: ['slots', 'locale'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'choice-pilot: dictionaries')
-        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'choice-pilot-followups', order: 21, locale: NS }, FollowupDrafts))
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'choice-pilot-followups', order: 22, locale: NS }, FollowupDrafts))
         ctx.effect(() => {
           const style = document.createElement('style')
           style.dataset.dshPlugin = 'choice-pilot'
