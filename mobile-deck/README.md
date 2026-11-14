@@ -312,7 +312,6 @@ node tools/mobile-deck-startup-test.mjs
 
 目录定位依赖本次宿主 ui-sidebar-files 的 revealPath 导航支持。源码部署需更新并构建宿主、重启原 DSH 进程，再刷新网页；仅更新个人插件而宿主未更新时，文件页仍可打开，但旧宿主不会自动定位目标。工作区外或已删除的文件不会被自动展开。
 
-迁移到其他宿主源码副本时，参见[文件树定位补丁说明](../patches/LOCAL-FILE-REVEAL.md)。当前工作区已包含修改，不要重复应用。
 
 ## 按钮层级与视觉收敛（0.7.1）
 

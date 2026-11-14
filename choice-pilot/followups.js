@@ -9,7 +9,7 @@ export function registerFollowups(ctx) {
   }
   ctx.tools.register({
     name: 'suggest_followups',
-    description: 'Offer 1–4 clickable next-turn requests after delivering the current result. Use this in place of a closing yes/no offer about concrete optional work. Include both choices when an explicit yes or no is useful. Include all context needed to execute without copying the conversation. Ends this turn without selecting anything. A user click sends the request when the composer is empty; with existing text or attachments it only appends a draft for review. Use ask_user_question for decisions required by the current task.',
+    description: 'Offer 1–4 quick replies for ordinary conversation, such as choosing a topic, depth, example, or next direction. Give a useful answer or a short conversational lead-in first. Write each prompt as a complete message in the user’s voice. This ends the current turn. Clicking sends the reply when the composer is empty, or adds it to the existing draft for review. Keep required task decisions and approvals in the official interaction flow.',
     parameters: schema,
     output: {
       schema,
@@ -29,6 +29,6 @@ export function registerFollowups(ctx) {
       exec.concludeTurn()
       return { suggestions: suggestions.map(item => ({ label: item.label.trim(), prompt: item.prompt.trim() })) }
     },
-    presentCall: () => ({ card: 'generic', title: 'Next-step suggestions' }),
+    presentCall: () => ({ card: 'generic', title: 'Chat quick replies' }),
   })
 }

@@ -118,14 +118,14 @@ try {
       const expanded = await page.locator('.cp-followups').boundingBox()
       await toggle.focus()
       await toggle.press('Enter')
-      assert.equal(await page.getByRole('button', { name: '展开建议' }).getAttribute('aria-expanded'), 'false')
+      assert.equal(await page.getByRole('button', { name: '展开快捷回复' }).getAttribute('aria-expanded'), 'false')
       assert.equal(await page.locator('.cp-followup-options button').first().isVisible(), false)
-      const collapsed = await page.getByRole('button', { name: '展开建议' }).boundingBox()
+      const collapsed = await page.getByRole('button', { name: '展开快捷回复' }).boundingBox()
       assert.ok(Math.abs(collapsed.x + collapsed.width / 2 - width / 2) < 1)
       assert.ok(collapsed.y + collapsed.height <= (await rail.boundingBox()).y)
       assert.ok((await page.locator('.cp-followups').boundingBox()).height < expanded.height)
       await page.screenshot({ path: fileURLToPath(new URL(`collapsed-${dark ? 'dark' : 'light'}-${width}.png`, out)), fullPage: true })
-      await page.getByRole('button', { name: '展开建议' }).press('Space')
+      await page.getByRole('button', { name: '展开快捷回复' }).press('Space')
       assert.equal(await page.locator('.cp-followup-options button').first().isVisible(), true)
     }
   }

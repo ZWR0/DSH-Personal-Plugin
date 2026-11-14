@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Wayfarer Key",
-    "description": "Remote login and manual diagnostics for address reachability, current authentication and session sync."
+    "description": "Pair a phone over Tailscale or a local network."
   }
 }

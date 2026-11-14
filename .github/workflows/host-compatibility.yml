@@ -1,4 +1,4 @@
-name: Host compatibility
+name: Plugin checks
 on:
   push:
   pull_request:
@@ -6,46 +6,16 @@ on:
 permissions:
   contents: read
 jobs:
-  pinned-host:
+  plugins:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: plugins
       - uses: actions/setup-node@v4
         with:
           node-version: '24.16.0'
-      - name: Check preparation logic
-        run: node --test plugins/tools/prepare-host.test.mjs plugins/tools/maintenance.test.mjs
-      - name: Read pinned host revision
-        id: host
-        working-directory: plugins
-        run: node -e "const fs=require('node:fs');const m=require('./host-compatibility.json');fs.appendFileSync(process.env.GITHUB_OUTPUT,'commit='+m.host.commit+'\n')"
-      - uses: actions/checkout@v4
-        with:
-          repository: deepseek-ai/deepseek-harness
-          ref: ${{ steps.host.outputs.commit }}
-          path: harness
-      - name: Install pinned package manager
-        run: npm install --global pnpm@11.28.5
-      - name: Prepare and validate clean host
-        run: node plugins/tools/prepare-host.mjs --host harness --prepare
-      - name: Plugin compatibility regressions
-        working-directory: harness
+      - name: Check JavaScript syntax
+        run: git ls-files -z '*.js' '*.mjs' | xargs -0 -n1 node --check
+      - name: Test plugin host routes
         run: |
-          node ../plugins/tools/compatibility-test.mjs
-          node --import tsx/esm ../plugins/tools/remote-access-host-test.mjs
-          node ../plugins/tools/context-guard-test.mjs
-          node ../plugins/tools/local-vault-host-test.mjs
-          node ../plugins/tools/local-vault-client-test.mjs
-          node ../plugins/tools/local-vault-patches-client-test.mjs
-          node ../plugins/tools/browser-auth-downgrade-test.mjs
-      - name: Verify clean offline patch removal and rebuild
-        working-directory: harness
-        run: |
-          git apply --reverse --check ../plugins/patches/dsh-compaction-token-budget.patch ../plugins/patches/dsh-persistent-web-token.patch
-          git apply --reverse ../plugins/patches/dsh-compaction-token-budget.patch ../plugins/patches/dsh-persistent-web-token.patch
-          pnpm run build:artifacts
-          pnpm run build:check
-          node ../plugins/tools/browser-auth-downgrade-test.mjs
+          node tools/local-vault-host-test.mjs
+          node tools/remote-access-native-test.mjs

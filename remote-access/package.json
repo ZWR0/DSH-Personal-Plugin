@@ -1,9 +1,9 @@
 {
   "name": "@local/dsh-remote-access",
-  "version": "0.4.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
-  "description": "Manage persistent DSH Web launch tokens and the public remote access URL.",
+  "description": "Pair a phone with the running DSH host over Tailscale or LAN.",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -16,7 +16,8 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
-    "README.md"
+    "README.md",
+    "lan-gateway.js"
   ],
   "dsh": {
     "bundle": {
@@ -28,10 +29,11 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-plugin-manager",
         "@deepseek-ai/dsh-api-remotes",
-        "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-ui-workspace",
-        "@deepseek-ai/dsh-client-ui-session"
+        "@deepseek-ai/dsh-client-connection"
       ]
     }
+  },
+  "dependencies": {
+    "selfsigned": "5.5.0"
   }
 }

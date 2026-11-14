@@ -1,4 +1,4 @@
-/** Render optional next-task suggestions without changing official question cards. */
+/** Render clickable chat replies. */
 window.__ModuleLoader__.load({
   id: '@local/dsh-choice-pilot',
   factory(require) {
@@ -7,8 +7,8 @@ window.__ModuleLoader__.load({
     const NS = 'choicePilot'
     const zh = {}
     const en = {}
-    Object.assign(zh, { next: '下一步建议', expand: '展开建议', collapse: '收起', inserted: '已填入草稿，请审查后手动发送', insertFailed: '暂时无法填入草稿，请稍后重试', saveFailed: '内容已填入，但草稿保存失败，请检查输入框并保留内容', filled: '已选择', submitted: '已提交发送；若发送失败，请在输入框重试' })
-    Object.assign(en, { next: 'Next-step suggestions', expand: 'Show suggestions', collapse: 'Collapse', inserted: 'Added to your draft. Review it and send when ready.', insertFailed: 'Could not insert into the draft. Try again when editing is available.', saveFailed: 'Text was inserted, but saving the draft failed. Check the input and keep a copy.', filled: 'Selected', submitted: 'Submitted. If sending fails, retry from the composer.' })
+    Object.assign(zh, { next: '快捷回复', expand: '展开快捷回复', collapse: '收起', inserted: '已填入草稿，请审查后手动发送', insertFailed: '暂时无法填入草稿，请稍后重试', saveFailed: '内容已填入，但草稿保存失败，请检查输入框并保留内容', filled: '已选择', submitted: '已提交发送；若发送失败，请在输入框重试' })
+    Object.assign(en, { next: 'Quick replies', expand: 'Show quick replies', collapse: 'Collapse', inserted: 'Added to your draft. Review it and send when ready.', insertFailed: 'Could not insert into the draft. Try again when editing is available.', saveFailed: 'Text was inserted, but saving the draft failed. Check the input and keep a copy.', filled: 'Selected', submitted: 'Submitted. If sending fails, retry from the composer.' })
     const CSS = `
 .cp-followups {
   display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;

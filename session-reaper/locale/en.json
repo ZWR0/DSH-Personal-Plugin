@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Session Reaper",
-    "description": "Preview, filter and confirm permanent deletion of stopped sessions, individually or in batches."
+    "description": "Confirm permanent deletion of a stopped session and its local log."
   }
 }

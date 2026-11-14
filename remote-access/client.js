@@ -1,16 +1,9 @@
-/**
- * Client half of Remote Access.
- *
- * Manages the DSH Web launch token and the public base URL. The Host keeps the
- * credential and performs token validation; this page never stores a token in
- * the browser and asks for the full token only on an explicit reveal, copy, or QR display.
- */
 window.__ModuleLoader__.load({
   id: '@local/dsh-remote-access',
   factory(require) {
     const React = require('react')
     const h = React.createElement
-    const { useCallback, useEffect, useRef, useState } = React
+    const { useEffect, useRef, useState } = React
 
     // Bundled QR encoder: Project Nayuki, MIT. No runtime network dependency.
     /*
@@ -866,560 +859,137 @@ window.__ModuleLoader__.load({
 
 
     const NS = 'remoteAccess'
+    const zh = { title: '远行之钥', tail: 'Tailscale 跨网', lan: '局域网', tailHint: '手机可用移动数据。两端需加入同一 tailnet。', lanHint: '手机和电脑连接同一个局域网。', off: '未开启', ready: '可配对', paired: '已配对', pending: '待确认', waiting: '处理中…', start: '开启连接', stop: '停止连接', code: '生成配对码', approve: '确认手机配对', qr: '配对二维码', scan: '请在两分钟内扫码，再回到电脑确认。', adapter: '本机网络地址', noAdapter: '未检测到可用的局域网地址', retry: '重试', other: '请先停止另一种连接。' }
+    const en = { title: 'Remote Access', tail: 'Tailscale', lan: 'Local network', tailHint: 'Works over cellular. Both devices must join the same tailnet.', lanHint: 'Connect both devices to the same local network.', off: 'Off', ready: 'Ready to pair', paired: 'Paired', pending: 'Awaiting approval', waiting: 'Working…', start: 'Start connection', stop: 'Stop connection', code: 'Generate pairing code', approve: 'Approve pairing', qr: 'Pairing QR code', scan: 'Scan within two minutes, then approve on this computer.', adapter: 'Local network address', noAdapter: 'No local network address detected', retry: 'Retry', other: 'Stop the other connection first.' }
 
-    const zh = {
-      probePending: '正在检查地址、认证和会话同步…', diagnose: '连接自检', diagnoseCancel: '取消自检', diagnosisHint: '地址探测不携带凭据；认证与会话检查针对当前网页连接，其他设备请在该设备上检查', probeAddress: '远程地址', probeAuth: '当前连接认证', probeSessions: '会话同步', probeOk: '检查通过', probeReachable: '浏览器可访问该地址（未验证 DSH 身份）', probeFailed: '检查失败：{message}', probeAddressHint: '请检查地址、网络或浏览器跨域限制', probeAuthHint: '请从启动终端的登录链接重新登录', probeSessionHint: '请重试同步或检查服务日志', probeMissing: '请先保存远程地址',
-      tab: '远行之钥',
-      title: '远行之钥',
-      subtitle: '管理 DSH Web 的启动 Token 与固定访问地址，避免重启后已收藏的登录链接失效。',
-      guideTitle: '三步连接手机 / 平板',
-      guideToken: '1 · 选择「固定 Token」即可自动生成并立即启用；需要自定义时在下方填写后保存。所有设备使用同一个 DSH 登录凭据。',
-      guideUrl: '2 · 保持电脑与远端设备的 Tailscale 在线，填写电脑启动器显示的访问地址并保存。',
-      guideLink: '3 · 显示登录二维码，用手机 / 平板扫码打开并收藏。Token 不是 Tailscale 的登录密钥。',
-      urlUnsaved: '地址尚未保存，请先保存后显示登录二维码。',
-      modeTitle: '认证模式',
-      modeHint: '随机 Token 每次启动重新生成；固定 Token 保存在本机凭据库中，重启后继续有效。',
-      ephemeral: '随机 Token',
-      ephemeralHint: '保持 DSH 默认行为，每次启动生成新的随机 Token。',
-      persistent: '固定 Token',
-      persistentHint: '使用持久化的 Token，重启后收藏的登录链接仍可用。',
-      environment: '环境变量接管',
-      environmentHint: '检测到 DSH_WEB_TOKEN，Token 由环境变量决定；界面只能查看，不能修改。',
-      active: '当前',
-      tokenTitle: 'Token 管理',
-      tokenHint: '自动生成使用 32 字节（256 位）密码学安全随机数；自定义 Token 需 32–256 个 URL 安全字符。',
-      tokenPlaceholder: '输入自定义 Token，或点击生成',
-      generate: '生成安全 Token',
-      save: '保存并启用',
-      revoke: '撤销固定 Token',
-      confirmRevoke: '确认撤销',
-      show: '显示',
-      hide: '隐藏',
-      copyToken: '复制 Token',
-      tokenMissing: '尚未配置固定 Token',
-      tokenConfigured: '已配置固定 Token',
-      urlTitle: '远程访问地址',
-      urlHint: '填写启动器显示的 Tailscale Serve HTTPS 地址，例如 https://device.tailnet.ts.net/。此处只保存地址，不启动网络服务。',
-      urlPlaceholder: 'https://device.tailnet.ts.net/',
-      saveUrl: '保存地址',
-      showQr: '显示登录二维码',
-      hideQr: '隐藏二维码',
-      qrAlt: '远程登录二维码',
-      scanQr: '使用手机 / 平板扫描二维码，在浏览器中打开连接。',
-      statusTitle: '连接状态',
-      statusMode: '认证模式',
-      statusToken: 'Token 配置',
-      statusWeb: 'Web 服务',
-      statusBase: '远程地址',
-      statusEffective: '配置状态',
-      yes: '是',
-      no: '否',
-      running: '运行中',
-      notSet: '未设置',
-      effective: '已生效',
-      notEffective: '未生效',
-      copyWarning: '二维码包含登录 Token，请勿公开分享或截图传播。',
-      copied: '已复制',
-      copyFailed: '复制失败',
-      saved: '已保存',
-      generated: '已生成新 Token，请点击「保存并启用」',
-      revoked: '已撤销固定 Token，恢复随机模式',
-      loading: '读取中…',
-      failed: '读取失败：{message}',
-      operationFailed: '操作失败：{message}',
-      refresh: '刷新',
-      hostHint: '若提示 404/405，请确认插件已启用并在插件页查看启动异常。',
-    }
+    const STYLE = `
+      .ra-page{padding:clamp(16px,3vw,34px);color:var(--dsw-alias-label-primary,#33291e)}
+      .ra-page h2{margin:0 0 18px;font-size:22px}
+      .ra-modes-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+      .ra-mode-card{min-width:0;display:flex;flex-direction:column;gap:14px;padding:20px;border:1px solid var(--au-line,var(--dsw-alias-border-l2,#e6dfd3));border-radius:18px;background:var(--au-card,var(--dsw-alias-bg-layer-1,#fff));box-shadow:0 5px 16px #3324140d}
+      .ra-mode-card[data-active=true]{border-color:var(--au-gold,#aa792b);box-shadow:0 6px 20px #a979291c}
+      .ra-mode-head,.ra-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+      .ra-mode-head h3{margin:0;flex:1;font-size:17px}
+      .ra-mode-card p{margin:0;line-height:1.5;color:var(--dsw-alias-label-secondary,#695c4c)}
+      .ra-state{font-size:12px;border-radius:999px;padding:4px 9px;background:var(--dsw-alias-bg-layer-2,#f4efe6)}
+      .ra-address{overflow-wrap:anywhere;font-family:monospace;font-size:13px}
+      .ra-actions{margin-top:auto}
+      .ra-action,.ra-mode-card select{min-height:42px;padding:8px 13px;border:1px solid var(--au-line,var(--dsw-alias-border-l2,#e6dfd3));border-radius:10px;background:var(--dsw-alias-bg-layer-2,#f4efe6);color:inherit;font:inherit}
+      .ra-mode-card select{max-width:100%}
+      .ra-action{cursor:pointer;box-shadow:0 2px 5px #20150912;transition:box-shadow .16s,transform .16s,filter .16s}
+      .ra-action[data-primary=true]{background:#835a22;border-color:#835a22;color:#fff}
+      .ra-action:disabled{cursor:default;opacity:.48;box-shadow:none}
+      .ra-action:focus-visible,.ra-mode-card select:focus-visible{outline:2px solid #a97929;outline-offset:3px}
+      @media(hover:hover){.ra-action:hover:not(:disabled){box-shadow:0 5px 12px #20150926;transform:translateY(-1px)}}
+      .ra-action:active:not(:disabled){transform:translateY(1px) scale(.98);box-shadow:inset 0 2px 4px #20150926}
+      .ra-mode-card img{width:min(100%,224px);height:auto;aspect-ratio:1;align-self:center;padding:8px;border-radius:12px;background:#fff}
+      .ra-error{font-size:13px;color:var(--dsw-alias-state-error-primary,#a52e24)!important}
+      @media(max-width:580px){.ra-modes-grid{grid-template-columns:1fr}}
+      @media(prefers-reduced-motion:reduce){.ra-action{transition:none}}
+    `
 
-    const en = {
-      probePending: 'Checking address, authentication and session sync…', diagnose: 'Check connection', diagnoseCancel: 'Cancel check', diagnosisHint: 'Address probe sends no credentials. Authentication and session checks use this page connection; check other devices on those devices.', probeAddress: 'Remote address', probeAuth: 'Current connection authentication', probeSessions: 'Session sync', probeOk: 'Check passed', probeReachable: 'Browser reached the address (DSH identity unverified)', probeFailed: 'Check failed: {message}', probeAddressHint: 'Check the address, network or browser cross-origin restrictions', probeAuthHint: 'Sign in again using the launch terminal login link', probeSessionHint: 'Retry syncing or check the service logs', probeMissing: 'Save a remote address first',
-      tab: 'Wayfarer Key',
-      title: 'Wayfarer Key',
-      subtitle: 'Manage the DSH Web launch token and a stable public URL so bookmarked sign-in links survive restarts.',
-      guideTitle: 'Connect your phone / tablet in three steps',
-      guideToken: '1 · Select Persistent token to generate and enable one immediately, or enter a custom token below and save. All devices use the same DSH credential.',
-      guideUrl: '2 · Connect both devices to Tailscale. Save the computer URL shown by your launcher.',
-      guideLink: '3 · Show the sign-in QR code, scan it on your phone / tablet and bookmark the page. This is a DSH token, not a Tailscale auth key.',
-      urlUnsaved: 'Save the edited URL before showing the sign-in QR code.',
-      modeTitle: 'Authentication mode',
-      modeHint: 'An ephemeral token is regenerated on every start; a persistent token is stored in this machine’s credential store.',
-      ephemeral: 'Ephemeral token',
-      ephemeralHint: 'Keep the DSH default: a new random token on every start.',
-      persistent: 'Persistent token',
-      persistentHint: 'Keep one token across restarts so bookmarked links keep working.',
-      environment: 'Managed by environment',
-      environmentHint: 'DSH_WEB_TOKEN is set, so the environment owns the token; it can be viewed but not changed here.',
-      active: 'Active',
-      tokenTitle: 'Token management',
-      tokenHint: 'Generated tokens use 32 bytes (256 bits) of cryptographic randomness; custom tokens need 32–256 URL-safe characters.',
-      tokenPlaceholder: 'Enter a custom token or generate one',
-      generate: 'Generate secure token',
-      save: 'Save and enable',
-      revoke: 'Revoke persistent token',
-      confirmRevoke: 'Confirm revoke',
-      show: 'Show',
-      hide: 'Hide',
-      copyToken: 'Copy token',
-      tokenMissing: 'No persistent token configured',
-      tokenConfigured: 'Persistent token configured',
-      urlTitle: 'Remote access URL',
-      urlHint: 'Enter the HTTPS base URL published by Tailscale or another reverse proxy. DSH does not change or enable proxy configuration.',
-      urlPlaceholder: 'https://device.tailnet.ts.net/',
-      saveUrl: 'Save URL',
-      showQr: 'Show sign-in QR code',
-      hideQr: 'Hide QR code',
-      qrAlt: 'Remote sign-in QR code',
-      scanQr: 'Scan with your phone / tablet and open the connection in a browser.',
-      statusTitle: 'Connection status',
-      statusMode: 'Authentication mode',
-      statusToken: 'Token',
-      statusWeb: 'Web service',
-      statusBase: 'Remote URL',
-      statusEffective: 'Configuration',
-      yes: 'Yes',
-      no: 'No',
-      running: 'Running',
-      notSet: 'Not set',
-      effective: 'Active',
-      notEffective: 'Not active',
-      copyWarning: 'The QR code contains your sign-in token. Keep it private and do not share screenshots.',
-      copied: 'Copied',
-      copyFailed: 'Copy failed',
-      saved: 'Saved',
-      generated: 'Token generated. Click “Save and enable”.',
-      revoked: 'Persistent token revoked; back to ephemeral mode.',
-      loading: 'Loading…',
-      failed: 'Load failed: {message}',
-      operationFailed: 'Operation failed: {message}',
-      refresh: 'Refresh',
-      hostHint: 'On 404/405, confirm the plugin is enabled and check its startup diagnostics.',
-    }
+    function RemoteAccessTab({ remoteAccessCall, t }) {
+      const [state, setState] = useState(null)
+      const [address, setAddress] = useState('')
+      const [qr, setQr] = useState(null)
+      const [error, setError] = useState(null)
+      const [busy, setBusy] = useState(null)
+      const operation = useRef(false)
 
-    const STYLE = [
-      '.ra-root{display:flex;flex-direction:column;gap:16px;color:var(--dsw-alias-label-primary);}',
-      '.ra-head{display:flex;align-items:flex-start;gap:12px;}',
-      '.ra-globe{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;',
-      'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-brand-primary);}',
-      '.ra-headText{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}',
-      '.ra-title{margin:0;font-size:16px;line-height:24px;font-weight:600;letter-spacing:.2px;}',
-      '.ra-sub{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);}',
-      '.ra-card{display:flex;flex-direction:column;gap:10px;padding:14px 16px;border-radius:14px;',
-      'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);}',
-      '.ra-cardHead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}',
-      '.ra-cardTitle{margin:0;font-size:13px;line-height:20px;font-weight:600;}',
-      '.ra-hint{margin:0;font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary);}',
-      '.ra-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}',
-      '.ra-mode{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:12px;cursor:pointer;',
-      'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);transition:border-color .15s,background .15s;}',
-      '.ra-mode:hover{border-color:var(--dsw-alias-border-l2);}',
-      '.ra-mode.on{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2);}',
-      '.ra-mode input{margin:3px 0 0;}',
-      '.ra-modeBody{display:flex;flex-direction:column;gap:3px;min-width:0;}',
-      '.ra-modeName{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;}',
-      '.ra-chip{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:999px;font-size:10px;',
-      'border:1px solid var(--dsw-alias-border-l1);color:var(--dsw-alias-label-secondary);}',
-      '.ra-chip.on{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary);}',
-      '.ra-field{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}',
-      '.ra-input{flex:1;min-width:200px;height:32px;padding:0 10px;border-radius:9px;font:inherit;font-size:12px;',
-      'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);color:inherit;outline:0;}',
-      '.ra-input:focus{border-color:var(--dsw-alias-brand-primary);}',
-      '.ra-input.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}',
-      '.ra-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:9px;',
-      'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-base);color:inherit;font:inherit;',
-      'font-size:12px;cursor:pointer;transition:border-color .15s,color .15s,background .15s;}',
-      '.ra-btn:hover:not(:disabled){border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary);}',
-      '.ra-btn:disabled{opacity:.45;cursor:default;}',
-      '.ra-btn.primary{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary);',
-      'background:var(--dsw-alias-bg-layer-2);}',
-      '.ra-btn.danger:hover:not(:disabled){border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary);}',
-      '.ra-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 24px;margin:0;padding-top:4px;}',
-      '.ra-stat{display:flex;flex-direction:column;gap:6px;min-width:0;}',
-      '.ra-stat dt{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);}',
-      '.ra-stat dd{margin:0;font-size:13px;line-height:20px;font-weight:500;overflow-wrap:anywhere;}',
-      '.ra-stat.address{grid-column:1/-1;border-top:1px solid var(--dsw-alias-border-l1);padding-top:14px;}',
-      '.ra-stat.address dd{font-size:12px;font-weight:400;}',
-      '.ra-ok{color:var(--dsw-alias-state-success-primary);}',
-      '.ra-warn{color:var(--dsw-alias-state-warn-primary);}',
-      '.ra-error{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary);}',
-      '.ra-notice{margin:0;font-size:11px;line-height:17px;color:var(--dsw-alias-brand-primary);}',
-      '.ra-warnLine{display:flex;align-items:flex-start;gap:6px;font-size:11px;line-height:17px;color:var(--dsw-alias-state-warn-primary);}',
-      '.ra-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}',
-      '.ra-spacer{flex:1;}',
-      '@media (max-width:720px){.ra-modes{grid-template-columns:1fr;}.ra-field .ra-btn{width:100%;}}',
-      '@media (max-width:540px){.ra-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}}',
-    ].join('')
+      useEffect(() => {
+        let active = true
+        let reading = false
+        async function refresh() {
+          if (reading || operation.current) return
+          reading = true
+          try {
+            const value = await remoteAccessCall('lan-status')
+            if (active && !operation.current) {
+              setState(value)
+              setError(previous => previous?.mode === null ? null : previous)
+            }
+          } catch (cause) {
+            if (active && !operation.current) setError(previous => previous ?? { mode: null, message: cause.message })
+          } finally { reading = false }
+        }
+        void refresh()
+        const timer = setInterval(refresh, 1500)
+        return () => { active = false; clearInterval(timer) }
+      }, [remoteAccessCall])
 
-    // The UI-primitives artwork named 'globe-outline', redrawn at 20px so the
-    // plugin matches the native icon set instead of introducing a new one.
-    function icon() {
-      return h('svg', {
-        width: 20, height: 20, viewBox: '0 0 16 16', fill: 'none',
-        'aria-hidden': true, focusable: false,
-      },
-      h('path', {
-        d: 'M7.99986 14.0887C11.3626 14.0887 14.0886 11.3627 14.0886 7.99998C14.0886 4.63727 11.3626 1.91125 7.99986 1.91125C4.63715 1.91125 1.91113 4.63727 1.91113 7.99998C1.91113 11.3627 4.63715 14.0887 7.99986 14.0887Z',
-        stroke: 'currentColor', strokeWidth: 1.45,
-      }),
-      h('path', { d: 'M2.34619 8H13.6538', stroke: 'currentColor', strokeWidth: 1.45, strokeLinecap: 'square' }),
-      h('path', {
-        d: 'M7.99976 14.0889C9.23509 14.0889 10.1743 11.3629 10.1743 8.00006C10.1743 4.63739 9.23509 1.91138 7.99976 1.91138',
-        stroke: 'currentColor', strokeWidth: 1.45,
-      }),
-      h('path', {
-        d: 'M7.99973 14.0889C6.76445 14.0889 5.8252 11.3629 5.8252 8.00006C5.8252 4.63739 6.76445 1.91138 7.99973 1.91138',
-        stroke: 'currentColor', strokeWidth: 1.45,
-      }))
-    }
+      useEffect(() => {
+        if (!qr) return
+        const timer = setTimeout(() => setQr(null), 120000)
+        return () => clearTimeout(timer)
+      }, [qr])
 
-    async function copyText(value) {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(value)
-        return
-      }
-      const area = document.createElement('textarea')
-      area.value = value
-      area.style.position = 'fixed'
-      area.style.opacity = '0'
-      document.body.appendChild(area)
-      area.select()
-      const ok = document.execCommand('copy')
-      area.remove()
-      if (!ok) throw new Error('copy rejected')
-    }
-
-    function errorText(cause) {
-      return cause && cause.message ? cause.message : String(cause)
-    }
-
-    function RemoteAccessTab(props) {
-      const t = props.t
-      const [state, setState] = useState({ status: 'loading', data: null, error: null })
-      const [tokenDraft, setTokenDraft] = useState('')
-      const [baseDraft, setBaseDraft] = useState('')
-      const [showToken, setShowToken] = useState(false)
-      const [qrImage, setQrImage] = useState('')
-      const [busy, setBusy] = useState(false)
-      const [notice, setNotice] = useState('')
-      const [confirmRevoke, setConfirmRevoke] = useState(false)
-      const [diagnosis, setDiagnosis] = useState(null)
-      const [diagnosing, setDiagnosing] = useState(false)
-      const diagnostic = useRef(null)
-      useEffect(() => () => { if (diagnostic.current) diagnostic.current.abort() }, [])
-      useEffect(() => { if (diagnostic.current) diagnostic.current.abort(); diagnostic.current = null; setDiagnosing(false); setDiagnosis(null) }, [baseDraft])
-      async function diagnose() {
-        if (diagnostic.current) { diagnostic.current.abort(); diagnostic.current = null; setDiagnosing(false); return }
-        const controller = new AbortController()
-        diagnostic.current = controller; setDiagnosing(true); setDiagnosis(null)
-        const base = state.data?.baseUrl || ''
-        const results = await Promise.allSettled([
-          (async () => { if (!base) throw new Error(t('probeMissing')); const response = await fetch(base, { mode: 'no-cors', credentials: 'omit', redirect: 'error', cache: 'no-store', signal: controller.signal }); if (response.type !== 'opaque' && !response.ok) throw new Error('HTTP ' + response.status); return t('probeReachable') })(),
-          call('status').then(() => t('probeOk')),
-          Promise.resolve().then(() => faceRef.current.refreshSessions()).then(() => t('probeOk')),
-        ])
-        if (controller.signal.aborted || diagnostic.current !== controller) return
-        diagnostic.current = null; setDiagnosing(false)
-        setDiagnosis(results.map((result, index) => ({ key: ['probeAddress','probeAuth','probeSessions'][index], hint: ['probeAddressHint','probeAuthHint','probeSessionHint'][index], ok: result.status === 'fulfilled', text: result.status === 'fulfilled' ? result.value : t('probeFailed', { message: errorText(result.reason) }) })))
-      }
-      const timer = useRef(null)
-
-      const faceRef = useRef(props)
-      faceRef.current = props
-
-      const flash = useCallback(function (text) {
-        setNotice(text)
-        if (timer.current !== null) clearTimeout(timer.current)
-        timer.current = setTimeout(function () { setNotice('') }, 3200)
-      }, [])
-
-      const call = useCallback(function (endpoint, payload) {
-        if (['save', 'revoke', 'status'].includes(endpoint)) setQrImage('')
-        return faceRef.current.remoteAccessCall(endpoint, payload || {})
-      }, [])
-
-      const load = useCallback(function () {
-        setState(function (current) { return { status: 'loading', data: current.data, error: null } })
-        return call('status').then(function (data) {
-          setState({ status: 'idle', data: data, error: null })
-          setBaseDraft(data && data.baseUrl ? data.baseUrl : '')
-          setTokenDraft('')
-          setShowToken(false)
-        }, function (cause) {
-          setState({ status: 'error', data: null, error: errorText(cause) })
-        })
-      }, [call])
-
-      useEffect(function () { void load() }, [load])
-      useEffect(function () {
-        function hideQrOnBackground() { if (document.hidden) setQrImage('') }
-        document.addEventListener('visibilitychange', hideQrOnBackground)
-        return function () { document.removeEventListener('visibilitychange', hideQrOnBackground) }
-      }, [])
-      useEffect(function () {
-        return function () { if (timer.current !== null) clearTimeout(timer.current) }
-      }, [])
-
-      const data = state.data
-      const mode = data ? data.mode : 'ephemeral'
-      const envMode = mode === 'environment'
-      const fixed = mode === 'persistent'
-
-      async function refresh(next) {
-        if (next && next.mode) setState({ status: 'idle', data: next, error: null })
-        else await load()
-      }
-
-      async function saveMode(target) {
-        if (busy) return
-        setBusy(true)
+      async function act(mode, action) {
+        if (operation.current) return
+        operation.current = true
+        setBusy(mode)
+        setError(null)
         try {
-          const next = await call('save', {
-            mode: target,
-            token: tokenDraft.trim() === '' ? undefined : tokenDraft.trim(),
-          })
-          await refresh(next)
-          setTokenDraft('')
-          setShowToken(false)
-          flash(target === 'persistent' ? t('saved') : t('revoked'))
+          const result = await remoteAccessCall(action, { mode, address: selectedAddress })
+          if (action === 'lan-code') setQr({ mode, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(loginQrSvg(result.url)) })
+          else { setState(result); setQr(null) }
         } catch (cause) {
-          flash(t('operationFailed', { message: errorText(cause) }))
+          setError({ mode, message: cause.message || String(cause) })
         } finally {
-          setBusy(false)
+          operation.current = false
+          setBusy(null)
         }
       }
 
-      async function generate() {
-        if (busy) return
-        setBusy(true)
-        try {
-          const result = await call('generate')
-          setTokenDraft(result.token)
-          setShowToken(true)
-          flash(t('generated'))
-        } catch (cause) {
-          flash(t('operationFailed', { message: errorText(cause) }))
-        } finally {
-          setBusy(false)
-        }
+      const addresses = state?.addresses ?? []
+      const selectedAddress = addresses.includes(address) ? address : addresses[0]
+      function card(mode, title, hint) {
+        const active = state?.mode === mode && Boolean(state.address)
+        const otherActive = Boolean(state?.address) && !active
+        const label = !active ? 'off' : state.connected ? 'paired' : state.pending ? 'pending' : 'ready'
+        const button = (action, key, primary, disabled = false) => h('button', {
+          type: 'button', className: 'ra-action', 'data-primary': primary, disabled: Boolean(busy) || disabled,
+          onClick: () => { void act(mode, action) },
+        }, t(key))
+        return h('article', { className: 'ra-mode-card', 'data-active': active, key: mode },
+          h('div', { className: 'ra-mode-head' }, h('h3', null, t(title)),
+            h('span', { className: 'ra-state', role: 'status' }, t(busy === mode ? 'waiting' : label))),
+          h('p', null, t(hint)),
+          active ? h('p', { className: 'ra-address' }, state.address)
+            : mode === 'lan' && (selectedAddress ? h('select', {
+              'aria-label': t('adapter'), value: selectedAddress, disabled: Boolean(busy) || otherActive,
+              onChange: event => setAddress(event.target.value),
+            }, addresses.map(ip => h('option', { key: ip, value: ip }, ip))) : state && h('p', null, t('noAdapter'))),
+          otherActive && h('p', null, t('other')),
+          active && qr?.mode === mode && !state.connected && h(React.Fragment, null,
+            h('img', { src: qr.url, alt: t('qr'), width: 224, height: 224 }),
+            h('p', null, t('scan'))),
+          error?.mode === mode && h('p', { className: 'ra-error', role: 'alert' }, error.message),
+          h('div', { className: 'ra-actions' }, active
+            ? [!state.connected && button(state.pending ? 'lan-approve' : 'lan-code', state.pending ? 'approve' : 'code', true), button('lan-stop', 'stop', false)]
+            : button('lan-start', 'start', true, !state || otherActive || (mode === 'lan' && !selectedAddress))))
       }
 
-      async function reveal() {
-        if (showToken) { setShowToken(false); setTokenDraft(''); return }
-        if (busy) return
-        setBusy(true)
-        try {
-          const result = await call('reveal')
-          setTokenDraft(result.token)
-          setShowToken(true)
-        } catch (cause) {
-          flash(t('operationFailed', { message: errorText(cause) }))
-        } finally {
-          setBusy(false)
-        }
-      }
-
-      async function toggleQr() {
-        if (busy) return
-        if (qrImage) { setQrImage(''); return }
-        setBusy(true)
-        try {
-          const result = await call('link')
-          setQrImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(loginQrSvg(result.url)))
-        } catch (cause) {
-          flash(t('operationFailed', { message: errorText(cause) }))
-        } finally { setBusy(false) }
-      }
-
-      async function copy() {
-        try {
-          const result = await call('reveal')
-          await copyText(result.token)
-          flash(t('copied'))
-        } catch (cause) {
-          flash(t('copyFailed') + ' · ' + errorText(cause))
-        }
-      }
-
-      async function saveUrl() {
-        if (busy) return
-        setBusy(true)
-        try {
-          const next = await call('save', { baseUrl: baseDraft })
-          await refresh(next)
-          setBaseDraft(next.baseUrl)
-          flash(t('saved'))
-        } catch (cause) {
-          flash(t('operationFailed', { message: errorText(cause) }))
-        } finally {
-          setBusy(false)
-        }
-      }
-
-      async function revoke() {
-        if (busy || !confirmRevoke) { setConfirmRevoke(true); return }
-        setBusy(true)
-        try {
-          const next = await call('revoke')
-          await refresh(next)
-          setTokenDraft('')
-          setShowToken(false)
-          setConfirmRevoke(false)
-          flash(t('revoked'))
-        } catch (cause) {
-          flash(t('operationFailed', { message: errorText(cause) }))
-        } finally {
-          setBusy(false)
-        }
-      }
-
-      const urlDirty = !!data && baseDraft.trim() !== data.baseUrl
-      const modeLabel = mode === 'environment' ? t('environment') : fixed ? t('persistent') : t('ephemeral')
-
-      return h('section', { className: 'ra-root', 'aria-label': t('title') },
-        h('style', null, STYLE),
-        h('header', { className: 'ra-head' },
-          h('span', { className: 'ra-globe' }, icon()),
-          h('div', { className: 'ra-headText' },
-            h('h2', { className: 'ra-title' }, t('title')),
-            h('p', { className: 'ra-sub' }, t('subtitle')))),
-        state.status === 'error'
-          ? h('div', { className: 'ra-card' },
-            h('p', { role: 'alert', className: 'ra-error' }, t('failed', { message: state.error })),
-            h('p', { className: 'ra-hint' }, t('hostHint')),
-            h('div', { className: 'ra-foot' },
-              h('button', { className: 'ra-btn', type: 'button', onClick: function () { void load() } }, t('refresh'))))
-          : null,
-        state.status === 'loading' && !data
-          ? h('div', { className: 'ra-card' }, h('p', { className: 'ra-hint' }, t('loading')))
-          : null,
-        data ? h(React.Fragment, null,
-          h('div', { className: 'ra-card' },
-            h('h3', { className: 'ra-cardTitle' }, t('guideTitle')),
-            h('p', { className: 'ra-hint' }, t('guideToken')),
-            h('p', { className: 'ra-hint' }, t('guideUrl')),
-            h('p', { className: 'ra-hint' }, t('guideLink'))),
-          envMode ? h('div', { className: 'ra-card' },
-            h('p', { className: 'ra-cardTitle' }, t('environment')),
-            h('p', { className: 'ra-hint' }, t('environmentHint'))) : null,
-
-          h('div', { className: 'ra-card' },
-            h('div', { className: 'ra-cardHead' },
-              h('h3', { className: 'ra-cardTitle' }, t('modeTitle')),
-              h('span', { className: fixed ? 'ra-chip on' : 'ra-chip' }, modeLabel)),
-            h('p', { className: 'ra-hint' }, t('modeHint')),
-            h('div', { className: 'ra-modes' },
-              h('label', { className: mode === 'ephemeral' ? 'ra-mode on' : 'ra-mode' },
-                h('input', {
-                  type: 'radio', name: 'ra-mode', checked: mode === 'ephemeral', disabled: busy || envMode,
-                  onChange: function () { void saveMode('ephemeral') },
-                }),
-                h('span', { className: 'ra-modeBody' },
-                  h('span', { className: 'ra-modeName' }, t('ephemeral'),
-                    mode === 'ephemeral' ? h('span', { className: 'ra-chip on' }, t('active')) : null),
-                  h('span', { className: 'ra-hint' }, t('ephemeralHint')))),
-              h('label', { className: fixed ? 'ra-mode on' : 'ra-mode' },
-                h('input', {
-                  type: 'radio', name: 'ra-mode', checked: fixed, disabled: busy || envMode,
-                  onChange: function () { void saveMode('persistent') },
-                }),
-                h('span', { className: 'ra-modeBody' },
-                  h('span', { className: 'ra-modeName' }, t('persistent'),
-                    fixed ? h('span', { className: 'ra-chip on' }, t('active')) : null),
-                  h('span', { className: 'ra-hint' }, t('persistentHint')))))),
-
-          h('div', { className: 'ra-card' },
-            h('div', { className: 'ra-cardHead' },
-              h('h3', { className: 'ra-cardTitle' }, t('tokenTitle')),
-              h('span', { className: data.configured ? 'ra-chip on' : 'ra-chip' },
-                data.configured ? t('tokenConfigured') : t('tokenMissing'))),
-            h('p', { className: 'ra-hint' }, t('tokenHint')),
-            data.tokenMasked ? h('p', { className: 'ra-hint mono' }, '•• ' + data.tokenMasked) : null,
-            h('div', { className: 'ra-field' },
-              h('input', {
-                'aria-label': t('tokenTitle'), className: 'ra-input mono', type: showToken ? 'text' : 'password',
-                value: tokenDraft,
-                placeholder: data.configured && !showToken ? data.tokenMasked : t('tokenPlaceholder'),
-                autoComplete: 'off', spellCheck: false, disabled: busy || envMode,
-                onChange: function (event) { setTokenDraft(event.target.value) },
-              })),
-            h('div', { className: 'ra-field' },
-              h('button', { className: 'ra-btn', type: 'button', disabled: busy || envMode, onClick: function () { void generate() } }, t('generate')),
-              h('button', { className: 'ra-btn primary', type: 'button', disabled: busy || envMode, onClick: function () { void saveMode('persistent') } }, t('save')),
-              h('button', { className: 'ra-btn', type: 'button', disabled: busy || envMode, onClick: function () { void reveal() } }, showToken ? t('hide') : t('show')),
-              h('button', { className: 'ra-btn', type: 'button', disabled: busy || !data.configured, onClick: function () { void copy('token') } }, t('copyToken')),
-              h('span', { className: 'ra-spacer' }),
-              h('button', { className: confirmRevoke ? 'ra-btn danger' : 'ra-btn danger', type: 'button', disabled: busy || !data.configured || envMode, onClick: function () { void revoke() } }, confirmRevoke ? t('confirmRevoke') : t('revoke')))),
-
-          h('div', { className: 'ra-card' },
-            h('h3', { className: 'ra-cardTitle' }, t('urlTitle')),
-            h('p', { className: 'ra-hint' }, t('urlHint')),
-            h('div', { className: 'ra-field' },
-              h('input', {
-                'aria-label': t('urlTitle'), className: 'ra-input mono', type: 'text', value: baseDraft, placeholder: t('urlPlaceholder'),
-                spellCheck: false, disabled: busy,
-                onChange: function (event) { setQrImage(''); setBaseDraft(event.target.value) },
-              }),
-              h('button', { className: 'ra-btn', type: 'button', disabled: busy, onClick: function () { void saveUrl() } }, t('saveUrl'))),
-            h('div', { className: 'ra-field' },
-              h('button', { className: 'ra-btn primary', type: 'button', disabled: busy || urlDirty || !data.baseUrl || !data.configured || mode === 'ephemeral', onClick: function () { void toggleQr() } }, t(qrImage ? 'hideQr' : 'showQr'))),
-            qrImage ? h('div', { className: 'ra-qr' },
-              h('img', { src: qrImage, alt: t('qrAlt'), width: 256, height: 256, style: { display: 'block', width: '256px', maxWidth: '100%', height: 'auto' } }),
-              h('p', { className: 'ra-hint' }, t('scanQr'))) : null,
-            urlDirty ? h('p', { className: 'ra-warnLine' }, t('urlUnsaved')) : null,
-            h('p', { className: 'ra-warnLine' }, t('copyWarning'))),
-
-          h('div', { className: 'ra-card' },
-            h('h3', { className: 'ra-cardTitle' }, t('statusTitle')),
-            h('button', { className: 'ra-btn', type: 'button', onClick: () => { void diagnose() } }, t(diagnosing ? 'diagnoseCancel' : 'diagnose')),
-            h('p', { className: 'ra-warnLine' }, t('diagnosisHint')),
-            diagnosing ? h('p', { role: 'status' }, t('probePending')) : null,
-            diagnosis ? h('dl', { className: 'ra-grid', 'data-connection-diagnosis': '' }, diagnosis.map(item => h('div', { key: item.key }, h('dt', null, t(item.key)), h('dd', { role: item.ok ? 'status' : 'alert' }, item.text, !item.ok ? h('p', null, t(item.hint)) : null)))) : null,
-            h('dl', { className: 'ra-grid' },
-              stat(t('statusMode'), modeLabel),
-              stat(t('statusToken'), data.configured ? t('tokenConfigured') : t('tokenMissing')),
-              stat(t('statusWeb'), data.webRunning ? t('running') : t('notSet'), data.webRunning ? 'ok' : 'warn'),
-              stat(t('statusEffective'), data.configured || mode === 'environment' ? t('effective') : t('notEffective'),
-                data.configured || mode === 'environment' ? 'ok' : 'warn'),
-              stat(t('statusBase'), data.baseUrl || t('notSet'), undefined, 'address'))),
-
-          h('div', { className: 'ra-foot' },
-            notice ? h('span', { role: 'status', className: 'ra-notice' }, notice) : null,
-            h('span', { className: 'ra-spacer' }),
-            h('button', { className: 'ra-btn', type: 'button', disabled: busy, onClick: function () { void load() } }, t('refresh'))))
-          : null)
-    }
-
-    function stat(label, value, tone, variant) {
-      return h('div', { className: 'ra-stat' + (variant ? ' ' + variant : '') },
-        h('dt', null, label),
-        h('dd', { className: tone === 'ok' ? 'ra-ok' : tone === 'warn' ? 'ra-warn' : undefined }, value))
+      return h('section', { className: 'ra-page', 'aria-label': t('title') },
+        h('style', null, STYLE), h('h2', null, t('title')),
+        error && error.mode === null && h('p', { className: 'ra-error', role: 'alert' }, error.message),
+        h('div', { className: 'ra-modes-grid' },
+          card('tailscale', 'tail', 'tailHint'), card('lan', 'lan', 'lanHint')))
     }
 
     function apply(ctx) {
-      ctx.effect(function () { return ctx.locale.register(NS, { zh: zh, en: en }) }, 'remote-access: dictionaries')
+      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'remote-access: dictionaries')
       const t = ctx.locale.bind(NS)
-      const unwrap = function (answer) {
-        if (answer && answer.ok === true) return answer.value
-        const failure = answer && answer.error ? answer.error : undefined
-        throw new Error(failure ? (failure.message || failure.code) : 'remote-access call failed')
+      const remoteAccessCall = async (endpoint, payload = {}) => {
+        const answer = await ctx.connection.rpc.call('/api', 'remote-access/' + endpoint, payload)
+        if (!answer?.ok) throw new Error(answer?.error?.message || answer?.error?.code || 'Remote access request failed')
+        return answer.value
       }
-      const face = {
-        refreshSessions: () => ctx.sessions.refresh(),
-        remoteAccessCall: function (endpoint, payload) {
-          return ctx.connection.rpc.call('/api', 'remote-access/' + endpoint, payload || {}).then(unwrap)
-        },
-      }
-      ctx.slots.inject('plugins.tab', function () {
-        return ctx.slots.register({
-          name: 'plugins.tab',
-          id: 'remote-access',
-          order: 40,
-          label: function () { return t('tab') },
-          locale: NS,
-          inject: function () { return face },
-        }, RemoteAccessTab)
-      })
+      ctx.slots.inject('plugins.tab', () => ctx.slots.register({
+        name: 'plugins.tab', id: 'remote-access', order: 40, label: () => t('title'), locale: NS,
+        inject: () => ({ remoteAccessCall }),
+      }, RemoteAccessTab))
     }
 
-    return { inject: ['slots', 'locale', 'connection', 'sessions'], apply: apply }
+    return { inject: ['slots', 'locale', 'connection'], apply }
   },
 })

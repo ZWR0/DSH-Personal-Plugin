@@ -1,5 +1,0 @@
-- insert:
-    - id: mcp-dsh-computer-use-win
-      name: '@local/dsh-aurum-desktop'
-      config:
-        mode: full

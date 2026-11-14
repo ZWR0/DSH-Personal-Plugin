@@ -1,10 +1,10 @@
 # 暗金工坊 · DSH Web UI 本地插件套件
 
-本仓库包含 **10 个 DSH 插件**，覆盖本地插件管理、会话清理、主题、引用、提问、上下文管理与保护、远程登录和移动工作台。安装时以所下载目录中的 `package.json` 为准。
+本仓库包含 **7 个 DSH 插件**，覆盖本地插件管理、会话清理、主题、聊天快捷回复、上下文管理、远程登录和移动工作台。安装时以所下载目录中的 `package.json` 为准。
 
-版本核对日期：**2026-11-03**。插件统一使用四字中文名，名称不附加功能或英文后缀。包名、插件 ID 和配置路径保持兼容。当前版本见下表。仓库另附认证层兼容补丁与可选启动器；安装前须先核对其 DSH 基线和依赖。
+版本核对日期：**2026-11-03**。插件统一使用四字中文名，名称不附加功能或英文后缀。包名、插件 ID 和配置路径保持兼容。当前版本见下表。
 
-插件使用 `@local/*` 包名，安装在 DSH profile 中。远行之钥依赖认证扩展，文脉护航依赖压缩预算扩展；仓库提供两项宿主补丁。其他插件仍需匹配的宿主接口。
+插件使用 `@local/*` 包名，安装在 DSH profile 中。远行之钥使用当前宿主配对网关。其他插件仍需匹配的宿主接口。
 
 ## 可复现安装与升级
 
@@ -14,15 +14,12 @@
 
 | 插件 | 版本 | 包名 / 目录 | 用途 |
 | --- | --- | --- | --- |
-| 灵犀御机 | 0.1.0 | `@local/dsh-aurum-desktop` · [aurum-desktop](aurum-desktop/README.md) | Windows 桌面操控、实时金色鼠标与控件操作 |
-| 行囊宝匣 | 0.7.0 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 插件本体管理、宿主补丁状态与受管撤销重启 |
-| 会话清道 | 0.4.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 预览确认并批量清理已停止会话 |
+| 行囊宝匣 | 0.8.0 | `@local/dsh-local-vault` · [local-vault](local-vault/README.md) | 目录安装、迁移与批量卸载 |
+| 会话清道 | 0.5.0 | `@local/dsh-session-reaper` · [session-reaper](session-reaper/README.md) | 逐条确认并永久删除已停止会话 |
 | 暗金主题 | 0.4.7 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
-| 引文速递 | 0.3.1 | `@local/dsh-quote-relay` · [quote-relay](quote-relay/README.md) | 将回复中的选中文本插入输入框引用卡片 |
-| 选项领航 | 0.9.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 任务结束后的可点击建议，提问和等待使用官方插件 |
+| 选项领航 | 0.10.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 日常聊天的可点击快捷回复 |
 | 知忆书阁 | 0.6.2 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 文脉护航 | 0.1.4 | `@local/dsh-context-guard` · [context-guard](context-guard/README.md) | 复用会话原生压缩，实际请求预算不足时停止请求 |
-| 远行之钥 | 0.4.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | 固定 DSH Web 登录 Token、手机扫码连接 |
+| 远行之钥 | 0.8.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | Tailscale 跨网与局域网扫码配对 |
 | 掌上行舟 | 0.9.3 | `@local/dsh-mobile-deck` · [mobile-deck](mobile-deck/README.md) | 手机 / iPad 移动工作台：会话状态概览与远程接管入口 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
@@ -35,10 +32,8 @@
 - **知忆书阁 0.6.2**：新增按聊天轮次复查、当前书库自动保存授权和聊天待审按钮。默认第 5 轮复查、之后每 5 轮复查，可在设置调整。授权保存的新增和更新直接写入当前书库；切换目录撤销授权。记忆差异审核。待审卡片显示新增与删除行数，编辑提案时同时展示手动修改的实时差异。版本冲突时禁用批准，重新对比后再确认；原有逐条批准、编辑后批准、拒绝与暂缓保持可用。
 - **暗金主题 0.4.7**：首次请求尚无统计时隐藏启动说明文字；区分会话累计、本轮输入 / 输出和单次调用峰值，显示已记录的收尾回复输出及 maxTokens；缺失数据不猜测为零，运行中估计标记 ≈。仪表详情采用紧凑成对读数，缩略栏等距居中；手机固定两行显示状态、上下文与用量，峰值列加宽，保留运行阶段详情与速度曲线恢复。
 - **行囊宝匣 0.6.1**：安装前检查所需 Host 方法，缺失时提示并阻止安装；提供新设备环境自检与统一回归命令。更新与生效信息：目录扫描分别显示源码版本与管理器登记版本，并标出版本差异。安装结果保留宿主的重启要求；已应用时提示刷新网页加载客户端。宿主未提供真实运行版本，因此界面明确标注未提供，不将登记版本当作运行版本。
-- **引文速递 0.3.1**：划选助手正文后直接引用到输入框，保留草稿和 8000 个 Unicode 字符限制。
-- **选项领航 0.9.0**：新增可选的超时推荐策略。默认关闭；开启后仅在官方 timed 工具返回 pending、且问题明确标为可逆偏好并具有明确推荐项时追加已记录的插件默认策略，不改写用户答案、计时或迟到回答。审批、取消与错误不采用默认方案。后续建议按钮保留。
-- **会话清道 0.4.0**：清理预览与批量确认。插件页可按项目、最近更新时间和名称筛选，勾选已停止会话后预览名称与数量，再明确确认永久删除。会话菜单的单项删除也先预览确认。批量逐项处理，遇到失败停止并保留剩余项；运行状态会在每项执行前重新检查，Host 仍负责最终保护。没有回收站或撤回功能。
-- **远行之钥 0.4.0**：手动连接自检。连接状态区增加手动自检与取消入口，分别展示远程地址、当前网页认证及会话同步结果和故障建议。地址探测不携带凭据，浏览器可达不等于确认该地址是 DSH；认证和同步仅检查当前网页连接，其他设备需在对应设备验证。修改地址会清除旧诊断结果，不在后台轮询。
+- **选项领航 0.10.0**：日常聊天支持点选话题、讲解深度、例子和后续方向。
+- **会话清道 0.5.0**：通过会话菜单逐条确认删除，核验本机日志已清除。
 
 本轮包含 Host 与客户端更新。使用原 profile 停止并重启 DSH，然后刷新网页；若为复制安装，先同步更新到所安装的目录。个人记忆、凭据与真实会话不随源码迁移。
 
@@ -52,9 +47,8 @@
 
 暗金主题 0.4.2 将速度曲线采样按会话保存到当前浏览器，刷新后恢复；最多保留八个会话，每会话最多 1200 点，长曲线降采样保留时间跨度。旧版未保存的数据无法补回。
 
-暗金主题 0.4.2 在开启时让助手回复底部只保留复制按钮。新增的文脉护航 0.1.4 独立于主题，复用每个会话预设的原生 80% 压缩策略，在原生压缩后检查包含待发送消息的请求预算，不足时通过同一服务强制压缩一次历史并重新计量，仍不足才停止本次模型请求；不覆盖预设配置，也不创建第二个压缩器。详细设置、限制与错误恢复见[文脉护航说明](context-guard/README.md)。
+暗金主题 0.4.2 在开启时让助手回复底部只保留复制按钮。
 
-文脉护航 0.1.4 需要 Host 的 `compaction/token-budget` 接口；按 [安装指南](INSTALL.md) 应用压缩预算补丁、构建并重启原 Host。单独拉取官方源码不会添加该接口。插件限制额外输入余量和摘要输出预算，实际触发仍受模型窗口与输出预留约束。安装文脉护航后需重启原 Host；暗金主题样式更新后强制刷新网页。单次输出 token 上限仍需按输出设置处理，不能靠压缩历史保证消除。
 
 ## 获取源码
 
@@ -114,7 +108,7 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 ### 会话清道
 
-在会话菜单中点击“删除会话”先预览并确认；插件页支持按项目、更新时间和名称筛选后批量清理。删除永久生效，没有撤回或回收站。运行中的会话禁止删除；已停止的当前会话可删除，随后刷新列表并切换会话。批量操作遇到失败会停止并保留剩余项。
+在会话菜单选择「删除会话」，核对标题后逐条确认。确认后可在 5 秒内点击「撤销」，到期后永久删除本机日志。运行中的会话须先停止。
 
 当前实现适配 DSH 的 Agent 生命周期和 JSONL 会话目录，仅支持匹配 `DSH_HOME/sessions` 的存储布局。上游内部结构变化或路径校验失败时拒绝删除。验证脚本只操作临时会话。
 
@@ -122,23 +116,13 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 在「插件 → 暗金主题」启停，跟随原生浅色 / 深色 / 系统设置。主题包含仪表条和回答导航，隐藏重复的原生用量读数；关闭后恢复原生样式。详细行为与兼容边界见 [主题 README](aurum-theme/README.md)。
 
-### 引文速递
-
-在同一条 assistant 正文中划选文本，点击输入框工具行的引用按钮。优先使用原生引用卡片，保留草稿；旧接口环境回退为 Markdown 引用。支持单字选区，超过 8000 个 Unicode 字符时要求缩小范围，不截断原文。思考区、编辑区及跨回复选择不处理。
-
 ### 选项领航
 
-通过 `suggest_followups` 提供任务完成后的下一轮建议，点击时输入框为空且无附件即发送，已有草稿或附件时仅追加。任务中的提问、选项、等待、取消和回答全部使用官方 `tool-ask-user`，不拦截或改写结果。升级和官方限时模式配置见[选项领航说明](choice-pilot/README.md)。
+日常聊天可点选快捷回复，选择话题、讲解深度、示例或后续方向。输入框为空时点击发送，有草稿或附件时追加到草稿。任务中的确认与审批走 DSH 官方交互。见 [选项领航说明](choice-pilot/README.md)。
 
 ### 远行之钥
 
-在「插件 → 远行之钥」管理固定 DSH 登录 Token，保存远程基础地址并通过手机扫码登录。固定 Token 由 DSH_HOME 的凭据库保存；轮换或撤销会使旧链接和认证 Cookie 失效，`DSH_WEB_TOKEN` 环境变量优先于界面设置。插件保存地址，不自动修改 Tailscale、代理或防火墙。
-
-**0.3.2：**连接状态改为简洁信息栏，远程地址独占一行，移除重启要求和固定 Token 安全提示卡片。配置 Token 并保存地址后，可点击「显示登录二维码」，通过已有 `/link` 接口获取链接，在浏览器本地生成登录二维码供手机或平板扫码，不调用第三方二维码服务，也不依赖新增 `/qr` 接口（修复 HTTP 404）。隐藏二维码、修改地址、更新或撤销 Token、刷新状态或切到后台时会清除二维码。扫码设备仍需具备可达的网络路径；二维码包含登录凭据，请勿公开分享。
-
-**安装前先阅读 [认证兼容补丁](patches/README.md)。** 已验证基线为 DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；原版缺少相关 Connection 接口时，仅安装插件无法工作。Windows 可选 [Tailscale HTTPS 启动器](vpn-launcher/README.md) 通过参数指定源码目录，不包含本机凭据。
-
-完整安装、固定 Token 设置及故障排查见 [远行之钥 README](remote-access/README.md)。
+在插件页选择 Tailscale 跨网或局域网，开启后生成配对码，手机扫码后在电脑确认。详见 [远行之钥说明](remote-access/README.md)。
 
 ### 掌上行舟
 
@@ -160,7 +144,6 @@ node --import tsx/esm apps/cli/src/bin.ts web
 
 本版本以 `main`（keyed）、`plugins.tab` 两类插槽和 `ctx.sessions` / `ctx.uiSession` / `ctx.connection` 服务为基线；PWA、系统推送与系统分享在宿主提供对应公开接口前不展示入口。完整说明见 [掌上行舟 README](mobile-deck/README.md)。
 
-可选的 [Web 嵌入登录诊断](patches/WEB-AUTH-DIAGNOSTICS.md) 默认关闭，仅提供脱敏 HTTP 事实；不是嵌入浏览器 Cookie 兼容修复，也不改变现有认证策略。
 
 ## 工作区与迁移
 
@@ -169,16 +152,12 @@ DSH-Personal-Plugin/
 ├─ local-vault/
 ├─ session-reaper/
 ├─ aurum-theme/
-├─ quote-relay/
 ├─ choice-pilot/
-├─ context-guard/        # 独立 Host 上下文保护
 ├─ context-library/
 ├─ remote-access/       # 远行之钥，需认证兼容扩展
 ├─ mobile-deck/         # 掌上行舟，手机 / iPad 移动工作台
 ├─ axiom-context/       # 仅本地：个人书库，不上传
 ├─ examples/            # 公开仓库：通用书库模板
-├─ patches/             # DSH 认证层兼容补丁与上游许可证
-├─ vpn-launcher/        # 可选 Windows Tailscale HTTPS 启动器
 └─ tools/               # 测试、截图及本机诊断脚本，不是插件
 ```
 
@@ -193,11 +172,11 @@ $env:DSH_SOURCE = "C:\path\to\deepseek-harness"
 node tools/check.mjs --doctor
 ```
 
-`DSH_SOURCE` 指向 DSH 源码目录，不是插件目录、DSH_HOME 或 profile。首次安装先按 [安装指南](INSTALL.md) 准备固定版本和补丁，再执行开发环境自检；该自检还包含浏览器测试依赖，并非普通插件安装的唯一前提。使用含中文或空格的路径无需改脚本。
+`DSH_SOURCE` 指向 DSH 源码目录，不是插件目录、DSH_HOME 或 profile。首次安装先按 [安装指南](INSTALL.md) 准备 DSH 源码与依赖，再执行开发环境自检；该自检还包含浏览器测试依赖，并非普通插件安装的唯一前提。使用含中文或空格的路径无需改脚本。
 
-检查包含 Node >=24.9、测试依赖、React UMD、浏览器、关键构建文件与固定 Token 源码、构建接口。`DSH_BROWSER_PATH` 可指定测试浏览器的可执行文件绝对路径；脚本不自动安装依赖或浏览器，不修改凭据、认证设置或现有会话。源码接口存在不代表正在运行的旧进程已加载更新。
+检查包含 Node >=24.9、测试依赖、React UMD、浏览器、关键构建文件。`DSH_BROWSER_PATH` 可指定测试浏览器的可执行文件绝对路径；脚本不自动安装依赖或浏览器，不修改凭据、认证设置或现有会话。源码接口存在不代表正在运行的旧进程已加载更新。
 
-行囊宝匣扫描时会在警告中列出已知插件缺少的 Host 方法；每次安装前再次校验，不兼容时返回 `local-vault/incompatible-host`，不会先卸载旧记录或开始安装。请更新匹配的宿主与兼容补丁，在原 profile 重启 DSH 后重新扫描。检查只覆盖列明的 Host 方法，不能保证任意上游版本的客户端插槽、存储布局或方法行为兼容；原生插件页直接安装不会经过行囊宝匣的检查。
+行囊宝匣扫描时会在警告中列出已知插件缺少的 Host 方法；每次安装前再次校验，不兼容时返回 `local-vault/incompatible-host`，不会先卸载旧记录或开始安装。请更新匹配的宿主，在原 profile 重启 DSH 后重新扫描。检查只覆盖列明的 Host 方法，不能保证任意上游版本的客户端插槽、存储布局或方法行为兼容；原生插件页直接安装不会经过行囊宝匣的检查。
 
 全部插件回归只需一个命令：
 
@@ -205,7 +184,7 @@ node tools/check.mjs --doctor
 node tools/check.mjs
 ```
 
-命令先检查环境，再按固定清单顺序运行隔离插件测试，不自动执行目录中的其他诊断脚本，逐项汇总，任一失败返回非零状态。源码认证测试单独使用 tsx，其他集成测试使用构建模块，避免混载两套作用域。默认不测试可选诊断补丁；需要时运行 `node tools/check.mjs --patches`。测试使用临时数据和隔离浏览器，不代替手机真机或远程网络验收。请勿同时运行两份回归，以免截图输出相互覆盖。
+命令先检查环境，再按固定清单顺序运行隔离插件测试，不自动执行目录中的其他诊断脚本，逐项汇总，任一失败返回非零状态。测试使用临时数据和隔离浏览器，不代替手机真机或远程网络验收。请勿同时运行两份回归，以免截图输出相互覆盖。
 
 ## 验证
 
@@ -215,15 +194,12 @@ node tools/check.mjs
 
 | 插件 | 测试脚本（位于 `tools/`） |
 | --- | --- |
-| 灵犀御机 | `aurum-desktop-client-test.mjs`、`aurum-desktop-protocol-test.mjs`、`aurum-desktop-visibility-test.mjs`、`aurum-desktop-pointer-smoke.mjs`、`aurum-desktop-shortcut-smoke.mjs` |
 | 行囊宝匣 | `local-vault-host-test.mjs`、`local-vault-connection-test.mjs`、`local-vault-client-test.mjs` |
 | 会话清道 | `session-reaper-lifecycle-test.mjs`、`session-reaper-client-test.mjs` |
 | 暗金主题 | `aurum-actions-browser-test.mjs`、`aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
-| 引文速递 | `quote-relay-test.mjs` |
-| 选项领航 | `choice-pilot-test.mjs`、`choice-pilot-timeout-test.mjs`、`choice-pilot-visual-test.mjs` |
+| 选项领航 | `choice-pilot-test.mjs`、`choice-pilot-visual-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
-| 文脉护航 | `context-guard-test.mjs` |
-| 远行之钥 | `remote-access-host-test.mjs`（真实认证层与独立进程重启）、`remote-access-client-test.mjs`（桌面 / 手机布局、保存流程、旧主机接口兼容、二维码显示与隐藏检查）；先按插件 README 设置 `DSH_SOURCE` |
+| 远行之钥 | 0.8.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | Tailscale 跨网与局域网扫码配对 |
 | 掌上行舟 | `mobile-deck-host-test.mjs`（临时 profile 目录下的配置校验与持久化）、`mobile-deck-client-test.mjs`（状态、接管、原生文件入口和提醒）、`mobile-deck-startup-test.mjs`（默认入口与深链接）、`mobile-deck-visual-test.mjs`（Edge 窄屏、主题与标签滚动） |
 
 `suite-experience-visual-test.mjs` 联合检查会话清理、直接引用与后续建议组件的浅色 / 深色及窄屏布局；使用模拟数据，不删除真实会话。

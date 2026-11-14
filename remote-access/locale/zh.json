@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "远行之钥",
-    "description": "固定登录 Token、扫码连接与地址、当前认证及会话同步自检。"
+    "description": "通过 Tailscale 或局域网配对手机。"
   }
 }

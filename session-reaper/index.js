@@ -1,7 +1,7 @@
 /** Permanent session deletion over an authenticated, session-independent route. */
 import { rm, lstat, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join, resolve, sep, dirname } from 'node:path'
+import { join, resolve, relative, sep, dirname, basename, isAbsolute } from 'node:path'
 
 /**
  * Services the command needs: registry, storage identity, and running-state
@@ -82,35 +82,6 @@ async function forgetReferences(ctx, sessionId) {
   await reconcileSearchIndex(ctx)
 }
 
-/**
- * The JSONL backend's project-directory key: filesystem separators collapse to
- * one `-`, unsafe code units escape as `~XXXX`, and the plain variant is
- * bounded. Mirrored here instead of imported so the plugin owns no build-time
- * edge into a storage backend.
- * @param {string} cwd - the session's project directory.
- * @returns {string} the single readable project directory name.
- */
-function projectKey(cwd) {
-  let readable = ''
-  let separatorRun = false
-  for (let index = 0; index < cwd.length; index++) {
-    const code = cwd.charCodeAt(index)
-    const char = String.fromCharCode(code)
-    if (char === '/' || char === '\\' || char === ':') {
-      if (!separatorRun) readable += '-'
-      separatorRun = true
-    } else if (char !== '~' && /^[A-Za-z0-9._-]$/.test(char)) {
-      readable += char
-      separatorRun = false
-    } else {
-      readable += '~' + code.toString(16).toUpperCase().padStart(4, '0')
-      separatorRun = false
-    }
-  }
-  const slug = readable.replace(/^-+/, '') || 'root'
-  return `--${slug.slice(0, 251)}--`
-}
-
 /** The backend's injective single-segment escape for a session id. */
 function encodeSegment(raw) {
   if (raw === '.') return '~002E'
@@ -153,21 +124,6 @@ export function apply(ctx) {
       if (listed.items.some(item => item.sessionId === sessionId && item.running)) throw new Error('会话正在运行，请先停止再删除。')
       const agent = ctx.agents.get(sessionId)
       if (agent && agent.status !== 'idle') throw new Error('会话仍在运行或收尾，请稍后重试。')
-      const snapshot = await ctx.sessionPersistence.stat(sessionId)
-      const root = resolve(sessionsRoot())
-      let directory
-      if (snapshot) {
-        directory = resolve(root, projectKey(snapshot.header.cwd ?? ''), encodeSegment(sessionId))
-        if (snapshot.location && (snapshot.location.kind !== 'jsonl' || resolve(dirname(snapshot.location.path)) !== directory)) throw new Error('会话存储位置与当前 sessions 配置不符，未删除。')
-        if (directory === root || !directory.startsWith(root + sep)) throw new Error('会话目录越过 sessions 根目录，已拒绝执行。')
-        try {
-          const info = await lstat(directory)
-          if (info.isSymbolicLink() || !info.isDirectory()) throw new Error('会话目录不是普通目录，已拒绝执行。')
-          const canonicalRoot = await realpath(root)
-          const canonical = await realpath(directory)
-          if (!canonical.startsWith(canonicalRoot + sep)) throw new Error('会话目录实际位置越过 sessions 根目录。')
-        } catch (error) { if (error.code !== 'ENOENT') throw error }
-      }
       signal?.throwIfAborted()
       if (agent) {
         const dispose = lifecycleDisposer(agent)
@@ -180,7 +136,49 @@ export function apply(ctx) {
       }
       // Drain persistence before removal; no command lifecycle event can recreate it.
       await ctx.sessionPersistence.flush()
-      if (directory) await rm(directory, { recursive: true, force: true })
+      if (ctx.agents.get(sessionId) || ctx.sessions.get(sessionId)) {
+        throw new Error('会话已重新打开，请关闭后重试。')
+      }
+      const snapshot = await ctx.sessionPersistence.stat(sessionId)
+      if (!snapshot && listed.items.some(item => item.sessionId === sessionId)) {
+        throw new Error('宿主未提供此会话的持久化记录，无法确认本机日志已清除。')
+      }
+      if (snapshot) {
+        const location = snapshot.location
+        if (snapshot.header.id !== sessionId || location?.kind !== 'jsonl' || !isAbsolute(location.path)) {
+          throw new Error('无法确认此会话的 JSONL 日志位置。')
+        }
+        const root = resolve(sessionsRoot())
+        const directory = dirname(resolve(location.path))
+        const parts = relative(root, directory).split(sep)
+        const key = encodeSegment(sessionId)
+        const filename = basename(location.path)
+        if (parts.length !== 2 || parts[0] === '..' || isAbsolute(parts[0])
+          || ![key, `session-${key}`].includes(parts[1])
+          || !/^session(?:\.v\d+)?\.jsonl(?:\.zstd)?$/.test(filename)) {
+          throw new Error('会话日志不在受支持的 sessions 目录中。')
+        }
+        const canonicalRoot = await realpath(root)
+        const canonical = await realpath(directory)
+        const info = await lstat(location.path)
+        if (relative(join(canonicalRoot, ...parts), canonical) !== '' || !info.isFile() || info.isSymbolicLink()) {
+          throw new Error('会话路径包含重定向或日志不是普通文件。')
+        }
+        signal?.throwIfAborted()
+        if (ctx.agents.get(sessionId) || ctx.sessions.get(sessionId)) {
+          throw new Error('会话已重新打开，请关闭后重试。')
+        }
+        await rm(canonical, { recursive: true, force: true })
+        try {
+          await lstat(canonical)
+          throw new Error('会话日志目录仍然存在，请重试。')
+        } catch (error) {
+          if (error.code !== 'ENOENT') throw error
+        }
+        if (await ctx.sessionPersistence.stat(sessionId)) {
+          throw new Error('宿主仍能找到此会话的持久化记录，请检查后重试。')
+        }
+      }
       await forgetReferences(ctx, sessionId)
       return { deleted: sessionId }
     } finally { pending.delete(sessionId) }

@@ -16,12 +16,6 @@ window.__ModuleLoader__.load({
     const NS = 'localVault'
 
     const zh = {
-      hostPatches: '宿主补丁', patchRefresh: '检查补丁状态', patchExplanation: '插件本体与宿主补丁分别管理。撤销保留插件包及个人设置，由受管启动器完成停机、备份、撤销、重建和重启。',
-      unsupportedHost: '清单外版本，请先适配验证', patchState: '源码补丁状态', removePatch: '撤销补丁并重启', confirmPatchRemove: '确认停机并撤销',
-      patchConfirmation: '所有任务必须已停止。此操作会中断页面连接；重建失败时尝试恢复补丁并重新构建，仍失败则保留停机。认证补丁撤销后需要重新登录。',
-      patchWaiting: '维护中，正在等待宿主重新上线。认证变更可能需要从启动终端的新链接重新登录；失败详情及进度见受管启动终端。',
-      patchApplied: '已应用', patchPending: '未应用', patchConflict: '冲突，需人工适配', patchUnmanaged: '未由受管启动器检查',
-      patchPhaseRunning: '运行中', patchPhaseStopping: '正在停机', patchPhaseBackup: '正在备份', patchPhaseRemoving: '正在撤销', patchPhaseBuilding: '正在重建', patchPhaseRollback: '正在恢复补丁', patchPhaseRemoved: '撤销完成，已重新启动', patchPhaseRestored: '撤销失败，已恢复补丁并重新启动', patchPhaseFailed: '维护失败，请查看启动终端',
       help: '使用说明', selectVisible: '选择可卸载项', clearSelection: '清空选择', uninstall: '卸载选中（{count}）', confirmBatch: '确认卸载（{count}）', removing: '正在卸载', removed: '已卸载', removeFailed: '卸载失败', batchDone: '已完成', results: '处理结果',
       buildBlocked: '安装脚本需要在原生插件管理页单独处理',
       changeOverridden: '已安装，但启用状态被更高优先级配置覆盖',
@@ -30,7 +24,7 @@ window.__ModuleLoader__.load({
       directoryTitle: "目录安装",
       directoryHint: "点击文件夹按钮选择 dsh 所在设备的插件目录；扫描当前目录及下两级目录，不进入 node_modules 或目录链接。",
       directoryPath: "本地插件目录（绝对路径）",
-      saveScan: "保存目录并扫描",
+      saveScan: "保存并扫描",
       rescan: "重新扫描",
       installSelected: "一键安装选中项（{count}）",
       selectReady: "选择全部待安装项",
@@ -49,7 +43,7 @@ window.__ModuleLoader__.load({
       restartHint: "部分插件需要重启 dsh 后生效。",
       dirtyDirectory: "目录已修改，请保存并扫描后再安装。",
       scanWarnings: "扫描提示",
-      pickerFallback: '此界面不支持文件夹选择，请在左侧输入 DSH 所在设备的绝对路径，然后点击「保存目录并扫描」。',
+      pickerFallback: '此界面不支持文件夹选择，请在左侧输入 DSH 所在设备的绝对路径，然后点击「保存并扫描」。',
       hostHint: "若提示 HTTP 404/405，请在「已安装」中查看行囊宝匣的启动异常详情。",
       installNote: "有效的已安装插件会跳过；旧来源失效且新目录包名一致时，选中安装会自动移除旧记录并迁移，保留启停状态。迁移失败可重新扫描重试。关闭此页后不再开始后续安装，已开始的安装会继续。",
 
@@ -68,7 +62,7 @@ window.__ModuleLoader__.load({
       thirdParty: '第三方',
       disabled: '已停用',
       enabled: '已启用',
-      sourceVersion: '源码 {version}', managerVersion: '管理器登记 {version}', runtimeUnknown: '运行版本未由宿主提供；源码更新后客户端需刷新，Host 逻辑需重启', versionChanged: '版本不同，请检查更新与生效状态', appliedRefresh: '管理器已应用；刷新本页加载最新客户端',
+      sourceVersion: '源码 {version}', managerVersion: '管理器登记 {version}', runtimeUnknown: '运行版本未由宿主提供；源码更新后客户端需刷新，Host 逻辑需重启', versionChanged: '版本不同', appliedRefresh: '管理器已应用；刷新本页加载最新客户端',
       version: '版本',
       spec: '来源',
       rows: '{count} 个插件项',
@@ -90,12 +84,6 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
-      hostPatches: 'Host patches', patchRefresh: 'Check patch status', patchExplanation: 'Plugins and Host patches are separate. Removal keeps plugin packages and personal settings; the managed launcher stops, backs up, removes, rebuilds and restarts the Host.',
-      unsupportedHost: 'Unlisted revision; adaptation required', patchState: 'Source patch state', removePatch: 'Remove patch and restart', confirmPatchRemove: 'Confirm shutdown and removal',
-      patchConfirmation: 'Stop all tasks first. The page will disconnect. A failed rebuild attempts to restore the patch and rebuild; if that fails, the Host stays stopped. Removing authentication requires a new login.',
-      patchWaiting: 'Waiting for the Host to restart. Authentication changes may require the new login link from the launcher terminal. Check that terminal for progress and failures.',
-      patchApplied: 'Applied', patchPending: 'Not applied', patchConflict: 'Conflict; adaptation required', patchUnmanaged: 'Not inspected by managed launcher',
-      patchPhaseRunning: 'Running', patchPhaseStopping: 'Stopping', patchPhaseBackup: 'Backing up', patchPhaseRemoving: 'Removing', patchPhaseBuilding: 'Rebuilding', patchPhaseRollback: 'Restoring patch', patchPhaseRemoved: 'Removed and restarted', patchPhaseRestored: 'Removal failed; patch restored and restarted', patchPhaseFailed: 'Maintenance failed; check launcher terminal',
       help: 'Instructions', selectVisible: 'Select removable', clearSelection: 'Clear selection', uninstall: 'Uninstall selected ({count})', confirmBatch: 'Confirm uninstall ({count})', removing: 'Uninstalling', removed: 'Uninstalled', removeFailed: 'Uninstall failed', batchDone: 'Finished', results: 'Results',
       buildBlocked: 'Handle build script permissions in the native Plugins page',
       changeOverridden: 'Installed, but a higher-priority configuration overrides activation',
@@ -104,7 +92,7 @@ window.__ModuleLoader__.load({
       directoryTitle: "Install from directory",
       directoryHint: "Choose a plugin folder on the DSH host. Scans this directory and two levels below, excluding node_modules and directory links.",
       directoryPath: "Local plugin directory (absolute path)",
-      saveScan: "Save directory and scan",
+      saveScan: "Save and scan",
       rescan: "Rescan",
       installSelected: "Install selected ({count})",
       selectReady: "Select all pending plugins",
@@ -142,7 +130,7 @@ window.__ModuleLoader__.load({
       thirdParty: 'Third-party',
       disabled: 'Disabled',
       enabled: 'Enabled',
-      sourceVersion: 'Source {version}', managerVersion: 'Manager reports {version}', runtimeUnknown: 'Host does not report the running version. Refresh client changes; restart for Host changes.', versionChanged: 'Version differs; check update activation', appliedRefresh: 'Manager applied the change; reload to load the latest client',
+      sourceVersion: 'Source {version}', managerVersion: 'Manager reports {version}', runtimeUnknown: 'Host does not report the running version. Refresh client changes; restart for Host changes.', versionChanged: 'Version differs', appliedRefresh: 'Manager applied the change; reload to load the latest client',
       version: 'Version',
       spec: 'Source',
       rows: '{count} rows',
@@ -206,7 +194,7 @@ window.__ModuleLoader__.load({
     }
 
     const STYLE = [
-      '.lv-root{display:flex;flex-direction:column;gap:16px;color:var(--dsw-alias-label-primary);}',
+      '.lv-root{display:flex;flex-direction:column;gap:12px;color:var(--dsw-alias-label-primary);}',
       '.lv-head{display:flex;flex-direction:column;gap:4px;}',
       '.lv-title{margin:0;font-size:16px;line-height:24px;font-weight:600;letter-spacing:.3px;',
       'background:linear-gradient(92deg,#b8860b 0%,#e8c766 45%,#a67c00 100%);-webkit-background-clip:text;background-clip:text;color:transparent;}',
@@ -216,12 +204,12 @@ window.__ModuleLoader__.load({
       'border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);}',
       '.lv-search input{flex:1;border:0;outline:0;background:transparent;color:inherit;font:inherit;font-size:13px;}',
       '.lv-search span{font-size:12px;color:#b8860b;}',
-      '.lv-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:9px;',
+      '.lv-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:5px 12px;border-radius:10px;',
       'border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);',
       'font:inherit;font-size:12px;cursor:pointer;box-shadow:0 2px 5px rgba(30,24,8,.05),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease,color .16s ease;}',
       '.lv-btn:hover:not(:disabled){border-color:#b8860b;color:#b8860b;}',
       '.lv-btn:disabled{opacity:.45;cursor:default;box-shadow:none;}',
-      '.lv-root .lv-btn:not(:disabled):active{transform:translateY(1px) scale(.98);box-shadow:inset 0 2px 4px rgba(30,24,8,.10)}',
+      '.lv-root .lv-btn:not(:disabled):active{transform:translateY(1px) scale(.97);box-shadow:inset 0 2px 5px rgba(30,24,8,.18)}',
       '.lv-root .lv-btn:focus-visible,.lv-root input:focus-visible,.lv-root summary:focus-visible{outline:2px solid #b8860b;outline-offset:3px}',
       '.lv-root .lv-btn[aria-pressed="true"]{border-color:rgba(184,134,11,.55);background:rgba(184,134,11,.10);box-shadow:inset 0 1px 3px rgba(100,72,8,.10)}',
       '.lv-root input[type="checkbox"]{width:15px;height:15px;flex:none;accent-color:#b8860b;cursor:pointer;transition:transform .15s ease,filter .15s ease;filter:drop-shadow(0 1px 2px rgba(30,24,8,.10))}',
@@ -232,10 +220,11 @@ window.__ModuleLoader__.load({
       '.lv-root .lv-list{gap:6px}.lv-root .lv-card{border:1px solid transparent;transition:background .16s ease,border-color .16s ease,box-shadow .16s ease}',
       '.lv-root .lv-card:has(>input:checked){border-color:rgba(184,134,11,.25);background:rgba(184,134,11,.045)}',
       '.lv-root .lv-progress-head{flex-wrap:wrap}.lv-root .lv-progress-head span{font-variant-numeric:tabular-nums}',
-      '@media(hover:hover){.lv-root .lv-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(100,72,8,.12)}.lv-root .lv-card:hover{border-color:rgba(184,134,11,.13);box-shadow:0 3px 12px rgba(30,24,8,.04)}}',
+      '@media(hover:hover){.lv-root .lv-btn:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 5px 12px rgba(100,72,8,.18)}.lv-root .lv-card:hover{border-color:rgba(184,134,11,.13);box-shadow:0 3px 12px rgba(30,24,8,.04)}}',
       '@media(max-width:560px){.lv-root .lv-directory-path{flex-basis:100%;min-width:0}.lv-root .lv-directory .lv-btn{flex:1;justify-content:center}.lv-root .lv-actions{gap:8px}}',
       '@media(prefers-reduced-motion:reduce){.lv-root .lv-btn,.lv-root input,.lv-root .lv-card,.lv-root .lv-search{transition:none!important;transform:none!important}}',
-      '.lv-btn.primary{border-color:rgba(184,134,11,.55);background:linear-gradient(180deg,rgba(201,162,39,.16),rgba(184,134,11,.06));color:#b8860b;}',
+      '.lv-btn.primary{border-color:rgba(184,134,11,.55);background:linear-gradient(180deg,#936925,#765218);color:#fff;}',
+      '.lv-btn.danger{border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 28%,transparent);color:var(--dsw-alias-state-error-primary)}',
       '.lv-btn.danger:hover:not(:disabled){border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary);}',
       '.lv-stats{display:flex;gap:22px;padding:12px 16px;border-radius:14px;border:1px solid rgba(184,134,11,.22);',
       'background:linear-gradient(135deg,rgba(201,162,39,.10),rgba(20,18,14,.02) 60%,rgba(184,134,11,.06));}',
@@ -276,8 +265,8 @@ window.__ModuleLoader__.load({
     ].join('')
 
     const INSTALL_STYLE = `
-.lv-install{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--dsw-alias-border-l3);border-radius:12px;background:var(--dsw-alias-bg-layer-1)}
-.lv-install h3{margin:0;font-size:14px}.lv-directory{display:flex;flex-wrap:wrap;gap:8px}
+.lv-install{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--dsw-alias-border-l3);border-radius:14px;background:var(--dsw-alias-bg-layer-1)}
+.lv-install h3{margin:0;font-size:14px}.lv-directory{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .lv-directory-path{flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-base);color:inherit;font:inherit;font-size:12px;overflow-wrap:anywhere}
 .lv-directory .lv-btn{height:auto;min-height:32px}.lv-directory svg{flex:none}
 .lv-install-list{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:8px}
@@ -286,73 +275,6 @@ window.__ModuleLoader__.load({
 .lv-install-row .lv-body{gap:1px}.lv-install-row small{font-size:11px;color:var(--dsw-alias-label-secondary)}
 .lv-install button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}
 `
-
-    function PatchManager(props) {
-      const [state, setState] = useState(null)
-      const [error, setError] = useState('')
-      const [confirm, setConfirm] = useState(null)
-      const [busy, setBusy] = useState(false)
-      const [waiting, setWaiting] = useState(false)
-      const alive = useRef(true)
-      const load = async function () {
-        try {
-          const next = await props.vaultCall('patch-status', {})
-          if (alive.current) { setState(next); setError(''); return next }
-        } catch (failure) { if (alive.current) setError(failure.message) }
-      }
-      useEffect(function () {
-        alive.current = true; void load()
-        return function () { alive.current = false }
-      }, [])
-      useEffect(function () {
-        if (!waiting) return
-        const started = Date.now()
-        let checking = false
-        const timer = setInterval(async function () {
-          if (checking) return
-          if (Date.now() - started > 10 * 60 * 1000) { clearInterval(timer); setWaiting(false); return }
-          checking = true
-          try {
-            const next = await load()
-            if (next?.job && ['restarted-without-patch', 'restarted-with-patch', 'failed'].includes(next.job.phase)) setWaiting(false)
-          } finally { checking = false }
-        }, 2500)
-        return function () { clearInterval(timer) }
-      }, [waiting])
-      async function remove(file) {
-        if (busy || waiting || props.externalBusy) return
-        setBusy(true); setError('')
-        try {
-          const result = await props.vaultCall('patch-remove', { patch: file, confirm: true })
-          if (alive.current) { setState(old => ({ ...old, job: { phase: 'stopping', message: result.message } })); setWaiting(true); setConfirm(null) }
-        } catch (failure) { if (alive.current) setError(failure.message) }
-        finally { if (alive.current) setBusy(false) }
-      }
-      const disabled = busy || waiting || props.externalBusy
-      const phases = { running: 'patchPhaseRunning', stopping: 'patchPhaseStopping', 'backing-up': 'patchPhaseBackup', removing: 'patchPhaseRemoving', building: 'patchPhaseBuilding', 'migrating-auth': 'patchPhaseBackup', 'rolling-back': 'patchPhaseRollback', 'restarted-without-patch': 'patchPhaseRemoved', 'restarted-with-patch': 'patchPhaseRestored', failed: 'patchPhaseFailed' }
-      const states = { applied: 'patchApplied', pending: 'patchPending', conflict: 'patchConflict', unmanaged: 'patchUnmanaged' }
-      return h('section', { className: 'lv-install', 'aria-label': props.t('hostPatches') },
-        h('style', null, '.lv-patch-card{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid rgba(158,132,70,.24);border-radius:10px;overflow-wrap:anywhere}.lv-patch-card p{margin:0}.lv-patch-card button{align-self:flex-start}.lv-patch-card+.lv-patch-card{margin-top:12px}'),
-        h('h3', null, props.t('hostPatches')),
-        h('p', { className: 'lv-hint' }, props.t('patchExplanation')),
-        h('button', { className: 'lv-btn', type: 'button', disabled: disabled, onClick: function () { void load() } }, props.t('patchRefresh')),
-        state?.message ? h('p', { className: 'lv-hint' }, state.message) : null,
-        state?.revision ? h('p', { className: 'lv-hint' }, 'DSH ' + state.revision + (state.supported ? '' : ' · ' + props.t('unsupportedHost'))) : null,
-        (state?.patches || []).map(function (patch) {
-          return h('div', { key: patch.file, className: 'lv-patch-card' },
-            h('strong', null, patch.title), h('p', null, patch.plugin),
-            h('p', null, props.t('patchState') + ': ' + props.t(states[patch.state] || patch.state)),
-            h('p', { className: 'lv-hint' }, patch.fallback),
-            confirm === patch.file ? h('div', null,
-              h('p', { role: 'alert' }, props.t('patchConfirmation')),
-              h('button', { type: 'button', className: 'lv-btn', disabled: disabled, onClick: function () { void remove(patch.file) } }, props.t('confirmPatchRemove')),
-              h('button', { type: 'button', className: 'lv-btn', disabled: disabled, onClick: function () { setConfirm(null) } }, props.t('cancel')))
-              : h('button', { type: 'button', className: 'lv-btn', disabled: disabled || !patch.removable, onClick: function () { setConfirm(patch.file) } }, props.t('removePatch')))
-        }),
-        state?.job ? h('p', { role: 'status' }, props.t(phases[state.job.phase] || state.job.phase) + ' · ' + (state.job.message || '')) : null,
-        waiting ? h('p', { role: 'status' }, props.t('patchWaiting')) : null,
-        error ? h('p', { className: 'lv-error', role: 'alert' }, error) : null)
-    }
 
     function DirectoryInstaller(props) {
       const t = props.t
@@ -429,7 +351,6 @@ window.__ModuleLoader__.load({
       const selectable = plan ? plan.candidates.filter(function (item) { return ['ready', 'repair', 'installFailed'].includes(item.status) }) : []
       return h('section', { className: 'lv-install', 'aria-label': t('directoryTitle'), 'aria-busy': busy },
         h('style', null, INSTALL_STYLE), h('h3', null, t('directoryTitle')),
-        h('p', { className: 'lv-hint' }, t('runtimeUnknown')),
 
         h('div', { className: 'lv-directory' },
           h('input', { className: 'lv-directory-path', 'aria-label': t('directoryPath'), value: directory, placeholder: t('directoryPath'), disabled: blocked, onChange: function (event) { setDirectory(event.target.value) } }),
@@ -448,7 +369,7 @@ window.__ModuleLoader__.load({
             h('label', null, h('input', { type: 'checkbox', checked: selected.has(item.path), disabled: blocked || !canSelect,
               onChange: function (event) { const checked = event.target.checked; setSelected(function (old) { const next = new Set(old); if (checked) next.add(item.path); else next.delete(item.path); return next }) } }),
             h('span', { className: 'lv-body' }, h('span', { className: 'lv-name' }, item.name),
-              h('span', { className: 'lv-hint' }, t('sourceVersion', { version: item.version || '—' }) + ' · ' + t('managerVersion', { version: item.installedVersion || '—' })),
+              h('span', { className: 'lv-hint' }, t('sourceVersion', { version: item.version || '—' }) + (item.versionChanged ? ' · ' + t('managerVersion', { version: item.installedVersion || '—' }) : '')),
               item.versionChanged ? h('span', { className: 'lv-tag gold' }, t('versionChanged')) : null,
               h('small', { className: 'lv-tag', 'data-state': item.status }, t(item.status)), h('details', null, h('summary', null, t('spec')), h('small', { className: 'lv-path' }, item.path)),
               item.detail ? h('span', { className: item.status === 'installFailed' ? 'lv-error' : 'lv-hint' }, item.detail) : null)))
@@ -603,7 +524,6 @@ window.__ModuleLoader__.load({
       }, [pool, query])
 
       const enabledCount = personal.filter(function (b) { return b.enabled }).length
-      const rowCount = personal.reduce(function (sum, b) { return sum + (Array.isArray(b.rows) ? b.rows.length : 0) }, 0)
 
       const flash = function (message) {
         setNotice(message)
@@ -663,14 +583,11 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'lv-root' },
         h(StyleTag),
         h('div', { className: 'lv-head' },
-          h('h2', { className: 'lv-title' }, t('title')),
-          h('p', { className: 'lv-sub' }, t('subtitle'))),
+          h('h2', { className: 'lv-title' }, t('title'))),
         h(DirectoryInstaller, { t: t, vaultCall: props.vaultCall, pickDirectory: props.pickDirectory, externalBusy: busy !== null, onBusyChange: setBulkBusy, onInstalled: load }),
-        h(PatchManager, { t: t, vaultCall: props.vaultCall, externalBusy: busy !== null || bulkBusy }),
         h('div', { className: 'lv-stats' },
           h(Stat, { value: personal.length, label: t('statBundles') }),
-          h(Stat, { value: enabledCount, label: t('statEnabled') }),
-          h(Stat, { value: rowCount, label: t('statRows') })),
+          h(Stat, { value: enabledCount, label: t('statEnabled') })),
         h('div', { className: 'lv-toolbar' },
           h('label', { className: 'lv-search' },
             h('span', { 'aria-hidden': true }, '⌕'),

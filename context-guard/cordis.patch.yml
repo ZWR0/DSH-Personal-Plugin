@@ -1,8 +1,0 @@
-# Preset compaction owns summaries; the guard caps extra headroom through its Host policy hook.
-- insert:
-    - id: local-context-guard
-      name: '@local/dsh-context-guard'
-      config:
-        maxPressureRatio: 0.9
-        reserveTokens: 8192
-        summaryMaxTokens: 8192
