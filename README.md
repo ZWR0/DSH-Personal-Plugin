@@ -19,7 +19,7 @@
 | 暗金主题 | 0.4.7 | `@local/dsh-aurum-theme` · [aurum-theme](aurum-theme/README.md) | 暗金配色、会话仪表、回答概览与标题目录 |
 | 选项领航 | 0.10.0 | `@local/dsh-choice-pilot` · [choice-pilot](choice-pilot/README.md) | 日常聊天的可点击快捷回复 |
 | 知忆书阁 | 0.6.2 | `@local/dsh-context-library` · [context-library](context-library/README.md) | Agent 身份、Owner 资料、记忆导入与按需加载 |
-| 远行之钥 | 0.8.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | Tailscale 跨网与局域网扫码配对 |
+| 远行之钥 | 0.10.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | Tailscale 跨网与局域网扫码配对 |
 | 掌上行舟 | 0.9.3 | `@local/dsh-mobile-deck` · [mobile-deck](mobile-deck/README.md) | 手机 / iPad 移动工作台：会话状态概览与远程接管入口 |
 
 原独立暗金仪表已并入暗金主题。旧文档中的 `aurum-telemetry/`、`live-interject/`、`config-recipes/` 不属于当前工作区的可安装目录。
@@ -199,7 +199,7 @@ node tools/check.mjs
 | 暗金主题 | `aurum-actions-browser-test.mjs`、`aurum-theme-smoke.mjs`、`aurum-history-browser.mjs`、`aurum-navigation-test.mjs`、`aurum-navigation-browser.mjs` |
 | 选项领航 | `choice-pilot-test.mjs`、`choice-pilot-visual-test.mjs` |
 | 知忆书阁 | `context-library-core-test.mjs`、`context-library-import-test.mjs`、`context-library-integration-test.mjs`、`context-library-client-test.mjs` |
-| 远行之钥 | 0.8.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | Tailscale 跨网与局域网扫码配对 |
+| 远行之钥 | 0.10.0 | `@local/dsh-remote-access` · [remote-access](remote-access/README.md) | Tailscale 跨网与局域网扫码配对 |
 | 掌上行舟 | `mobile-deck-host-test.mjs`（临时 profile 目录下的配置校验与持久化）、`mobile-deck-client-test.mjs`（状态、接管、原生文件入口和提醒）、`mobile-deck-startup-test.mjs`（默认入口与深链接）、`mobile-deck-visual-test.mjs`（Edge 窄屏、主题与标签滚动） |
 
 `suite-experience-visual-test.mjs` 联合检查会话清理、直接引用与后续建议组件的浅色 / 深色及窄屏布局；使用模拟数据，不删除真实会话。

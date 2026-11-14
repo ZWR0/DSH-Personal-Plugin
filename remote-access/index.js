@@ -1,21 +1,27 @@
+import { join } from 'node:path'
 /** Host routes for the desktop-owned phone gateway. */
 import { createLanGateway } from './lan-gateway.js'
 
 export const name = 'remote-access'
-export const inject = ['connection']
+export const inject = ['connection', 'profileContext']
 export const ENDPOINT_PREFIX = 'remote-access/'
-export const ENDPOINTS = ['lan-status', 'lan-start', 'lan-stop', 'lan-code', 'lan-approve']
+export const ENDPOINTS = ['lan-status', 'lan-start', 'lan-stop', 'lan-code', 'lan-approve', 'lan-revoke']
 
 export function apply(ctx) {
-  const lan = createLanGateway(ctx.connection, () => ctx.get('webServer').getOrigin())
-  ctx.effect(() => () => lan.stop(), 'remote-access: stop phone gateway')
+  const lan = createLanGateway(ctx.connection, () => ctx.get('webServer').getOrigin(),
+    ctx.profileContext && join(ctx.profileContext.dir, 'remote-access-devices.json'))
+  ctx.effect(() => {
+    const timer = setTimeout(() => { void lan.restore() }, 1000)
+    return () => { clearTimeout(timer); lan.stop() }
+  }, 'remote-access: stop phone gateway')
 
   const operations = {
     'lan-status': () => lan.status(),
     'lan-start': body => lan.start(body.address, body.mode === 'tailscale' ? 'tailscale' : 'lan'),
-    'lan-stop': () => { lan.stop(); return lan.status() },
+    'lan-stop': () => lan.pause(),
     'lan-code': () => lan.code(),
-    'lan-approve': () => lan.approve(),
+    'lan-approve': body => lan.approve(body.id),
+    'lan-revoke': body => lan.revoke(body.id),
   }
   for (const endpoint of ENDPOINTS) {
     const method = ENDPOINT_PREFIX + endpoint

@@ -25,3 +25,6 @@ _publish/
 
 # Remote access runtime settings
 remote-access.json
+
+remote-access-devices.json
+remote-access-devices.json.*.tmp

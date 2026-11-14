@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-remote-access",
-  "version": "0.8.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "description": "Pair a phone with the running DSH host over Tailscale or LAN.",

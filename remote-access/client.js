@@ -859,8 +859,8 @@ window.__ModuleLoader__.load({
 
 
     const NS = 'remoteAccess'
-    const zh = { title: '远行之钥', tail: 'Tailscale 跨网', lan: '局域网', tailHint: '手机可用移动数据。两端需加入同一 tailnet。', lanHint: '手机和电脑连接同一个局域网。', off: '未开启', ready: '可配对', paired: '已配对', pending: '待确认', waiting: '处理中…', start: '开启连接', stop: '停止连接', code: '生成配对码', approve: '确认手机配对', qr: '配对二维码', scan: '请在两分钟内扫码，再回到电脑确认。', adapter: '本机网络地址', noAdapter: '未检测到可用的局域网地址', retry: '重试', other: '请先停止另一种连接。' }
-    const en = { title: 'Remote Access', tail: 'Tailscale', lan: 'Local network', tailHint: 'Works over cellular. Both devices must join the same tailnet.', lanHint: 'Connect both devices to the same local network.', off: 'Off', ready: 'Ready to pair', paired: 'Paired', pending: 'Awaiting approval', waiting: 'Working…', start: 'Start connection', stop: 'Stop connection', code: 'Generate pairing code', approve: 'Approve pairing', qr: 'Pairing QR code', scan: 'Scan within two minutes, then approve on this computer.', adapter: 'Local network address', noAdapter: 'No local network address detected', retry: 'Retry', other: 'Stop the other connection first.' }
+    const zh = { title: '远行之钥', tail: 'Tailscale 跨网', lan: '局域网', tailHint: '手机可用移动数据。两端需加入同一 tailnet。', lanHint: '手机和电脑连接同一个局域网。', off: '未开启', ready: '可配对', paired: '已配对', device: '设备', revoke: '撤销访问', pending: '待确认', waiting: '处理中…', start: '开启连接', stop: '停止连接', code: '生成配对码', approve: '确认手机配对', qr: '配对二维码', scan: '请在两分钟内扫码，再回到电脑确认。', adapter: '本机网络地址', noAdapter: '未检测到可用的局域网地址', retry: '重试', other: '请先停止另一种连接。' }
+    const en = { title: 'Remote Access', tail: 'Tailscale', lan: 'Local network', tailHint: 'Works over cellular. Both devices must join the same tailnet.', lanHint: 'Connect both devices to the same local network.', off: 'Off', ready: 'Ready to pair', paired: 'Paired', device: 'Device', revoke: 'Revoke access', pending: 'Awaiting approval', waiting: 'Working…', start: 'Start connection', stop: 'Stop connection', code: 'Generate pairing code', approve: 'Approve pairing', qr: 'Pairing QR code', scan: 'Scan within two minutes, then approve on this computer.', adapter: 'Local network address', noAdapter: 'No local network address detected', retry: 'Retry', other: 'Stop the other connection first.' }
 
     const STYLE = `
       .ra-page{padding:clamp(16px,3vw,34px);color:var(--dsw-alias-label-primary,#33291e)}
@@ -873,6 +873,8 @@ window.__ModuleLoader__.load({
       .ra-mode-card p{margin:0;line-height:1.5;color:var(--dsw-alias-label-secondary,#695c4c)}
       .ra-state{font-size:12px;border-radius:999px;padding:4px 9px;background:var(--dsw-alias-bg-layer-2,#f4efe6)}
       .ra-address{overflow-wrap:anywhere;font-family:monospace;font-size:13px}
+      .ra-devices{list-style:none;padding:0;margin:0;display:grid;gap:6px}
+      .ra-devices li{display:flex;justify-content:space-between;align-items:center;gap:8px}
       .ra-actions{margin-top:auto}
       .ra-action,.ra-mode-card select{min-height:42px;padding:8px 13px;border:1px solid var(--au-line,var(--dsw-alias-border-l2,#e6dfd3));border-radius:10px;background:var(--dsw-alias-bg-layer-2,#f4efe6);color:inherit;font:inherit}
       .ra-mode-card select{max-width:100%}
@@ -923,15 +925,15 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(timer)
       }, [qr])
 
-      async function act(mode, action) {
+      async function act(mode, action, id) {
         if (operation.current) return
         operation.current = true
         setBusy(mode)
         setError(null)
         try {
-          const result = await remoteAccessCall(action, { mode, address: selectedAddress })
+          const result = await remoteAccessCall(action, { mode, address: selectedAddress, id })
           if (action === 'lan-code') setQr({ mode, url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(loginQrSvg(result.url)) })
-          else { setState(result); setQr(null) }
+          else { setState(result); if (action !== 'lan-revoke') setQr(null) }
         } catch (cause) {
           setError({ mode, message: cause.message || String(cause) })
         } finally {
@@ -945,10 +947,10 @@ window.__ModuleLoader__.load({
       function card(mode, title, hint) {
         const active = state?.mode === mode && Boolean(state.address)
         const otherActive = Boolean(state?.address) && !active
-        const label = !active ? 'off' : state.connected ? 'paired' : state.pending ? 'pending' : 'ready'
-        const button = (action, key, primary, disabled = false) => h('button', {
+        const label = !active ? 'off' : state.pending ? 'pending' : state.connected ? 'paired' : 'ready'
+        const button = (action, key, primary, disabled = false, id) => h('button', {
           type: 'button', className: 'ra-action', 'data-primary': primary, disabled: Boolean(busy) || disabled,
-          onClick: () => { void act(mode, action) },
+          onClick: () => { void act(mode, action, id) },
         }, t(key))
         return h('article', { className: 'ra-mode-card', 'data-active': active, key: mode },
           h('div', { className: 'ra-mode-head' }, h('h3', null, t(title)),
@@ -960,18 +962,23 @@ window.__ModuleLoader__.load({
               onChange: event => setAddress(event.target.value),
             }, addresses.map(ip => h('option', { key: ip, value: ip }, ip))) : state && h('p', null, t('noAdapter'))),
           otherActive && h('p', null, t('other')),
-          active && qr?.mode === mode && !state.connected && h(React.Fragment, null,
+          active && qr?.mode === mode && h(React.Fragment, null,
             h('img', { src: qr.url, alt: t('qr'), width: 224, height: 224 }),
             h('p', null, t('scan'))),
           error?.mode === mode && h('p', { className: 'ra-error', role: 'alert' }, error.message),
+          (active || (!state?.address && mode === 'tailscale')) && state?.devices?.length > 0 && h('ul', { className: 'ra-devices' },
+            state.devices.map(({ id }) => h('li', { key: id },
+              h('span', null, t('device') + ' ' + id),
+              button('lan-revoke', 'revoke', false, false, id)))),
           h('div', { className: 'ra-actions' }, active
-            ? [!state.connected && button(state.pending ? 'lan-approve' : 'lan-code', state.pending ? 'approve' : 'code', true), button('lan-stop', 'stop', false)]
+            ? [button(state.pending ? 'lan-approve' : 'lan-code', state.pending ? 'approve' : 'code', true, false, state.pendingId), button('lan-stop', 'stop', false)]
             : button('lan-start', 'start', true, !state || otherActive || (mode === 'lan' && !selectedAddress))))
       }
 
       return h('section', { className: 'ra-page', 'aria-label': t('title') },
         h('style', null, STYLE), h('h2', null, t('title')),
         error && error.mode === null && h('p', { className: 'ra-error', role: 'alert' }, error.message),
+        state?.startupError && !error && h('p', { className: 'ra-error', role: 'alert' }, state.startupError),
         h('div', { className: 'ra-modes-grid' },
           card('tailscale', 'tail', 'tailHint'), card('lan', 'lan', 'lanHint')))
     }
