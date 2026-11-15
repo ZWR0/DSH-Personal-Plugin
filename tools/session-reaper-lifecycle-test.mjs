@@ -28,13 +28,14 @@ try {
  await other.dispose()
  let listingMode='normal'
  ctx.provide('sessionController', { list:async()=>{if(listingMode==='error')throw Error('lookup failed');return {items:ctx.agents.list().map(a=>({sessionId:a.id,running:listingMode==='running'||a.status==='running'}))}} })
+ ctx.provide('workspaceRegistry', {create:async()=>({id:'recycle'})})
  ctx.provide('webServer', {register(){return ()=>{}}})
  let connection
  await ctx.plugin(c=>{connection=new HostConnectionService(c,[],{})})
  const fiber=await ctx.plugin(reaper)
  const shared=connection.createSharedFetchHandler('/api')
- const request=(sessionId,method='session-reaper/delete')=>new Request('http://localhost/api/session-reaper/delete',{method:'POST',body:JSON.stringify({type:'client-request',rpcId:'test',method,payload:{sessionId}})})
- const call=async id=>(await (await shared.fetch(request(id),{principal:{kind:'owner'}})).json()).result
+ const request=(sessionId,method='session-reaper/delete',extra={})=>new Request('http://localhost/api/'+(method==='wrong'?'session-reaper/delete':method),{method:'POST',body:JSON.stringify({type:'client-request',rpcId:'test',method,payload:{sessionId,...extra}})})
+ const call=async (id,method,extra)=>(await (await shared.fetch(request(id,method,extra),{principal:{kind:'owner'}})).json()).result
  assert.equal((await shared.fetch(request('bad'),{principal:{kind:'guest'}})).status,403)
  assert.equal((await shared.fetch(request('bad','wrong'),{principal:{kind:'owner'}})).status,400)
  assert.equal((await call('../escape')).ok,false)
@@ -50,15 +51,20 @@ try {
  assert.equal((await call(target.agent.id)).ok,false)
  await access(directory)
  listingMode='normal'
- assert((await call(target.agent.id)).ok)
+ const deletion=await call(target.agent.id)
+ assert.equal(deletion.ok,true,JSON.stringify(deletion))
  assert.equal(ctx.agents.get(target.agent.id),undefined)
  await assert.rejects(access(directory))
  assert.equal(await ctx.sessionPersistence.stat(target.agent.id),undefined)
- assert((await call(target.agent.id)).ok, 'Repeated deletion is idempotent')
- await assert.rejects(access(join(temporary,'sessions','.trash')))
+ const { partition, directoryKey }=deletion.value
+ await access(join(temporary,'session-reaper-trash',partition,directoryKey))
+ const restored=await call(target.agent.id,'session-reaper/restore',{partition,directoryKey})
+ assert.equal(restored.ok,true,JSON.stringify(restored))
+ await access(directory)
+ assert.equal((await ctx.sessionPersistence.stat(target.agent.id)).header.id,target.agent.id)
  await fiber.dispose()
  assert.equal((await shared.fetch(request('bad'),{principal:{kind:'owner'}})).status,404)
- console.log('REAPER HOST OK: real Agent teardown, sibling isolation, JSONL permanent deletion, idempotency, no trash, authenticated route, envelope and uninstall')
+ console.log('REAPER HOST OK: real Agent teardown, sibling isolation, JSONL removal and restoration, authenticated route, envelope and uninstall')
 } finally {
  await ctx.fiber.dispose()
  if(oldHome===undefined) delete process.env.DSH_HOME; else process.env.DSH_HOME=oldHome
